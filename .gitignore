@@ -1,0 +1,15 @@
+# 依赖与构建产物
+node_modules/
+dist/
+*.tsbuildinfo
+
+# 图片衍生结果与索引（由 npm run data 生成，不入库）
+public/images/
+public/data/index.json
+public/data/userdata.seed.json
+.cache/
+
+# 本地个人标注（导入导出的 JSON 可以放在这里，但默认忽略）
+*.local.json
+.DS_Store
+Thumbs.db

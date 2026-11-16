@@ -1,0 +1,417 @@
+import { useMemo, useState } from 'react'
+import type { Route } from '../lib/router'
+import { navigate } from '../lib/router'
+import { useStore } from '../state/store'
+import { applyFilters, DEFAULT_FILTER, groupByMonth } from '../lib/filtering'
+import { MONTHS_CN } from '../lib/dates'
+import { Icon } from '../components/Icon'
+import { Masonry } from '../components/ItemCard'
+import { Empty, Modal } from '../components/Modal'
+import { TagPicker } from '../components/TagPicker'
+import type { FilterState } from '../types'
+
+export function GalleryView({ route }: { route: Route }) {
+  const {
+    items,
+    annotations,
+    tags,
+    collections,
+    data,
+    addTagToItems,
+    removeTagFromItems,
+    setFavorite,
+    confirmDate,
+    addToCollection,
+    addCollection,
+    notify,
+  } = useStore()
+
+  const [filter, setFilter] = useState<FilterState>(() => {
+    const q = route.query
+    const tag = q.get('tag')
+    return {
+      ...DEFAULT_FILTER,
+      year: q.get('year') ?? '',
+      month: q.get('month') ?? '',
+      keyword: q.get('q') ?? '',
+      tagIds: tag ? [tag] : [],
+      favoriteOnly: q.get('fav') === '1',
+      unconfirmedOnly: q.get('pending') === '1',
+      collectionId: q.get('collection') ?? '',
+      sort: (q.get('sort') as FilterState['sort']) || 'publishedAsc',
+    }
+  })
+
+  const [selectMode, setSelectMode] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [tagModal, setTagModal] = useState(false)
+  const [pickTags, setPickTags] = useState<string[]>([])
+  const [collectionModal, setCollectionModal] = useState(false)
+  const [newCollection, setNewCollection] = useState('')
+  const [tagFilterOpen, setTagFilterOpen] = useState(false)
+
+  const filtered = useMemo(
+    () =>
+      applyFilters(
+        { items, annotations, tags, collectionItemIds: collections.find((c) => c.id === filter.collectionId)?.itemIds },
+        filter,
+      ),
+    [items, annotations, tags, collections, filter],
+  )
+
+  const groups = useMemo(() => groupByMonth(filtered, annotations), [filtered, annotations])
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const selectedIds = useMemo(() => [...selected], [selected])
+
+  const clearSelection = () => setSelected(new Set())
+
+  const toggleTagFilter = (tagId: string) => {
+    setFilter((f) => ({
+      ...f,
+      tagIds: f.tagIds.includes(tagId) ? f.tagIds.filter((t) => t !== tagId) : [...f.tagIds, tagId],
+    }))
+  }
+
+  const years = useMemo(() => [...new Set(items.map((i) => i.publishedAt.slice(0, 4)))].sort(), [items])
+
+  return (
+    <div className="gallery-view">
+      <div className="page-head">
+        <div>
+          <div className="page-eyebrow">Gallery</div>
+          <h2 className="page-title">图库</h2>
+          <div className="page-sub">
+            {filtered.length} / {items.length} 张 · {groups.length} 个月份
+            {filter.tagIds.length > 0 && ` · 已筛选 ${filter.tagIds.length} 个标签`}
+          </div>
+        </div>
+        <div className="page-actions">
+          <button
+            className={`btn${selectMode ? ' btn-primary' : ''}`}
+            onClick={() => {
+              setSelectMode((v) => !v)
+              clearSelection()
+            }}
+          >
+            <Icon name="checkSquare" size={15} />
+            {selectMode ? '退出多选' : '多选整理'}
+          </button>
+          <button className="btn btn-ghost" onClick={() => navigate('/search')}>
+            <Icon name="filter" size={15} />
+            高级筛选
+          </button>
+        </div>
+      </div>
+
+      <div className="gallery-toolbar">
+        <div className="top-search" style={{ maxWidth: 300, marginLeft: 0 }}>
+          <Icon name="search" size={14} />
+          <input
+            value={filter.keyword}
+            placeholder="搜索标签 / 备注 / 日期"
+            onChange={(e) => setFilter((f) => ({ ...f, keyword: e.target.value }))}
+          />
+        </div>
+        <select
+          className="select"
+          style={{ width: 106 }}
+          value={filter.year}
+          onChange={(e) => setFilter((f) => ({ ...f, year: e.target.value }))}
+        >
+          <option value="">全部年份</option>
+          {years.map((y) => (
+            <option key={y} value={y}>
+              {y} 年
+            </option>
+          ))}
+        </select>
+        <select
+          className="select"
+          style={{ width: 92 }}
+          value={filter.month}
+          onChange={(e) => setFilter((f) => ({ ...f, month: e.target.value }))}
+        >
+          <option value="">全年</option>
+          {MONTHS_CN.map((name, idx) => (
+            <option key={name} value={idx + 1}>
+              {name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="select"
+          style={{ width: 132 }}
+          value={filter.sort}
+          onChange={(e) => setFilter((f) => ({ ...f, sort: e.target.value as FilterState['sort'] }))}
+        >
+          <option value="publishedAsc">发布日 · 早→晚</option>
+          <option value="publishedDesc">发布日 · 晚→早</option>
+          <option value="diaryAsc">日记日 · 早→晚</option>
+          <option value="diaryDesc">日记日 · 晚→早</option>
+          <option value="updatedDesc">最近整理</option>
+        </select>
+        <div className="row" style={{ gap: 6 }}>
+          <button
+            className={`chip${filter.favoriteOnly ? ' active' : ''}`}
+            onClick={() => setFilter((f) => ({ ...f, favoriteOnly: !f.favoriteOnly }))}
+          >
+            <Icon name="heart" size={11} />
+            只看收藏
+          </button>
+          <button
+            className={`chip${filter.unconfirmedOnly ? ' active' : ''}`}
+            onClick={() => setFilter((f) => ({ ...f, unconfirmedOnly: !f.unconfirmedOnly }))}
+          >
+            <Icon name="check" size={11} />
+            待校对
+          </button>
+          <button className={`chip${tagFilterOpen ? ' active' : ''}`} onClick={() => setTagFilterOpen((v) => !v)}>
+            <Icon name="tag" size={11} />
+            标签{filter.tagIds.length ? ` ${filter.tagIds.length}` : ''}
+          </button>
+        </div>
+        <div className="spacer" />
+        {selectMode && (
+          <>
+            <button
+              className="btn btn-sm"
+              onClick={() => setSelected(new Set(filtered.map((i) => i.id)))}
+            >
+              全选当前
+            </button>
+            <button className="btn btn-sm btn-ghost" onClick={clearSelection} disabled={!selected.size}>
+              清除
+            </button>
+          </>
+        )}
+      </div>
+
+      {tagFilterOpen && (
+        <div className="panel tag-filter-panel">
+          <div className="row" style={{ justifyContent: 'space-between' }}>
+            <span className="field-label">按标签过滤</span>
+            <div className="segmented">
+              <button
+                className={filter.tagMode === 'any' ? 'active' : ''}
+                onClick={() => setFilter((f) => ({ ...f, tagMode: 'any' }))}
+              >
+                任一
+              </button>
+              <button
+                className={filter.tagMode === 'all' ? 'active' : ''}
+                onClick={() => setFilter((f) => ({ ...f, tagMode: 'all' }))}
+              >
+                全部
+              </button>
+            </div>
+          </div>
+          <div className="row row-wrap" style={{ gap: 6, marginTop: 10 }}>
+            {tags.length ? (
+              tags.map((tag) => (
+                <button
+                  key={tag.id}
+                  className={`chip${filter.tagIds.includes(tag.id) ? ' active' : ''}`}
+                  style={filter.tagIds.includes(tag.id) ? { background: tag.color, borderColor: tag.color, color: '#fff' } : undefined}
+                  onClick={() => toggleTagFilter(tag.id)}
+                >
+                  {tag.name}
+                </button>
+              ))
+            ) : (
+              <span className="muted">还没有标签，先去标签页创建吧。</span>
+            )}
+            {filter.tagIds.length > 0 && (
+              <button className="btn btn-ghost btn-sm" onClick={() => setFilter((f) => ({ ...f, tagIds: [] }))}>
+                清空标签
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!groups.length ? (
+        <Empty
+          icon="image"
+          title="没有符合条件的作品"
+          hint="试试清除关键词、年份或标签筛选。"
+          action={
+            <button className="btn btn-sm" onClick={() => setFilter(DEFAULT_FILTER)}>
+              重置筛选
+            </button>
+          }
+        />
+      ) : (
+        <div className="gallery-groups">
+          {groups.map((group) => (
+            <section key={group.key} className="gallery-group">
+              <div className="group-head">
+                <h3>
+                  {group.year} 年 {group.month} 月
+                  <span className="group-count num">{group.items.length} 张</span>
+                </h3>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => navigate(`/calendar?y=${group.year}&m=${group.month}`)}
+                >
+                  在日历中查看
+                  <Icon name="right" size={12} />
+                </button>
+              </div>
+              <Masonry
+                items={group.items}
+                selectable={selectMode}
+                selected={selected}
+                onToggleSelect={toggleSelect}
+              />
+            </section>
+          ))}
+        </div>
+      )}
+
+      {selectMode && selected.size > 0 && (
+        <div className="selection-bar">
+          <span className="selection-count num">已选 {selected.size} 张</span>
+          <div className="divider-v" />
+          <button className="btn btn-sm btn-soft" onClick={() => { setPickTags([]); setTagModal(true) }}>
+            <Icon name="tag" size={13} />
+            打标签
+          </button>
+          <button className="btn btn-sm btn-soft" onClick={() => { setFavorite(selectedIds, true); notify(`已收藏 ${selectedIds.length} 张`, 'success') }}>
+            <Icon name="heart" size={13} />
+            收藏
+          </button>
+          <button className="btn btn-sm btn-soft" onClick={() => { setFavorite(selectedIds, false); notify('已取消收藏', 'success') }}>
+            取消收藏
+          </button>
+          <button
+            className="btn btn-sm btn-soft"
+            onClick={() => { confirmDate(selectedIds, 'suggested'); notify(`已按推断日期确认 ${selectedIds.length} 张`, 'success') }}
+          >
+            <Icon name="check" size={13} />
+            确认推断日期
+          </button>
+          <button className="btn btn-sm btn-soft" onClick={() => setCollectionModal(true)}>
+            <Icon name="folder" size={13} />
+            加入合集
+          </button>
+          <button
+            className="btn btn-sm btn-primary"
+            onClick={() => navigate(`/stickers?ids=${selectedIds.join(',')}`)}
+          >
+            <Icon name="sticker" size={13} />
+            做表情包
+          </button>
+          <button className="icon-btn" onClick={clearSelection} aria-label="清除选择">
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+      )}
+
+      {tagModal && (
+        <Modal
+          title={`批量打标签 · ${selected.size} 张`}
+          onClose={() => setTagModal(false)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setTagModal(false)}>
+                取消
+              </button>
+              <button
+                className="btn btn-danger"
+                disabled={!pickTags.length}
+                onClick={() => {
+                  removeTagFromItems(selectedIds, pickTags[0])
+                  notify('已移除标签', 'success')
+                  setTagModal(false)
+                }}
+              >
+                移除第一个
+              </button>
+              <button
+                className="btn btn-primary"
+                disabled={!pickTags.length}
+                onClick={() => {
+                  pickTags.forEach((tagId) => addTagToItems(selectedIds, tagId))
+                  notify(`已为 ${selected.size} 张添加 ${pickTags.length} 个标签`, 'success')
+                  setTagModal(false)
+                }}
+              >
+                添加标签
+              </button>
+            </>
+          }
+        >
+          <TagPicker selected={pickTags} onChange={setPickTags} counts={undefined} />
+        </Modal>
+      )}
+
+      {collectionModal && (
+        <Modal
+          title="加入合集"
+          onClose={() => setCollectionModal(false)}
+          footer={
+            <button className="btn" onClick={() => setCollectionModal(false)}>
+              完成
+            </button>
+          }
+        >
+          <div className="collection-pick-list">
+            {collections.map((col) => {
+              const added = selectedIds.every((id) => col.itemIds.includes(id))
+              return (
+                <button
+                  key={col.id}
+                  className="collection-pick"
+                  onClick={() => {
+                    addToCollection(col.id, selectedIds)
+                    notify(`已加入「${col.name}」`, 'success')
+                    setCollectionModal(false)
+                  }}
+                >
+                  <Icon name="folder" size={16} />
+                  <span>{col.name}</span>
+                  <span className="faint">{col.itemIds.length} 张</span>
+                  {added && <Icon name="check" size={14} />}
+                </button>
+              )
+            })}
+          </div>
+          <div className="divider" />
+          <div className="row">
+            <input
+              className="input"
+              placeholder="新建合集名称"
+              value={newCollection}
+              onChange={(e) => setNewCollection(e.target.value)}
+            />
+            <button
+              className="btn btn-primary"
+              disabled={!newCollection.trim()}
+              onClick={() => {
+                const col = addCollection(newCollection.trim())
+                addToCollection(col.id, selectedIds)
+                setNewCollection('')
+                notify(`已创建「${col.name}」并加入 ${selectedIds.length} 张`, 'success')
+                setCollectionModal(false)
+              }}
+            >
+              新建并加入
+            </button>
+          </div>
+          <div className="faint" style={{ marginTop: 8, fontSize: 11.5 }}>
+            当前本地共有 {data.collections.length} 个合集。
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}
