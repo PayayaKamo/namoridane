@@ -3,10 +3,11 @@ import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
 import { downloadJson } from '../lib/storage'
+import { downloadBlob } from '../lib/image'
 import { relativeTime } from '../lib/dates'
 
 export function DataView() {
-  const { data, items, tags, collections, annotations, importData, loadSeed, resetData, notify, theme, toggleTheme } = useStore()
+  const { data, items, allItems, excludedItems, tags, collections, annotations, importData, loadSeed, resetData, notify, theme, toggleTheme } = useStore()
   const fileRef = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<'merge' | 'replace'>('merge')
   const [confirmReset, setConfirmReset] = useState(false)
@@ -37,6 +38,12 @@ export function DataView() {
     notify('导出成功', 'success')
   }
 
+  const exportExcluded = () => {
+    const text = excludedItems.map((item) => item.file).join('\r\n')
+    downloadBlob(new Blob([text], { type: 'text/plain;charset=utf-8' }), 'namori-excluded-files.txt')
+    notify(`已导出 ${excludedItems.length} 个待剔除文件名`, 'success')
+  }
+
   return (
     <div className="data-view">
       <div className="page-head">
@@ -60,7 +67,8 @@ export function DataView() {
             <span className="faint">更新于 {relativeTime(data.updatedAt)}</span>
           </div>
           <div className="meta-list">
-            <div className="meta-row"><span>作品总数</span><span className="num">{items.length}</span></div>
+            <div className="meta-row"><span>当前绘日记 / 原始归档</span><span className="num">{items.length} / {allItems.length}</span></div>
+            <div className="meta-row"><span>非绘日记排除区</span><span className="num">{excludedItems.length}</span></div>
             <div className="meta-row"><span>已标注作品</span><span className="num">{annotated}</span></div>
             <div className="meta-row"><span>标签 / 维度</span><span className="num">{tags.length} / {data.dimensions.length}</span></div>
             <div className="meta-row"><span>合集</span><span className="num">{collections.length}</span></div>
@@ -74,6 +82,9 @@ export function DataView() {
             <button className="btn" onClick={() => fileRef.current?.click()} disabled={importing}>
               <Icon name="upload" size={14} />
               {importing ? '导入中…' : '导入 JSON'}
+            </button>
+            <button className="btn" onClick={exportExcluded} disabled={!excludedItems.length}>
+              <Icon name="trash" size={14} />导出剔除名单
             </button>
             <input
               ref={fileRef}
@@ -145,6 +156,7 @@ export function DataView() {
     [itemId]: {
       tags: string[],
       favorite: boolean,
+      excluded: boolean,
       note: string,
       date?:     { year, month, day, confirmed, source },
       study?:    { composition, palette, linework, expression, memo },

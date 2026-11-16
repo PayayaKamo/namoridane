@@ -8,11 +8,14 @@ import { Icon } from '../components/Icon'
 import { Masonry } from '../components/ItemCard'
 import { Empty, Modal } from '../components/Modal'
 import { TagPicker } from '../components/TagPicker'
+import { downloadBlob, downloadOriginalsZip } from '../lib/image'
 import type { FilterState } from '../types'
 
 export function GalleryView({ route }: { route: Route }) {
   const {
     items,
+    excludedItems,
+    itemMap,
     annotations,
     tags,
     collections,
@@ -20,6 +23,7 @@ export function GalleryView({ route }: { route: Route }) {
     addTagToItems,
     removeTagFromItems,
     setFavorite,
+    setExcluded,
     confirmDate,
     addToCollection,
     addCollection,
@@ -38,11 +42,13 @@ export function GalleryView({ route }: { route: Route }) {
       favoriteOnly: q.get('fav') === '1',
       unconfirmedOnly: q.get('pending') === '1',
       collectionId: q.get('collection') ?? '',
-      sort: (q.get('sort') as FilterState['sort']) || 'publishedAsc',
+      sort: (q.get('sort') as FilterState['sort']) || 'diaryAsc',
     }
   })
 
   const [selectMode, setSelectMode] = useState(false)
+  const [showExcluded, setShowExcluded] = useState(route.query.get('excluded') === '1')
+  const [zipProgress, setZipProgress] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [tagModal, setTagModal] = useState(false)
   const [pickTags, setPickTags] = useState<string[]>([])
@@ -50,13 +56,15 @@ export function GalleryView({ route }: { route: Route }) {
   const [newCollection, setNewCollection] = useState('')
   const [tagFilterOpen, setTagFilterOpen] = useState(false)
 
+  const sourceItems = showExcluded ? excludedItems : items
+
   const filtered = useMemo(
     () =>
       applyFilters(
-        { items, annotations, tags, collectionItemIds: collections.find((c) => c.id === filter.collectionId)?.itemIds },
+        { items: sourceItems, annotations, tags, collectionItemIds: collections.find((c) => c.id === filter.collectionId)?.itemIds },
         filter,
       ),
-    [items, annotations, tags, collections, filter],
+    [sourceItems, annotations, tags, collections, filter],
   )
 
   const groups = useMemo(() => groupByMonth(filtered, annotations), [filtered, annotations])
@@ -71,6 +79,33 @@ export function GalleryView({ route }: { route: Route }) {
   }
 
   const selectedIds = useMemo(() => [...selected], [selected])
+  const selectedItems = useMemo(
+    () => selectedIds.flatMap((id) => {
+      const item = itemMap.get(id)
+      return item ? [item] : []
+    }),
+    [selectedIds, itemMap],
+  )
+
+  const downloadSelected = async () => {
+    if (!selectedItems.length || zipProgress) return
+    setZipProgress(`0 / ${selectedItems.length}`)
+    try {
+      await downloadOriginalsZip(selectedItems, (done, total) => setZipProgress(`${done} / ${total}`))
+      notify(`已打包 ${selectedItems.length} 张原始 JPG`, 'success')
+    } catch (err) {
+      console.error(err)
+      notify('原图打包失败，请减少选择数量后重试', 'error')
+    } finally {
+      setZipProgress(null)
+    }
+  }
+
+  const exportExcluded = () => {
+    const text = excludedItems.map((item) => item.file).join('\r\n')
+    downloadBlob(new Blob([text], { type: 'text/plain;charset=utf-8' }), 'namori-excluded-files.txt')
+    notify(`已导出 ${excludedItems.length} 个待剔除文件名`, 'success')
+  }
 
   const clearSelection = () => setSelected(new Set())
 
@@ -81,20 +116,31 @@ export function GalleryView({ route }: { route: Route }) {
     }))
   }
 
-  const years = useMemo(() => [...new Set(items.map((i) => i.publishedAt.slice(0, 4)))].sort(), [items])
+  const years = useMemo(() => [...new Set(sourceItems.map((i) => i.publishedAt.slice(0, 4)))].sort(), [sourceItems])
 
   return (
     <div className="gallery-view">
       <div className="page-head">
         <div>
-          <div className="page-eyebrow">Gallery</div>
-          <h2 className="page-title">图库</h2>
+          <div className="page-eyebrow">{showExcluded ? 'Excluded' : 'Gallery'}</div>
+          <h2 className="page-title">{showExcluded ? '非绘日记排除区' : '图库'}</h2>
           <div className="page-sub">
-            {filtered.length} / {items.length} 张 · {groups.length} 个月份
+            {filtered.length} / {sourceItems.length} 张 · {groups.length} 个月份
+            {!showExcluded && ' · 默认按图内日记日期排列'}
             {filter.tagIds.length > 0 && ` · 已筛选 ${filter.tagIds.length} 个标签`}
           </div>
         </div>
         <div className="page-actions">
+          <button
+            className={`btn${showExcluded ? ' btn-primary' : ''}`}
+            onClick={() => {
+              setShowExcluded((value) => !value)
+              clearSelection()
+            }}
+          >
+            <Icon name={showExcluded ? 'gallery' : 'trash'} size={15} />
+            {showExcluded ? '返回图库' : `排除区 ${excludedItems.length}`}
+          </button>
           <button
             className={`btn${selectMode ? ' btn-primary' : ''}`}
             onClick={() => {
@@ -111,6 +157,18 @@ export function GalleryView({ route }: { route: Route }) {
           </button>
         </div>
       </div>
+
+      {showExcluded && (
+        <div className="excluded-banner">
+          <div>
+            <strong>这里只放你标记的「非绘日记」</strong>
+            <span>排除只是本地整理标记，不会删除文件；可批量恢复，或导出名单后再从 images/original 剔除。</span>
+          </div>
+          <button className="btn btn-sm" onClick={exportExcluded} disabled={!excludedItems.length}>
+            <Icon name="download" size={14} />导出剔除名单
+          </button>
+        </div>
+      )}
 
       <div className="gallery-toolbar">
         <div className="top-search" style={{ maxWidth: 300, marginLeft: 0 }}>
@@ -241,8 +299,8 @@ export function GalleryView({ route }: { route: Route }) {
       {!groups.length ? (
         <Empty
           icon="image"
-          title="没有符合条件的作品"
-          hint="试试清除关键词、年份或标签筛选。"
+          title={showExcluded ? '排除区是空的' : '没有符合条件的作品'}
+          hint={showExcluded ? '在详情中点「非绘日记」，图片就会集中到这里等待处理。' : '试试清除关键词、年份或标签筛选。'}
           action={
             <button className="btn btn-sm" onClick={() => setFilter(DEFAULT_FILTER)}>
               重置筛选
@@ -281,6 +339,10 @@ export function GalleryView({ route }: { route: Route }) {
         <div className="selection-bar">
           <span className="selection-count num">已选 {selected.size} 张</span>
           <div className="divider-v" />
+          <button className="btn btn-sm btn-soft" onClick={downloadSelected} disabled={zipProgress !== null}>
+            <Icon name="download" size={13} />
+            {zipProgress ? `原图 ${zipProgress}` : '原图 ZIP'}
+          </button>
           <button className="btn btn-sm btn-soft" onClick={() => { setPickTags([]); setTagModal(true) }}>
             <Icon name="tag" size={13} />
             打标签
@@ -302,6 +364,17 @@ export function GalleryView({ route }: { route: Route }) {
           <button className="btn btn-sm btn-soft" onClick={() => setCollectionModal(true)}>
             <Icon name="folder" size={13} />
             加入合集
+          </button>
+          <button
+            className={`btn btn-sm${showExcluded ? ' btn-primary' : ' btn-danger'}`}
+            onClick={() => {
+              setExcluded(selectedIds, !showExcluded)
+              notify(showExcluded ? `已恢复 ${selectedIds.length} 张绘日记` : `已排除 ${selectedIds.length} 张非绘日记`, 'success')
+              clearSelection()
+            }}
+          >
+            <Icon name={showExcluded ? 'check' : 'trash'} size={13} />
+            {showExcluded ? '恢复为绘日记' : '标记非绘日记'}
           </button>
           <button
             className="btn btn-sm btn-primary"

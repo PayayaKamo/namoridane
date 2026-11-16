@@ -5,7 +5,7 @@ export const STORAGE_KEY = 'namori.diary.userdata.v2'
 export const THEME_KEY = 'namori.theme'
 
 export function emptyAnnotation(): ItemAnnotation {
-  return { tags: [], favorite: false, note: '', updatedAt: new Date(0).toISOString() }
+  return { tags: [], favorite: false, excluded: false, note: '', updatedAt: new Date(0).toISOString() }
 }
 
 export function defaultDimensions(): Dimension[] {
@@ -86,6 +86,7 @@ export function normalizeUserData(raw: unknown): UserData {
       const ann: ItemAnnotation = {
         tags: Array.isArray(a.tags) ? [...new Set(a.tags.filter((t) => tagIds.has(t)))] : [],
         favorite: Boolean(a.favorite),
+        excluded: Boolean(a.excluded),
         note: str(a.note),
         updatedAt: str(a.updatedAt, new Date().toISOString()),
       }
@@ -207,6 +208,7 @@ export function mergeUserData(current: UserData, incoming: UserData): UserData {
       ...ann,
       tags: [...new Set([...existing.tags, ...ann.tags])],
       favorite: existing.favorite || ann.favorite,
+      excluded: existing.excluded || ann.excluded,
       note: ann.note || existing.note,
       date: ann.date ?? existing.date,
       study: ann.study ?? existing.study,
@@ -229,6 +231,6 @@ export function downloadJson(data: unknown, filename: string): void {
 
 export function annotationCount(data: UserData): number {
   return Object.values(data.items).filter(
-    (a) => a.tags.length > 0 || a.favorite || a.note || a.date || a.study || a.crop,
+    (a) => a.tags.length > 0 || a.favorite || a.excluded || a.note || a.date || a.study || a.crop,
   ).length
 }

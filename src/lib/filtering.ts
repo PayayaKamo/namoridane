@@ -13,7 +13,7 @@ export const DEFAULT_FILTER: FilterState = {
   favoriteOnly: false,
   unconfirmedOnly: false,
   collectionId: '',
-  sort: 'publishedAsc',
+  sort: 'diaryAsc',
 }
 
 export interface FilterContextInput {

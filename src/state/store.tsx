@@ -47,6 +47,8 @@ interface Toast {
 interface StoreValue {
   index: LibraryIndex | null
   items: DiaryItem[]
+  allItems: DiaryItem[]
+  excludedItems: DiaryItem[]
   itemMap: Map<string, DiaryItem>
   loading: boolean
   error: string | null
@@ -69,6 +71,7 @@ interface StoreValue {
   toggleTagOnItem: (id: string, tagId: string) => void
   toggleFavorite: (ids: string[]) => void
   setFavorite: (ids: string[], value: boolean) => void
+  setExcluded: (ids: string[], value: boolean) => void
   setNote: (id: string, note: string) => void
   setStudy: (id: string, patch: Partial<StudyNotes>) => void
   setCrop: (id: string, crop: CropParams) => void
@@ -209,11 +212,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [mutate],
   )
 
+  const allItems = useMemo(() => index?.items ?? [], [index])
+  const items = useMemo(() => allItems.filter((item) => !data.items[item.id]?.excluded), [allItems, data.items])
+  const excludedItems = useMemo(() => allItems.filter((item) => data.items[item.id]?.excluded), [allItems, data.items])
+
   const itemMap = useMemo(() => {
     const map = new Map<string, DiaryItem>()
-    for (const item of index?.items ?? []) map.set(item.id, item)
+    for (const item of allItems) map.set(item.id, item)
     return map
-  }, [index])
+  }, [allItems])
 
   const years = useMemo(() => {
     if (!index) return []
@@ -225,6 +232,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const tagUsage = useMemo(() => {
     const usage: Record<string, number> = {}
     for (const ann of Object.values(data.items)) {
+      if (ann.excluded) continue
       for (const tagId of ann.tags) usage[tagId] = (usage[tagId] ?? 0) + 1
     }
     return usage
@@ -249,6 +257,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const setFavorite = useCallback(
     (ids: string[], value: boolean) => batchPatch(ids, (a) => ({ ...a, favorite: value })),
+    [batchPatch],
+  )
+
+  const setExcluded = useCallback(
+    (ids: string[], value: boolean) => batchPatch(ids, (a) => ({ ...a, excluded: value })),
     [batchPatch],
   )
 
@@ -519,7 +532,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo<StoreValue>(
     () => ({
       index,
-      items: index?.items ?? [],
+      items,
+      allItems,
+      excludedItems,
       itemMap,
       loading,
       error,
@@ -542,6 +557,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toggleTagOnItem,
       toggleFavorite,
       setFavorite,
+      setExcluded,
       setNote,
       setStudy,
       setCrop,
@@ -568,6 +584,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }),
     [
       index,
+      items,
+      allItems,
+      excludedItems,
       itemMap,
       loading,
       error,
@@ -585,6 +604,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toggleTagOnItem,
       toggleFavorite,
       setFavorite,
+      setExcluded,
       setNote,
       setStudy,
       setCrop,

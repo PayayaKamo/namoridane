@@ -8,7 +8,7 @@ import type { DiaryItem } from '../types'
 const BASE = import.meta.env.BASE_URL
 
 export function HomeView() {
-  const { index, items, annotations, tagUsage, tags, collections } = useStore()
+  const { items, annotations, tagUsage, tags, collections } = useStore()
   const [dailyId, setDailyId] = useState<string | null>(null)
 
   const dailyPick = useMemo(() => {
@@ -34,7 +34,7 @@ export function HomeView() {
       if (d.confirmed) confirmed++
       else pending++
     }
-    const years = Object.keys(index?.years ?? {}).sort()
+    const years = [...new Set(items.map((item) => item.publishedAt.slice(0, 4)))].sort()
     return {
       tagged,
       favorites,
@@ -44,9 +44,17 @@ export function HomeView() {
       yearTo: years[years.length - 1],
       yearCount: years.length,
     }
-  }, [items, annotations, index])
+  }, [items, annotations])
 
-  const yearMax = useMemo(() => Math.max(1, ...Object.values(index?.years ?? {})), [index])
+  const yearCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const item of items) {
+      const year = item.publishedAt.slice(0, 4)
+      counts[year] = (counts[year] ?? 0) + 1
+    }
+    return counts
+  }, [items])
+  const yearMax = useMemo(() => Math.max(1, ...Object.values(yearCounts)), [yearCounts])
 
   const recent = useMemo(() => {
     return Object.entries(annotations)
@@ -76,7 +84,7 @@ export function HomeView() {
           <div className="page-eyebrow">Namori · 绘日记 2021 — 2025</div>
           <h1 className="hero-title">把每一天，画成一页。</h1>
           <p className="hero-lead">
-            收录 Namori 老师发布在 Instagram 的 {index?.count ?? 0} 张手绘日记。
+            收录 Namori 老师发布在 Instagram 的 {items.length} 张手绘日记。
             在这里按日历翻阅、按角色与场景整理，也可以裁成表情包、记录临摹拆解。
           </p>
           <div className="row row-wrap" style={{ gap: 10, marginTop: 22 }}>
@@ -121,7 +129,7 @@ export function HomeView() {
       </section>
 
       <section className="stat-grid">
-        <StatCard icon="gallery" label="总张数" value={String(index?.count ?? 0)} hint="1072 张已全部生成缩略图" />
+        <StatCard icon="gallery" label="总张数" value={String(items.length)} hint="按图内日记日期整理，已排除非绘日记" />
         <StatCard
           icon="calendar"
           label="覆盖年份"
@@ -155,7 +163,7 @@ export function HomeView() {
             </button>
           </div>
           <div className="year-bars">
-            {Object.entries(index?.years ?? {})
+            {Object.entries(yearCounts)
               .sort()
               .map(([year, count]) => (
                 <button

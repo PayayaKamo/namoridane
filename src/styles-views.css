@@ -2845,3 +2845,79 @@
 .print-only {
   display: none;
 }
+
+/* 原图下载与排除整理 */
+.original-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.meta-file {
+  max-width: 230px;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.btn-danger-ghost {
+  color: var(--danger, #b34b3c);
+}
+
+.excluded-notice,
+.excluded-banner {
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line));
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  color: var(--ink);
+}
+
+.excluded-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.excluded-notice .btn {
+  flex: none;
+  margin-left: auto;
+}
+
+.excluded-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.excluded-banner > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.excluded-banner strong {
+  font-size: 13px;
+}
+
+.excluded-banner span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .excluded-banner,
+  .excluded-notice {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .excluded-notice .btn {
+    margin-left: 0;
+  }
+}

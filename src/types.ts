@@ -15,6 +15,10 @@ export interface DiaryItem {
   rollover: '' | 'month' | 'year'
   thumb: string
   large: string
+  /** 原始 JPG，供下载与查看 */
+  original: string
+  /** 原图字节数 */
+  bytes: number
   w: number
   h: number
   palette: string[]
@@ -88,6 +92,8 @@ export interface CropParams {
 export interface ItemAnnotation {
   tags: string[]
   favorite: boolean
+  /** 标记为非绘日记后，默认从各视图隐藏，可在排除区恢复 */
+  excluded: boolean
   note: string
   date?: DateOverride
   study?: StudyNotes

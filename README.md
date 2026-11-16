@@ -2,7 +2,9 @@
 
 纯前端静态站点，用来浏览、搜索、整理 Namori 老师（Instagram [@namori__](https://www.instagram.com/namori__/)）的「绘日记」插画。
 
-- 1072 张作品，覆盖 2021-03 至 2025-09
+- 1072 张作品，覆盖 2021-03 至 2025-09，默认按图内日记日期排列
+- 支持原始 JPG 单张下载与多选 ZIP 打包，详情展示完整文件信息和原帖入口
+- 非绘日记可标记排除、恢复并导出剔除名单，不会自动删除文件
 - 无后端、无数据库，标注数据保存在浏览器 `localStorage`，可导出 / 导入 JSON
 - 构建产物为纯静态文件，可直接部署到 GitHub Pages（支持子路径）
 - 中文界面，PC 优先，适配 1280 / 1440 / 1024，支持亮色 / 暗色主题
@@ -31,7 +33,7 @@ npm run preview    # 本地预览构建产物
 
 | 命令 | 作用 |
 | --- | --- |
-| `npm run data` | 扫描原图，增量生成缩略图、大图、`index.json` 与种子标注 |
+| `npm run data` | 扫描原图，增量生成缩略图、大图、`index.json` 与种子标注，并同步原图发布副本 |
 | `npm run data:force` | 忽略缓存，全量重新生成衍生图 |
 | `npm run dev` | 先跑 `data`，再启动 Vite 开发服务器 |
 | `npm run build` | `data` + `tsc -b` + `vite build`，输出 `dist/` |
@@ -45,13 +47,14 @@ npm run preview    # 本地预览构建产物
 ```
 namori-diary/
 ├─ images/
-│  └─ original/              # 原图归档（1072 张 jpg，文件名保持不变，不进入 dist）
+│  └─ original/              # 原图归档（1072 张 jpg，文件名保持不变）
 ├─ data/
 │  ├─ userdata.json          # 可选：种子标注（存在时优先于 example）
 │  └─ userdata.example.json  # 空 schema 示例
 ├─ public/
 │  ├─ images/thumb/          # 480px WebP 缩略图（构建生成，已 gitignore）
 │  ├─ images/large/          # 1400px WebP 大图（构建生成，已 gitignore）
+│  ├─ images/original/       # 原始 JPG 发布副本（构建同步，已 gitignore）
 │  └─ data/index.json        # 作品索引（构建生成，已 gitignore）
 ├─ scripts/
 │  └─ build-index.mjs        # 数据管线：扫描原图 → 衍生图 → 索引
@@ -67,7 +70,7 @@ namori-diary/
 └─ .github/workflows/deploy.yml  # GitHub Pages 自动部署（Actions）
 ```
 
-> 站点源码位于仓库根目录；`images/original/` 是图片归档，构建时只读取它，不会把原图复制进 `dist/`。
+> 站点源码位于仓库根目录；`images/original/` 是图片归档。构建时会把 JPG 同步到 `public/images/original/`，再随 `dist/` 发布，供详情下载和批量 ZIP 使用。
 
 ---
 
@@ -107,7 +110,7 @@ YYYY-MM-DD-<11位 shortcode>[-序号].jpg
 
 ```jsonc
 {
-  "version": 1,
+  "version": 4,
   "generatedAt": "2026-11-17T00:00:00.000Z",
   "count": 1072,
   "years": { "2021": 180, "2022": 260 },
@@ -125,6 +128,8 @@ YYYY-MM-DD-<11位 shortcode>[-序号].jpg
       "rollover": "",
       "thumb": "images/thumb/2021-06-01-CPlLQUStuZq.webp",
       "large": "images/large/2021-06-01-CPlLQUStuZq.webp",
+      "original": "images/original/2021-06-01-CPlLQUStuZq.jpg",
+      "bytes": 138118,
       "w": 1080,
       "h": 1350,
       "palette": ["#f2e9df", "#c9a227", "..."],
@@ -167,6 +172,7 @@ YYYY-MM-DD-<11位 shortcode>[-序号].jpg
     "2021-06-01-CPlLQUStuZq": {
       "tags": ["t_xxx"],
       "favorite": true,
+      "excluded": false,
       "note": "自由备注",
       "date": { "year": 2021, "month": 5, "day": 31, "confirmed": true, "source": "manual" },
       "study": {
@@ -184,6 +190,7 @@ YYYY-MM-DD-<11位 shortcode>[-序号].jpg
 ```
 
 - `date.source`：`inferred`（默认推断）/ `published`（沿用发布日）/ `manual`（手动改）。
+- `excluded`：`true` 表示标记为非绘日记，默认从图库、日历、统计、角色、翻阅和合集隐藏；可在图库「排除区」恢复。
 - `crop` 为归一化比例，换尺寸导出时无需重算。
 - 种子标注：把整理好的 JSON 放到 `data/userdata.json`，`npm run data` 会复制为 `public/data/userdata.seed.json`；首次访问（本地无数据时）自动载入。也可以随时在「数据管理」页手动「合并种子」。
 
@@ -195,8 +202,9 @@ YYYY-MM-DD-<11位 shortcode>[-序号].jpg
 | --- | --- |
 | 首页概览 | 总张数、覆盖年份、已打标签、未校对数量、最近更新；每日一图 / 随机抽卡；年份分布与常用标签入口 |
 | 日历视图 | 按月翻页，格内缩略图；跳年 / 月、今天；筛选有图 / 缺图 / 收藏 / 待校对；打印月历 |
-| 图库 | 等比瀑布流 + 懒加载，按月份分组；排序、只看收藏、只看未校对；多选批量操作 |
-| 详情 | 大图、上一张 / 下一张、键盘方向键、Esc；发布日与日记日分开展示；标签、备注、收藏、分享链接 |
+| 图库 | 等比瀑布流 + 懒加载，按月份分组；默认按有效日记日期升序；只看收藏、只看未校对；多选批量操作与原始 JPG ZIP 下载 |
+| 排除区 | 集中查看非绘日记，支持恢复、批量处理和导出原始文件名 TXT 名单；标记只保存在浏览器，不直接删除文件 |
+| 详情 | 大图、上一张 / 下一张、键盘方向键、Esc；发布日与日记日分开展示；原图尺寸、大小、文件名、shortcode、同帖序号、原帖链接；原图查看 / 下载；标签、备注、收藏、分享链接 |
 | 搜索筛选 | 关键词（标签 / 备注）、日期区间、年 / 月、合集、收藏；按维度标签组合，维度内 AND / OR，跨维度 AND |
 | 标签系统 | 五组内置维度 + 自定义维度；标签增删改、颜色、使用计数、标签云、批量打标签 |
 | 日期校对 | 待校对队列，输入月 / 日快速确认；一键沿用发布日 / 推断日；跨月跨年重点提示 |
@@ -206,7 +214,7 @@ YYYY-MM-DD-<11位 shortcode>[-序号].jpg
 | 日记翻阅 | 按日记日期顺序全屏翻书，自动隐藏界面，支持全屏 API |
 | 角色图鉴 | 按「人物/角色」维度聚合，取代表图作封面 |
 | 统计 | 总量、有画天数、最长连续记录、确认进度；月度柱状图、年度概览、标签分布、主色分布 |
-| 数据管理 | 导出 / 导入 JSON、合并种子、清空本地标注、schema 与快捷键速查 |
+| 数据管理 | 导出 / 导入 JSON、合并种子、导出剔除名单、清空本地标注、schema 与快捷键速查 |
 
 ### 快捷键
 
@@ -228,6 +236,7 @@ YYYY-MM-DD-<11位 shortcode>[-序号].jpg
 - 重复执行 `npm run data` 时，未变化的图直接复用，通常 1 秒内完成。
 - 需要强制重建：`npm run data:force`。
 - 索引会校验文件存在性，不会把缓存里已删除的图写进 `index.json`。
+- 从 `images/original/` 删除文件后，再次运行数据脚本会自动清理旧的缩略图、大图和原图发布副本。
 
 ---
 
@@ -239,7 +248,14 @@ YYYY-MM-DD-<11位 shortcode>[-序号].jpg
 4. 标注数据在浏览器本地，记得在「数据管理」导出 JSON 备份；如果要作为种子发布，放到 `data/userdata.json` 后重新构建。
 5. 提交并推送，Pages 会按部署方式自动或手动更新。
 
-> 原图体积较大，但只存在仓库归档目录，不进入 `dist/`；部署包只包含 WebP 衍生图（当前约 129MB，其中大图约 108MB）。如果只想轻量部署，可在 `scripts/build-index.mjs` 中调整大图尺寸或质量后重新生成。
+### 剔除非绘日记
+
+1. 在图库多选或详情中点「非绘日记」，图片会进入图库「排除区」，不会直接删除。
+2. 检查排除区，可恢复误标图片，并点「导出剔除名单」下载每行一个原始文件名的 TXT。
+3. 确认并备份后，再按名单自行从 `images/original/` 删除文件，运行 `npm run data` 同步索引和发布图片。
+4. 排除状态会随用户数据 JSON 一起导出 / 导入；清理浏览器数据前请先备份。
+
+> 为支持原图下载，部署包现在包含原始 JPG 与 WebP 衍生图，当前约 260MB（原图约 131MB，大图约 108MB）。如果只想轻量部署，可在 `scripts/build-index.mjs` 中调整大图尺寸或质量后重新生成；移除原图发布则会影响下载功能。
 
 ---
 

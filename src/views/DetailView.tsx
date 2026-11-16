@@ -9,6 +9,7 @@ import { Modal } from '../components/Modal'
 import { DateEditor } from '../components/DateEditor'
 import { TagPicker, TagPill } from '../components/TagPicker'
 import { StickerEditor } from '../components/StickerEditor'
+import { formatBytes, originalUrl } from '../lib/image'
 import type { StudyNotes } from '../types'
 
 const BASE = import.meta.env.BASE_URL
@@ -19,11 +20,13 @@ export function DetailView({ itemId }: { itemId: string }) {
   const {
     itemMap,
     items,
+    excludedItems,
     annotations,
     tagMap,
     collections,
     getDate,
     toggleFavorite,
+    setExcluded,
     setNote,
     setStudy,
     setItemTags,
@@ -51,11 +54,11 @@ export function DetailView({ itemId }: { itemId: string }) {
 
   const ordered = useMemo(
     () =>
-      [...items].sort(
+      [...(annotation?.excluded ? excludedItems : items)].sort(
         (a, b) =>
           getDate(a).iso.localeCompare(getDate(b).iso) || a.postIndex - b.postIndex,
       ),
-    [items, getDate],
+    [items, excludedItems, annotation?.excluded, getDate],
   )
   const index = item ? ordered.findIndex((i) => i.id === item.id) : -1
   const prevItem = index > 0 ? ordered[index - 1] : null
@@ -171,6 +174,10 @@ export function DetailView({ itemId }: { itemId: string }) {
             </button>
           </div>
           <div className="spacer" />
+          <a className="btn btn-sm btn-primary" href={originalUrl(item)} download={item.file} title="下载未经压缩的原始 JPG">
+            <Icon name="download" size={14} />
+            下载原图
+          </a>
           <button className="btn btn-sm btn-ghost" onClick={share}>
             <Icon name="share" size={14} />
             分享链接
@@ -212,6 +219,12 @@ export function DetailView({ itemId }: { itemId: string }) {
           </div>
 
           <aside className="detail-side">
+            {annotation?.excluded && (
+              <div className="excluded-notice">
+                这张已标记为「非绘日记」，默认不会出现在图库、日历和统计中。
+                <button className="btn btn-sm" onClick={() => setExcluded([item.id], false)}>恢复为绘日记</button>
+              </div>
+            )}
             <div className="detail-date-block">
               <div className="detail-date-main">
                 <span className="hand detail-day">
@@ -246,6 +259,16 @@ export function DetailView({ itemId }: { itemId: string }) {
               <button className="btn" onClick={() => setTab('sticker')}>
                 <Icon name="sticker" size={15} />
                 表情包
+              </button>
+              <button
+                className={`btn${annotation?.excluded ? '' : ' btn-danger-ghost'}`}
+                onClick={() => {
+                  setExcluded([item.id], !annotation?.excluded)
+                  notify(annotation?.excluded ? '已恢复为绘日记' : '已移入非绘日记排除区', 'success')
+                }}
+              >
+                <Icon name={annotation?.excluded ? 'check' : 'trash'} size={15} />
+                {annotation?.excluded ? '恢复' : '非绘日记'}
               </button>
             </div>
 
@@ -357,18 +380,63 @@ export function DetailView({ itemId }: { itemId: string }) {
                     </section>
                   )}
 
+                  <section className="detail-section">
+                    <div className="section-head">
+                      <h4>原图与出处</h4>
+                      <span className="faint">原始 JPG · {formatBytes(item.bytes)}</span>
+                    </div>
+                    <div className="original-actions">
+                      <a className="btn btn-primary btn-sm" href={originalUrl(item)} download={item.file}>
+                        <Icon name="download" size={14} />下载原图
+                      </a>
+                      <a className="btn btn-sm" href={originalUrl(item)} target="_blank" rel="noreferrer">
+                        <Icon name="expand" size={14} />查看原图
+                      </a>
+                      <a
+                        className="btn btn-sm btn-ghost"
+                        href={`https://www.instagram.com/p/${item.shortcode}/`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Instagram 原帖<Icon name="right" size={12} />
+                      </a>
+                    </div>
+                  </section>
+
                   <section className="detail-section meta-list">
-                    <div className="meta-row">
-                      <span>尺寸</span>
-                      <span className="num">{item.w} × {item.h}</span>
+                    <div className="section-head">
+                      <h4>图片信息</h4>
+                      <span className={`badge ${date.confirmed ? 'badge-sage' : 'badge-warn'}`}>
+                        {date.source === 'manual' ? '手动日期' : date.source === 'published' ? '沿用发布日' : '推断日期'}
+                      </span>
                     </div>
                     <div className="meta-row">
-                      <span>文件名</span>
-                      <span className="num" style={{ fontSize: 11 }}>{item.file}</span>
+                      <span>日记日期</span>
+                      <span className="num">{date.iso} · {weekdayLabel(date.iso)}</span>
                     </div>
                     <div className="meta-row">
-                      <span>发布日</span>
+                      <span>发布日期</span>
                       <span className="num">{item.publishedAt}</span>
+                    </div>
+                    <div className="meta-row">
+                      <span>原图尺寸</span>
+                      <span className="num">{item.w} × {item.h} px</span>
+                    </div>
+                    <div className="meta-row">
+                      <span>文件大小</span>
+                      <span className="num">{formatBytes(item.bytes)}</span>
+                    </div>
+                    <div className="meta-row">
+                      <span>同帖图片</span>
+                      <span className="num">第 {item.postIndex + 1} / {item.postCount} 张</span>
+                    </div>
+                    <div className="meta-row">
+                      <span>Shortcode</span>
+                      <span className="num">{item.shortcode}</span>
+                    </div>
+                    <div className="meta-row">
+                      <span>原始文件名</span>
+                      <span className="num meta-file">{item.file}</span>
                     </div>
                     <div className="meta-row">
                       <span>推断日记日</span>

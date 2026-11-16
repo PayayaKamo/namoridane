@@ -37,18 +37,22 @@ export function CollectionsView({ route }: { route: Route }) {
 
   const detailItems = useMemo(() => {
     if (!detail) return []
-    return detail.itemIds.map((id) => itemMap.get(id)).filter((x): x is NonNullable<typeof x> => Boolean(x))
-  }, [detail, itemMap])
+    return detail.itemIds
+      .filter((id) => !annotations[id]?.excluded)
+      .map((id) => itemMap.get(id))
+      .filter((x): x is NonNullable<typeof x> => Boolean(x))
+  }, [detail, itemMap, annotations])
 
   const coverFor = (col: Collection) => {
-    const id = col.coverItemId ?? col.itemIds[0]
+    const ids = col.coverItemId ? [col.coverItemId, ...col.itemIds] : col.itemIds
+    const id = ids.find((itemId) => !annotations[itemId]?.excluded)
     return id ? itemMap.get(id) : undefined
   }
 
   const exportList = (col: Collection, format: 'md' | 'csv' | 'json') => {
     const rows = col.itemIds
       .map((id) => itemMap.get(id))
-      .filter((x): x is NonNullable<typeof x> => Boolean(x))
+      .filter((x): x is NonNullable<typeof x> => x !== undefined && !annotations[x.id]?.excluded)
       .map((item, idx) => {
         const d = effectiveDate(item, annotations[item.id])
         const tagNames = (annotations[item.id]?.tags ?? []).map((tid) => tags.find((t) => t.id === tid)?.name ?? '')

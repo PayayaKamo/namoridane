@@ -30,7 +30,7 @@ interface NavEntry {
 }
 
 export function Layout({ route, children }: { route: Route; children: ReactNode }) {
-  const { index, items, annotations, tags, collections, theme, toggleTheme, notify } = useStore()
+  const { items, annotations, tags, collections, theme, toggleTheme, notify } = useStore()
   const searchRef = useRef<HTMLInputElement>(null)
   const [term, setTerm] = useState(route.query.get('q') ?? '')
 
@@ -45,7 +45,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
       items: [
         { path: '/', label: '概览', icon: 'home' },
         { path: '/calendar', label: '日历', icon: 'calendar' },
-        { path: '/gallery', label: '图库', icon: 'gallery', count: index?.count },
+        { path: '/gallery', label: '图库', icon: 'gallery', count: items.length },
         { path: '/reader', label: '翻阅', icon: 'book' },
         { path: '/search', label: '搜索', icon: 'search' },
       ],
@@ -125,7 +125,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
         <div className="sidebar-foot">
           <div className="sidebar-meta">
             <span>作品</span>
-            <strong>{index?.count ?? 0}</strong>
+            <strong>{items.length}</strong>
           </div>
           <div className="sidebar-meta">
             <span>待校对</span>

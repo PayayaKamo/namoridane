@@ -1,4 +1,5 @@
-import type { CropParams } from '../types'
+import type { CropParams, DiaryItem } from '../types'
+import { zipSync } from 'fflate'
 import { clamp } from './utils'
 
 export function defaultCrop(): CropParams {
@@ -94,6 +95,36 @@ export function downloadBlob(blob: Blob, filename: string): void {
   a.click()
   a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 2000)
+}
+
+export function originalUrl(item: DiaryItem): string {
+  return `${import.meta.env.BASE_URL}${item.original}`
+}
+
+export function formatBytes(bytes: number): string {
+  if (!bytes) return '—'
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`
+}
+
+/** 顺序读取原始 JPG 并无压缩打包，避免 JPG 二次压缩浪费 CPU */
+export async function downloadOriginalsZip(
+  items: DiaryItem[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<void> {
+  const files: Record<string, Uint8Array> = {}
+  for (const item of items) {
+    const response = await fetch(originalUrl(item))
+    if (!response.ok) throw new Error(`原图读取失败：${item.file}`)
+    files[item.file] = new Uint8Array(await response.arrayBuffer())
+    onProgress?.(Object.keys(files).length, items.length)
+  }
+  const zipped = zipSync(files, { level: 0 })
+  const stamp = new Date().toISOString().slice(0, 10)
+  downloadBlob(
+    new Blob([zipped.buffer as ArrayBuffer], { type: 'application/zip' }),
+    `namori-originals-${stamp}-${items.length}.zip`,
+  )
 }
 
 /** 在任意图片上采样平均色，作为临时占位 */

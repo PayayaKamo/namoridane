@@ -8,7 +8,8 @@
  *   node scripts/build-index.mjs --src=../namoridane
  *
  * 设计要点：
- * - 原图不进入部署包，只把 WebP 衍生图输出到 public/ 下；
+ * - 原始 JPG 同步到 public/images/original/，供站点单张或批量下载；
+ * - WebP 衍生图输出到 public/ 下，原图归档目录本身不复制进 dist；
  * - .cache/images.json 记录每个文件的 mtime/size，未变化就跳过，可反复执行；
  * - 文件名约定 YYYY-MM-DD-<11位shortcode>[-序号].jpg，日期为发布时间；
  * - 每张图额外提取 6 色色板，供「相似作品」推荐与配色展示使用。
@@ -38,6 +39,7 @@ const SRC_DIR = resolveSourceDir()
 
 const OUT_THUMB = path.join(ROOT, 'public', 'images', 'thumb')
 const OUT_LARGE = path.join(ROOT, 'public', 'images', 'large')
+const OUT_ORIGINAL = path.join(ROOT, 'public', 'images', 'original')
 const OUT_DATA = path.join(ROOT, 'public', 'data')
 const CACHE_DIR = path.join(ROOT, '.cache')
 const CACHE_FILE = path.join(CACHE_DIR, 'images.json')
@@ -45,6 +47,7 @@ const CACHE_FILE = path.join(CACHE_DIR, 'images.json')
 const THUMB_WIDTH = 480
 const LARGE_WIDTH = 1400
 const CACHE_VERSION = 3
+const INDEX_VERSION = 4
 const CONCURRENCY = 6
 
 const NAME_RE = /^(\d{4})-(\d{2})-(\d{2})-([A-Za-z0-9_-]{11})(?:-(\d+))?\.jpe?g$/i
@@ -179,6 +182,14 @@ async function paletteOf(file) {
 }
 
 async function processOne(file, name, parsed, cached) {
+  // 原图始终同步；目标已存在且大小一致时跳过复制，保持增量执行
+  const originalAbs = path.join(OUT_ORIGINAL, name)
+  const [sourceStat, targetStat] = await Promise.all([
+    fsp.stat(file),
+    fsp.stat(originalAbs).catch(() => null),
+  ])
+  if (!targetStat || targetStat.size !== sourceStat.size) await fsp.copyFile(file, originalAbs)
+
   const outName = `${parsed.shortcode}${parsed.postIndex ? `-${parsed.postIndex}` : ''}`
   const thumbRel = `images/thumb/${outName}.webp`
   const largeRel = `images/large/${outName}.webp`
@@ -254,6 +265,7 @@ async function main() {
   await Promise.all([
     fsp.mkdir(OUT_THUMB, { recursive: true }),
     fsp.mkdir(OUT_LARGE, { recursive: true }),
+    fsp.mkdir(OUT_ORIGINAL, { recursive: true }),
     fsp.mkdir(OUT_DATA, { recursive: true }),
     fsp.mkdir(CACHE_DIR, { recursive: true }),
   ])
@@ -285,7 +297,7 @@ async function main() {
     const stat = await fsp.stat(file)
     const cacheKey = `${name}:${stat.size}:${Math.round(stat.mtimeMs)}`
     const cached = cache.files[cacheKey]
-    entries.push({ name, file, parsed, cacheKey, cached })
+    entries.push({ name, file, parsed, cacheKey, cached, bytes: stat.size })
   }
 
   if (skippedNames.length) {
@@ -339,6 +351,8 @@ async function main() {
       rollover: inferred.year !== e.parsed.year ? 'year' : inferred.month !== e.parsed.month ? 'month' : '',
       thumb: e.thumb,
       large: e.large,
+      original: `images/original/${e.name}`,
+      bytes: e.bytes,
       w: e.w,
       h: e.h,
       palette: e.palette,
@@ -358,13 +372,25 @@ async function main() {
   }
 
   const index = {
-    version: CACHE_VERSION,
+    version: INDEX_VERSION,
     generatedAt: new Date().toISOString(),
     count: items.length,
     years,
     items,
   }
   await fsp.writeFile(path.join(OUT_DATA, 'index.json'), JSON.stringify(index))
+
+  // 清理已从归档目录移除的图片，避免旧文件继续进入部署包
+  const expectedByDir = [
+    [OUT_THUMB, new Set(items.map((item) => path.basename(item.thumb)))],
+    [OUT_LARGE, new Set(items.map((item) => path.basename(item.large)))],
+    [OUT_ORIGINAL, new Set(items.map((item) => item.file))],
+  ]
+  for (const [dir, expected] of expectedByDir) {
+    for (const name of await fsp.readdir(dir)) {
+      if (!expected.has(name)) await fsp.unlink(path.join(dir, name))
+    }
+  }
 
   // 种子标注数据：优先 data/userdata.json，其次 data/userdata.example.json
   const seedCandidates = [
@@ -381,9 +407,10 @@ async function main() {
 
   const thumbCount = (await fsp.readdir(OUT_THUMB)).filter((f) => f.endsWith('.webp')).length
   const largeCount = (await fsp.readdir(OUT_LARGE)).filter((f) => f.endsWith('.webp')).length
-  log(`完成：索引 ${items.length} 条，缩略图 ${thumbCount}，大图 ${largeCount}`)
+  const originalCount = (await fsp.readdir(OUT_ORIGINAL)).filter((f) => /\.jpe?g$/i.test(f)).length
+  log(`完成：索引 ${items.length} 条，缩略图 ${thumbCount}，大图 ${largeCount}，原图 ${originalCount}`)
   log(`新生成 ${generated}，复用缓存 ${reused}，用时 ${((Date.now() - started) / 1000).toFixed(1)}s`)
-  if (thumbCount < items.length || largeCount < items.length) {
+  if (thumbCount < items.length || largeCount < items.length || originalCount !== items.length) {
     console.error('[data] 衍生图数量不足，请加上 --force 重跑')
     process.exit(1)
   }
