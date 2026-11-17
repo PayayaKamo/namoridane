@@ -57,9 +57,9 @@ export function DiaryReviewView() {
   }
 
   const move = (offset: number) => {
-    if (!current) return
-    const next = list[currentIndex + offset]
-    if (next) setCurrentId(next.id)
+    if (!current || list.length === 0) return
+    const nextIndex = (currentIndex + offset + list.length) % list.length
+    setCurrentId(list[nextIndex].id)
   }
 
   const advance = () => {
@@ -373,8 +373,8 @@ function ReviewStage({
         </a>
 
         <div className="diary-review-nav">
-          <button className="btn btn-sm" onClick={onPrevious} disabled={index <= 0}><Icon name="left" size={13} />上一张</button>
-          <button className="btn btn-sm" onClick={onNext} disabled={index >= total - 1}>下一张<Icon name="right" size={13} /></button>
+          <button className="btn btn-sm" onClick={onPrevious}><Icon name="left" size={13} />上一张</button>
+          <button className="btn btn-sm" onClick={onNext}>下一张<Icon name="right" size={13} /></button>
         </div>
       </aside>
     </div>
