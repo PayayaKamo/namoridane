@@ -82,6 +82,20 @@ export function CharactersView({ route }: { route: Route }) {
     addCharacterPresets()
     notify(missingCount ? `已补齐 ${missingCount} 位预置角色` : '预置角色已全部就绪', 'success')
   }
+  const coverOverrideCount = characters.filter((character) => character.coverItemId || character.coverCrop).length
+  const clearCoverOverrides = () => {
+    if (!coverOverrideCount) {
+      notify('当前没有封面覆盖')
+      return
+    }
+    if (!window.confirm(`将清空 ${coverOverrideCount} 位角色的封面来源与焦点/缩放，恢复预置头像链路。继续？`)) return
+    for (const character of characters) {
+      if (character.coverItemId || character.coverCrop) {
+        updateCharacter(character.id, { coverItemId: undefined, coverCrop: undefined })
+      }
+    }
+    notify(`已清空 ${coverOverrideCount} 位角色的封面覆盖`, 'success')
+  }
 
   return (
     <div className="characters-view">
@@ -108,6 +122,10 @@ export function CharactersView({ route }: { route: Route }) {
               <button className="btn" onClick={() => navigate('/tags')}>
                 <Icon name="tag" size={14} />
                 管理人物标签
+              </button>
+              <button className="btn" onClick={clearCoverOverrides} disabled={!coverOverrideCount}>
+                <Icon name="trash" size={14} />
+                清空封面覆盖{coverOverrideCount ? `（${coverOverrideCount}）` : ''}
               </button>
             </>
           )}
@@ -238,6 +256,7 @@ export function CharactersView({ route }: { route: Route }) {
             id: item.id,
             thumb: `${BASE}${item.thumb}`,
             label: `${effectiveDate(item, annotations[item.id]).iso || '日期待定'} · ${item.file}`,
+            date: effectiveDate(item, annotations[item.id]).iso || '日期待定',
           }))}
           onClose={() => setEditing(null)}
           onSave={(patch, avatar) => {
@@ -263,7 +282,7 @@ export function CharactersView({ route }: { route: Route }) {
   )
 }
 
-type CoverOption = { id: string; label: string; thumb: string }
+type CoverOption = { id: string; label: string; thumb: string; date: string }
 
 function CharacterEditModal({
   tag,
@@ -466,17 +485,44 @@ function CharacterEditModal({
               <span className="cover-editor-hint">拖动调整焦点 · 方向键微调</span>
             </div>
             <div className="cover-editor-controls">
-              <label className="field">
+              <div className="field cover-source">
                 <span className="field-label">封面来源</span>
-                <select className="select" value={coverItemId} onChange={(e) => setCoverItemId(e.target.value)}>
-                  <option value="">默认（预置头像 / 最近作品）</option>
+                <div className="cover-source-grid" role="listbox" aria-label="封面来源，点击切换预览">
+                  <button
+                    type="button"
+                    className={`cover-source-item${coverItemId ? '' : ' active'}`}
+                    aria-pressed={!coverItemId}
+                    title="默认：预置头像 / 最近作品"
+                    onClick={() => setCoverItemId('')}
+                  >
+                    <span className="cover-source-thumb" style={{ background: color }}>
+                      {avatarFallback ? (
+                        <img src={avatarFallback} alt="" loading="lazy" draggable={false} />
+                      ) : (
+                        name.slice(0, 1)
+                      )}
+                    </span>
+                    <span className="cover-source-date">默认</span>
+                    {!coverItemId && <span className="cover-source-check"><Icon name="check" size={11} /></span>}
+                  </button>
                   {coverOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={`cover-source-item${coverItemId === option.id ? ' active' : ''}`}
+                      aria-pressed={coverItemId === option.id}
+                      title={option.label}
+                      onClick={() => setCoverItemId(option.id)}
+                    >
+                      <span className="cover-source-thumb">
+                        <img src={option.thumb} alt={option.label} loading="lazy" draggable={false} />
+                      </span>
+                      <span className="cover-source-date">{option.date}</span>
+                      {coverItemId === option.id && <span className="cover-source-check"><Icon name="check" size={11} /></span>}
+                    </button>
                   ))}
-                </select>
-              </label>
+                </div>
+              </div>
               <label className="cover-editor-row">
                 <span>水平</span>
                 <input
