@@ -33,7 +33,8 @@ export function StatsView() {
     localStorage.setItem('namori.stats.castTab', tab)
   }
   const [year, setYear] = useState(() => {
-    const years = [...new Set(items.map((i) => getDate(i).year))].sort()
+    // 无年份归属的条目（year 为 0）不参与年度分组
+    const years = [...new Set(items.map((i) => getDate(i).year).filter((y) => y > 0))].sort()
     return years[years.length - 1] ?? new Date().getFullYear()
   })
 
@@ -85,6 +86,7 @@ export function StatsView() {
     const counts = new Map<number, number>()
     for (const item of items) {
       const y = getDate(item).year
+      if (!y) continue // 没有年份归属的条目不生成年份分组
       counts.set(y, (counts.get(y) ?? 0) + 1)
     }
     return [...counts.entries()].sort((a, b) => a[0] - b[0])
