@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
-import { effectiveDate, relativeTime } from '../lib/dates'
+import { effectiveDate } from '../lib/dates'
 import { navigate, openItem } from '../lib/router'
 import { IS_PUBLIC } from '../lib/appMode'
-import type { DiaryItem } from '../types'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -84,18 +83,6 @@ export function HomeView() {
     return counts
   }, [items])
   const yearMax = useMemo(() => Math.max(1, ...Object.values(yearCounts)), [yearCounts])
-
-  const recent = useMemo(() => {
-    return Object.entries(annotations)
-      .filter(([, ann]) => ann.updatedAt && new Date(ann.updatedAt).getTime() > 1000)
-      .sort((a, b) => new Date(b[1].updatedAt).getTime() - new Date(a[1].updatedAt).getTime())
-      .slice(0, 6)
-      .map(([id, ann]) => ({ item: items.find((i) => i.id === id), ann }))
-      .filter((x): x is { item: DiaryItem; ann: (typeof annotations)[string] } => Boolean(x.item))
-  }, [annotations, items])
-
-  const latest = useMemo(() => [...items].slice(-6).reverse(), [items])
-  const strip = recent.length ? recent.map((r) => r.item) : latest
 
   const topTags = useMemo(
     () =>
@@ -287,25 +274,6 @@ export function HomeView() {
               </>
             )}
           </div>
-        </div>
-      </section>
-
-      <section className="panel recent-panel">
-        <div className="panel-head">
-          <h3>{recent.length ? '最近整理' : '最近发布'}</h3>
-          <span className="faint">
-            {recent.length ? `更新于 ${relativeTime(recent[0].ann.updatedAt)}` : `${strip.length} 张`}
-          </span>
-        </div>
-        <div className="recent-strip">
-          {strip.map((item) => (
-            <button key={item.id} className="recent-item" onClick={() => openItem(item.id)}>
-              <img src={`${BASE}${item.thumb}`} alt="" loading="lazy" />
-              <span className="recent-date hand">
-                {effectiveDate(item, annotations[item.id]).month} / {effectiveDate(item, annotations[item.id]).day}
-              </span>
-            </button>
-          ))}
         </div>
       </section>
     </div>
