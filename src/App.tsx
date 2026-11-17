@@ -11,7 +11,6 @@ import { GalleryView } from './views/GalleryView'
 import { SearchView } from './views/SearchView'
 import { StorylineView } from './views/StorylineView'
 import { DateFindView } from './views/DateFindView'
-import { StickersView } from './views/StickersView'
 import { ReaderView } from './views/ReaderView'
 import { CharactersView } from './views/CharactersView'
 import { DetailView } from './views/DetailView'
@@ -73,8 +72,6 @@ function CurrentView({ route }: { route: ReturnType<typeof useRoute> }) {
       return <StorylineView />
     case 'datefind':
       return <DateFindView route={route} />
-    case 'stickers':
-      return <StickersView route={route} />
     case 'reader':
       return <ReaderView route={route} />
     case 'stats':
@@ -152,7 +149,7 @@ function ShortcutPanel({ onClose }: { onClose: () => void }) {
     ['/', '聚焦搜索框'],
     ['R', '随机抽一张'],
     ['F', '收藏当前作品'],
-    ['1 / 2', '详情中切换「信息 / 表情包」'],
+    ['1 / 2', '详情中切换「信息 / 翻译」'],
     ['?', '打开本快捷键面板'],
   ]
   return (

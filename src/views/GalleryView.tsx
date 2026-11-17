@@ -68,6 +68,20 @@ export function GalleryView({ route }: { route: Route }) {
   const [newStoryline, setNewStoryline] = useState('')
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [tagFilterOpen, setTagFilterOpen] = useState(false)
+  // 手机端顶部控件默认收起，只留一行紧凑入口
+  const [filtersOpen, setFiltersOpen] = useState(false)
+
+  const activeFilterCount = [
+    filter.keyword !== DEFAULT_FILTER.keyword,
+    filter.year !== DEFAULT_FILTER.year,
+    filter.month !== DEFAULT_FILTER.month,
+    filter.sort !== DEFAULT_FILTER.sort,
+    filter.translation !== DEFAULT_FILTER.translation,
+    filter.favoriteOnly,
+    filter.unconfirmedOnly,
+    filter.tagIds.length > 0,
+    filter.collectionId !== DEFAULT_FILTER.collectionId,
+  ].filter(Boolean).length
 
   const sourceItems = showExcluded ? excludedItems : items
 
@@ -135,7 +149,7 @@ export function GalleryView({ route }: { route: Route }) {
   )
 
   return (
-    <div className="gallery-view">
+    <div className={`gallery-view${filtersOpen ? ' is-filters-open' : ''}`}>
       <div className="page-head">
         <div>
           <div className="page-eyebrow">{showExcluded ? 'Excluded' : 'Gallery'}</div>
@@ -195,6 +209,16 @@ export function GalleryView({ route }: { route: Route }) {
       )}
 
       <div className="gallery-toolbar">
+        <button
+          className={`gallery-toolbar-toggle${filtersOpen ? ' is-open' : ''}`}
+          onClick={() => setFiltersOpen((value) => !value)}
+          aria-expanded={filtersOpen}
+        >
+          <Icon name="filter" size={14} />
+          <span>筛选与排序</span>
+          {activeFilterCount > 0 && <span className="gallery-toolbar-count">{activeFilterCount}</span>}
+          <Icon name={filtersOpen ? 'up' : 'down'} size={13} className="gallery-toolbar-chevron" />
+        </button>
         <div className="top-search" style={{ maxWidth: 300, marginLeft: 0 }}>
           <Icon name="search" size={14} />
           <input
@@ -467,13 +491,6 @@ export function GalleryView({ route }: { route: Route }) {
           >
             <Icon name={showExcluded ? 'check' : 'close'} size={13} />
             {showExcluded ? '恢复为绘日记' : '标记非绘日记'}
-          </button>
-          <button
-            className="btn btn-sm btn-primary"
-            onClick={() => navigate(`/stickers?ids=${selectedIds.join(',')}`)}
-          >
-            <Icon name="sticker" size={13} />
-            做表情包
           </button>
           <button className="btn btn-sm btn-danger-ghost" onClick={() => setDeleteOpen(true)}>
             <Icon name="trash" size={13} />

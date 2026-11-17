@@ -234,18 +234,6 @@ export function CalendarView({ route }: { route: Route }) {
             </option>
           ))}
         </select>
-        <input
-          type="month"
-          className="input"
-          style={{ width: 148 }}
-          value={`${year}-${String(month).padStart(2, '0')}`}
-          onChange={(e) => {
-            const [y, m] = e.target.value.split('-').map(Number)
-            if (y && m) {
-              selectMonth(y, m)
-            }
-          }}
-        />
         <button
           className="btn btn-sm"
           onClick={() => {
@@ -364,7 +352,6 @@ export function CalendarView({ route }: { route: Route }) {
                     <img src={`${BASE}${item.thumb}`} alt="" loading="lazy" decoding="async" />
                   </div>
                 ))}
-                {!list.length && <div className="cal-empty-hint">—</div>}
                 {list.length > 3 && <div className="cal-more">+{list.length - 3}</div>}
               </div>
             </div>

@@ -238,7 +238,7 @@ export function CollectionsView({ route }: { route: Route }) {
         <div className="row" style={{ gap: 8 }}>
           <input
             className="input"
-            placeholder="合集名称，如「表情包素材」「模仿参考」"
+            placeholder="合集名称，如「临摹参考」「场景分组」"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -321,7 +321,7 @@ export function CollectionsView({ route }: { route: Route }) {
         <Empty
           icon="folder"
           title="还没有合集"
-          hint="合集像一本小册子：把表情包素材、临摹参考、最喜欢的作品分别收进去，可重叠收录。"
+          hint="合集像一本小册子：把临摹参考、场景练习、最喜欢的作品分别收进去，可重叠收录。"
         />
       )}
 

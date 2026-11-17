@@ -344,7 +344,7 @@ export function DataView() {
             去掉私密备注、非绘日记和已删除图片。把它放到 <code>data/public.json</code> 并提交，公开站构建会读取它。
           </p>
           <p className="muted" style={{ fontSize: 12.5 }}>
-            公开站使用 <code>npm run build:public</code>，只含浏览、检索、故事线阅读与表情包导出；管理入口不会被打包。
+            公开站使用 <code>npm run build:public</code>，只含浏览、检索与故事线阅读；管理入口不会被打包。
           </p>
           <div className="row row-wrap" style={{ gap: 8, marginTop: 12 }}>
             <button className="btn btn-primary" onClick={exportPublic}>
@@ -524,7 +524,7 @@ export function DataView() {
             ['/', '聚焦顶部搜索'],
             ['R', '随机抽一张'],
             ['F', '收藏当前作品'],
-            ['1 / 2 / 3', '详情切换到信息 / 拆解 / 表情包'],
+            ['1 / 2', '详情切换到信息 / 拆解'],
             ['?', '快捷键面板'],
           ].map(([key, desc]) => (
             <div key={key} className="shortcut-row">

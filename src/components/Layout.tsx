@@ -6,7 +6,7 @@ import { effectiveDate, parseDateQuery, dayQueryOf } from '../lib/dates'
 import { IS_PUBLIC } from '../lib/appMode'
 import { restoreFilesFromTrash } from '../lib/trash'
 
-const PUBLIC_PATHS = new Set(['/', '/calendar', '/gallery', '/storylines', '/reader', '/search', '/characters', '/stickers'])
+const PUBLIC_PATHS = new Set(['/', '/calendar', '/gallery', '/storylines', '/reader', '/search', '/characters'])
 const SIDEBAR_KEY = 'namori.sidebar.collapsed'
 
 const PAGE_TITLES: Record<string, { eyebrow: string; title: string }> = {
@@ -22,7 +22,6 @@ const PAGE_TITLES: Record<string, { eyebrow: string; title: string }> = {
   storylines: { eyebrow: 'Storyline', title: '故事线' },
   storyline: { eyebrow: 'Storyline', title: '故事线编辑' },
   datefind: { eyebrow: 'Date Lookup', title: '按日期查绘日记' },
-  stickers: { eyebrow: 'Sticker Studio', title: '表情包工坊' },
   review: { eyebrow: 'Date Review', title: '日期校对' },
   'diary-review': { eyebrow: 'Diary Review', title: '绘日记审核' },
   stats: { eyebrow: 'Insights', title: '统计' },
@@ -140,7 +139,6 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
         { path: '/tags', label: '标签', icon: 'tag', count: tags.length },
         { path: '/characters', label: '角色图鉴', icon: 'users' },
         { path: '/collections', label: '合集', icon: 'folder', count: collections.length },
-        { path: '/stickers', label: '表情包', icon: 'sticker' },
         { path: '/diary-review', label: '绘日记审核', icon: 'checkSquare', count: pendingReviewItems.length },
         { path: '/review', label: '日期校对', icon: 'check', count: pendingCount },
       ],

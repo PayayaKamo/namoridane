@@ -9,7 +9,6 @@ import { Modal } from '../components/Modal'
 import { DateEditor } from '../components/DateEditor'
 import { TagPicker, TagPill } from '../components/TagPicker'
 import { CharacterPicker } from '../components/CharacterPicker'
-import { StickerEditor } from '../components/StickerEditor'
 import { formatBytes, originalUrl } from '../lib/image'
 import { extractShareUrl } from '../lib/utils'
 import { IS_PUBLIC } from '../lib/appMode'
@@ -18,7 +17,7 @@ import type { DiaryItem, ExternalLinkKind, StudyNotes, Translation } from '../ty
 
 const BASE = import.meta.env.BASE_URL
 
-type Tab = 'info' | 'translate' | 'study' | 'sticker'
+type Tab = 'info' | 'translate' | 'study'
 
 export function DetailView({ itemId }: { itemId: string }) {
   const {
@@ -148,8 +147,6 @@ export function DetailView({ itemId }: { itemId: string }) {
         setTab('info')
       } else if (e.key === '2') {
         setTab('study')
-      } else if (e.key === '3') {
-        setTab('sticker')
       }
     }
     window.addEventListener('keydown', onKey)
@@ -315,10 +312,6 @@ export function DetailView({ itemId }: { itemId: string }) {
                   </button>
                 </>
               )}
-              <button className="btn" onClick={() => setTab('sticker')}>
-                <Icon name="sticker" size={15} />
-                表情包
-              </button>
               {!IS_PUBLIC && (
                 <>
                   <button
@@ -360,9 +353,6 @@ export function DetailView({ itemId }: { itemId: string }) {
                   拆解笔记
                 </button>
               )}
-              <button className={tab === 'sticker' ? 'active' : ''} onClick={() => setTab('sticker')}>
-                表情包
-              </button>
             </div>
 
             <div className="detail-scroll">
@@ -766,8 +756,6 @@ export function DetailView({ itemId }: { itemId: string }) {
                   )}
                 </>
               )}
-
-              {tab === 'sticker' && <StickerEditor item={item} />}
             </div>
           </aside>
         </div>
@@ -834,7 +822,7 @@ export function DetailView({ itemId }: { itemId: string }) {
             <div className="muted" style={{ padding: '12px 0' }}>
               还没有合集，去
               <a href="#/collections" style={{ color: 'var(--accent)' }}> 合集页 </a>
-              创建一个，比如「表情包素材」「临摹参考」。
+              创建一个，比如「临摹参考」「场景分组」。
             </div>
           )}
           <div className="modal-foot" style={{ padding: '14px 0 0', background: 'none' }}>

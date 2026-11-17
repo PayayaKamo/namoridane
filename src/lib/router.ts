@@ -14,7 +14,6 @@ export type RouteName =
   | 'storylines'
   | 'storyline'
   | 'datefind'
-  | 'stickers'
   | 'review'
   | 'diary-review'
   | 'data'
@@ -40,7 +39,6 @@ const KNOWN: RouteName[] = [
   'storylines',
   'storyline',
   'datefind',
-  'stickers',
   'review',
   'diary-review',
   'data',

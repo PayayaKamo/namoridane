@@ -293,6 +293,37 @@
   backdrop-filter: blur(10px);
 }
 
+/* 手机端图库控件收起入口：桌面隐藏 */
+.gallery-toolbar-toggle {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.gallery-toolbar-toggle .gallery-toolbar-chevron {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.gallery-toolbar-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 20px;
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  font-size: 10.5px;
+  line-height: 18px;
+  text-align: center;
+}
+
 .tag-filter-panel {
   padding: 14px 16px;
   margin-bottom: 16px;
@@ -757,14 +788,6 @@
   height: 100%;
   object-fit: cover;
   display: block;
-}
-
-.cal-empty-hint {
-  color: var(--faint);
-  font-size: 13px;
-  align-self: center;
-  margin: 0 auto;
-  opacity: 0.4;
 }
 
 .cal-more {
@@ -1927,243 +1950,6 @@
   border-radius: 4px;
 }
 
-/* ---------------- 表情包 ---------------- */
-.sticker-workbench {
-  display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.sticker-config {
-  position: sticky;
-  top: 72px;
-}
-
-.selected-strip {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 4px;
-}
-
-.selected-thumb {
-  border-radius: 5px;
-  overflow: hidden;
-  aspect-ratio: 1;
-  background: var(--surface-3);
-}
-
-.selected-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.sticker-pool {
-  min-width: 0;
-}
-
-.cropped-strip {
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  margin-bottom: 14px;
-}
-
-.sticker-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
-  gap: 7px;
-}
-
-.sticker-cell {
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  aspect-ratio: 1;
-  background: var(--surface-3);
-  border: 2px solid transparent;
-  transition: 0.15s var(--ease);
-}
-
-.sticker-cell img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.sticker-cell:hover {
-  transform: translateY(-1px);
-}
-
-.sticker-cell.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
-
-.sticker-check {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 19px;
-  height: 19px;
-  border-radius: 6px;
-  background: var(--accent);
-  color: #fff;
-  display: grid;
-  place-items: center;
-}
-
-.crop-mark {
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
-  font-size: 8.5px;
-  background: rgba(24, 18, 12, 0.6);
-  color: #fff;
-  padding: 0 4px;
-  border-radius: 3px;
-}
-
-.sticker-tip {
-  margin-top: 16px;
-}
-
-.sticker-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding-top: 12px;
-}
-
-.sticker-stage {
-  position: relative;
-  width: 100%;
-  max-height: 320px;
-  background: var(--surface-3);
-  border-radius: 10px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  touch-action: none;
-  user-select: none;
-}
-
-.sticker-stage > img {
-  display: block;
-  max-width: 100%;
-  max-height: 320px;
-  width: auto;
-  height: auto;
-  pointer-events: none;
-}
-
-.crop-box {
-  position: absolute;
-  border: 1.5px solid #fff;
-  box-shadow: 0 0 0 9999px rgba(18, 14, 10, 0.45);
-  cursor: move;
-  touch-action: none;
-}
-
-.crop-grid {
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.4) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.4) 1px, transparent 1px);
-  background-size: 33.333% 33.333%;
-  pointer-events: none;
-}
-
-.crop-label {
-  position: absolute;
-  left: 5px;
-  top: 4px;
-  font-size: 9px;
-  color: #fff;
-  background: rgba(20, 16, 12, 0.5);
-  padding: 1px 5px;
-  border-radius: 3px;
-}
-
-.crop-handle {
-  position: absolute;
-  right: -6px;
-  bottom: -6px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #fff;
-  border: 2px solid var(--accent);
-  cursor: nwse-resize;
-}
-
-.sticker-preview-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.sticker-preview {
-  width: 120px;
-  height: 120px;
-  border-radius: 10px;
-  overflow: hidden;
-  flex: none;
-  border: 1px solid var(--line);
-}
-
-.sticker-preview canvas {
-  width: 100%;
-  height: 100%;
-}
-
-.checker {
-  background-image: linear-gradient(45deg, #d9d3c7 25%, transparent 25%),
-    linear-gradient(-45deg, #d9d3c7 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #d9d3c7 75%),
-    linear-gradient(-45deg, transparent 75%, #d9d3c7 75%);
-  background-size: 12px 12px;
-  background-position: 0 0, 0 6px, 6px -6px, -6px 0;
-  background-color: #f4f0e8;
-}
-
-[data-theme='dark'] .checker {
-  background-image: linear-gradient(45deg, #3a352d 25%, transparent 25%),
-    linear-gradient(-45deg, #3a352d 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #3a352d 75%),
-    linear-gradient(-45deg, transparent 75%, #3a352d 75%);
-  background-color: #262320;
-}
-
-.sticker-hints {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 11px;
-}
-
-.slider-row {
-  display: grid;
-  grid-template-columns: 70px 1fr 36px;
-  align-items: center;
-  gap: 8px;
-  font-size: 11.5px;
-  color: var(--muted);
-}
-
-.slider-row input[type='range'] {
-  accent-color: var(--accent);
-}
-
-.slider-row .num {
-  text-align: right;
-  color: var(--ink-2);
-}
-
 .toggle-row {
   display: inline-flex;
   align-items: center;
@@ -2175,13 +1961,6 @@
 
 .toggle-row input[type='checkbox'] {
   accent-color: var(--accent);
-}
-
-.sticker-export {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
 }
 
 /* ---------------- 翻阅 ---------------- */
@@ -2766,9 +2545,6 @@
   .detail-body {
     grid-template-columns: minmax(0, 1fr) 360px;
   }
-  .sticker-workbench {
-    grid-template-columns: 280px minmax(0, 1fr);
-  }
 }
 
 @media (max-width: 1100px) {
@@ -2806,15 +2582,6 @@
   }
   .tags-side {
     position: static;
-  }
-  .sticker-workbench {
-    grid-template-columns: 1fr;
-  }
-  .sticker-config {
-    position: static;
-  }
-  .selected-strip {
-    grid-template-columns: repeat(10, 1fr);
   }
   .data-grid {
     grid-template-columns: 1fr;
@@ -2925,23 +2692,44 @@
     width: 100%;
   }
   .hero {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
     gap: 18px;
     padding: 22px 18px;
   }
   .hero-title {
     font-size: 28px;
   }
-  .daily {
-    max-width: 280px;
+  /* 手机端：每日一画提到最上方并完整展示（不旋转、不裁切），其余内容顺延 */
+  .hero .hero-main {
+    order: 2;
+  }
+  .hero .daily {
+    order: 1;
+    max-width: none;
+    width: 100%;
+    transform: none;
+  }
+  .daily-image img {
+    object-fit: contain;
   }
   .panel {
     padding: 16px;
     border-radius: 16px;
   }
   .gallery-toolbar {
-    top: 56px;
+    position: static;
     gap: 7px;
-    padding: 8px 0 12px;
+    padding: 0 0 10px;
+  }
+  /* 手机端：只有一行「筛选与排序」入口，展开后显示全部控件 */
+  .gallery-toolbar-toggle {
+    display: flex;
+  }
+  .gallery-view:not(.is-filters-open) .page-actions,
+  .gallery-view:not(.is-filters-open) .gallery-toolbar > *:not(.gallery-toolbar-toggle) {
+    display: none;
   }
   .cal-sticky {
     top: 56px;
@@ -4154,8 +3942,7 @@
 
   .cal-day .cal-month-tag,
   .cal-count,
-  .cal-more,
-  .cal-empty-hint {
+  .cal-more {
     display: none;
   }
 

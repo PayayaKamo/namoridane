@@ -101,7 +101,7 @@ export function HomeView() {
           <h1 className="hero-title">把每一天，画成一页。</h1>
           <p className="hero-lead">
             收录 Namori 老师发布在 Instagram 的 {items.length} 张手绘日记。
-            在这里按日历翻阅、按角色与场景整理，也可以裁成表情包、记录临摹拆解。
+            在这里按日历翻阅、按角色与场景整理，也可以记录临摹拆解与出场人物。
           </p>
           <div className="row row-wrap" style={{ gap: 10, marginTop: 22 }}>
             <button className="btn btn-primary btn-lg" onClick={() => navigate2('/reader')}>
@@ -196,7 +196,7 @@ export function HomeView() {
               accent={stats.pending > 0}
             />
             <StatCard icon="heart" label="收藏" value={String(stats.favorites)} hint="在详情页点按爱心" />
-            <StatCard icon="folder" label="合集" value={String(collections.length)} hint="表情包 / 临摹参考分组" />
+            <StatCard icon="folder" label="合集" value={String(collections.length)} hint="临摹参考 / 场景分组" />
           </>
         )}
       </section>
@@ -265,7 +265,6 @@ export function HomeView() {
           <div className="quick-grid">
             <QuickCard icon="calendar" title="日历" desc="按月份查看每天画了什么" to="/calendar" />
             <QuickCard icon="gallery" title="图库" desc="瀑布流浏览与批量整理" to="/gallery" />
-            <QuickCard icon="sticker" title="表情包工坊" desc="框选主体、去白底、导出" to="/stickers" />
             <QuickCard icon="users" title="角色图鉴" desc="按人物聚合的所有出场" to="/characters" />
             {!IS_PUBLIC && (
               <>
