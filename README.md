@@ -196,7 +196,7 @@ namoridane/
 
 | Key | Action |
 | --- | --- |
-| `←` / `→` | Previous / next item in detail and reader; previous / next month on the calendar (when an input is not focused) |
+| `←` / `→` | Previous / next item in detail and reader; previous / next year on the calendar (when an input is not focused) |
 | `Esc` | Close detail, modal, or the mobile search panel |
 | `/` | Focus the global search |
 | `R` | Random item |

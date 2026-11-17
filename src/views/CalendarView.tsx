@@ -151,18 +151,25 @@ export function CalendarView({ route }: { route: Route }) {
 
   const cells: (number | null)[] = [...Array(lead).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)]
 
-  const step = (delta: number) => {
-    const next = month + delta
-    if (next < 1) {
-      selectMonth(year - 1, 12)
-    } else if (next > 12) {
-      selectMonth(year + 1, 1)
-    } else {
-      selectMonth(year, next)
-    }
+  // 年份下拉保持连续区间：最早有数据的年份 → 当前年份（含无数据年份），并纳入未来数据
+  const yearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear()
+    const candidates = years.map(Number).filter((value) => Number.isInteger(value) && value > 0)
+    if (!candidates.length) candidates.push(currentYear)
+    const min = Math.min(currentYear, ...candidates)
+    const max = Math.max(currentYear, ...candidates)
+    return Array.from({ length: max - min + 1 }, (_, index) => min + index)
+  }, [years])
+
+  const stepYear = (delta: number) => {
+    const min = yearOptions[0]
+    const max = yearOptions[yearOptions.length - 1]
+    const next = year + delta
+    if (!Number.isInteger(next) || next < min || next > max) return
+    selectMonth(next, month)
   }
 
-  // 日历页快捷键：← → 翻月；输入框/下拉聚焦时不拦截
+  // 日历页快捷键：← → 切换年份（与标题两侧按钮一致）；输入框/下拉聚焦时不拦截
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
@@ -177,26 +184,13 @@ export function CalendarView({ route }: { route: Route }) {
         return
       }
       event.preventDefault()
-      const delta = event.key === 'ArrowLeft' ? -1 : 1
-      const next = month + delta
-      if (next < 1) selectMonth(year - 1, 12)
-      else if (next > 12) selectMonth(year + 1, 1)
-      else selectMonth(year, next)
+      stepYear(event.key === 'ArrowLeft' ? -1 : 1)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [year, month])
+  }, [year, month, yearOptions])
 
-  // 年份下拉保持连续区间：最早有数据的年份 → 当前年份（含无数据年份），并纳入未来数据
-  const yearOptions = useMemo(() => {
-    const currentYear = new Date().getFullYear()
-    const candidates = years.map(Number).filter((value) => Number.isInteger(value) && value > 0)
-    if (!candidates.length) candidates.push(currentYear)
-    const min = Math.min(currentYear, ...candidates)
-    const max = Math.max(currentYear, ...candidates)
-    return Array.from({ length: max - min + 1 }, (_, index) => min + index)
-  }, [years])
-
+  // 月份统计
   const monthCounts = useMemo(() => {
     const counts = Array.from({ length: 12 }, () => 0)
     for (const item of items) {
@@ -211,13 +205,13 @@ export function CalendarView({ route }: { route: Route }) {
       <div className="cal-sticky">
         <div className="page-eyebrow">Calendar</div>
         <div className="cal-title-row">
-          <button className="icon-btn" onClick={() => step(-1)} aria-label="上个月" title="上个月（←）">
+          <button className="icon-btn" onClick={() => stepYear(-1)} aria-label="上一年" title="上一年（←）">
             <Icon name="left" />
           </button>
           <h2 className="page-title">
             {year} 年 {MONTHS_CN[month - 1]}
           </h2>
-          <button className="icon-btn" onClick={() => step(1)} aria-label="下个月" title="下个月（→）">
+          <button className="icon-btn" onClick={() => stepYear(1)} aria-label="下一年" title="下一年（→）">
             <Icon name="right" />
           </button>
         </div>
