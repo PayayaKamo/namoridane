@@ -397,6 +397,7 @@ hr {
 }
 
 .app-shell.is-collapsed .nav,
+.app-shell.is-collapsed .sidebar-toggle-bar,
 .app-shell.is-collapsed .sidebar-foot {
   width: 100%;
 }
@@ -429,8 +430,15 @@ hr {
 }
 }
 
+/* 收起按钮属于底部固定区，紧贴在作品/待审核/主题切换上方，不参与中间导航滚动 */
+.sidebar-toggle-bar {
+  flex: none;
+  width: 100%;
+}
+
 .sidebar-toggle {
   width: 100%;
+  min-height: 40px;
   background: none;
   border: 0;
   font: inherit;
@@ -1217,7 +1225,7 @@ hr {
     padding: 0;
   }
   /* 窄屏默认就是图标窄栏，无需再收起 */
-  .sidebar-toggle {
+  .sidebar-toggle-bar {
     display: none;
   }
 }

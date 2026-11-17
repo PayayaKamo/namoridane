@@ -230,6 +230,8 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
               ))}
             </div>
           ))}
+        </nav>
+        <div className="sidebar-toggle-bar">
           <button
             className="nav-item sidebar-toggle"
             onClick={() => setCollapsed((value) => !value)}
@@ -240,7 +242,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
             <Icon name={collapsed ? 'right' : 'left'} className="nav-icon" size={17} />
             <span className="nav-text">{collapsed ? '展开侧栏' : '收起侧栏'}</span>
           </button>
-        </nav>
+        </div>
         <div className="sidebar-foot">
           <div className="sidebar-meta">
             <span>作品</span>
