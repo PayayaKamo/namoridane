@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Route } from '../lib/router'
 import { navigate } from '../lib/router'
 import { useStore } from '../state/store'
@@ -12,19 +12,114 @@ import {
   todayKey,
 } from '../lib/dates'
 import { Icon } from '../components/Icon'
-import type { DiaryItem } from '../types'
+import type { DiaryItem, EffectiveDate } from '../types'
 
 const BASE = import.meta.env.BASE_URL
+const CALENDAR_MONTH_KEY = 'namori.calendar.month'
 type CalFilter = 'all' | 'filled' | 'missing' | 'favorite' | 'pending'
+
+/** 读取用户上一次手动选择的月份；未选择过或数据损坏时返回 null */
+function readStoredMonth(): { year: number; month: number } | null {
+  try {
+    const raw = localStorage.getItem(CALENDAR_MONTH_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { year?: unknown; month?: unknown }
+    const year = Number(parsed?.year)
+    const month = Number(parsed?.month)
+    if (Number.isInteger(year) && year > 0 && month >= 1 && month <= 12) return { year, month }
+  } catch {
+    // 忽略损坏的本地记录
+  }
+  return null
+}
+
+/**
+ * 首屏定位：当前年月有内容就保持；否则优先取最近一个同月份有内容的年份；
+ * 再退到距离当前最近的有内容月份；都没有则留在当前年月。
+ */
+function resolveInitialMonth(
+  items: DiaryItem[],
+  getDate: (item: DiaryItem) => EffectiveDate,
+  now: Date,
+): { year: number; month: number } {
+  const nowYear = now.getFullYear()
+  const nowMonth = now.getMonth() + 1
+  const months = new Set<string>()
+  const sameMonthYears = new Set<number>()
+  let hasNow = false
+  for (const item of items) {
+    const d = getDate(item)
+    if (!d.year || !d.month) continue
+    months.add(`${d.year}-${d.month}`)
+    if (d.year === nowYear && d.month === nowMonth) hasNow = true
+    if (d.month === nowMonth) sameMonthYears.add(d.year)
+  }
+  if (hasNow) return { year: nowYear, month: nowMonth }
+  if (sameMonthYears.size) {
+    let bestYear = nowYear
+    let bestDistance = Infinity
+    for (const y of sameMonthYears) {
+      const distance = Math.abs(y - nowYear)
+      if (distance < bestDistance || (distance === bestDistance && y > bestYear)) {
+        bestYear = y
+        bestDistance = distance
+      }
+    }
+    return { year: bestYear, month: nowMonth }
+  }
+  let best = { year: nowYear, month: nowMonth }
+  let bestDistance = Infinity
+  for (const key of months) {
+    const [y, m] = key.split('-').map(Number)
+    const distance = Math.abs(y * 12 + m - (nowYear * 12 + nowMonth))
+    if (distance < bestDistance) {
+      bestDistance = distance
+      best = { year: y, month: m }
+    }
+  }
+  return best
+}
 
 export function CalendarView({ route }: { route: Route }) {
   const { items, annotations, years, getDate } = useStore()
-  const latestYear = Number(years[years.length - 1] ?? new Date().getFullYear())
-  const initialYear = Number(route.query.get('y')) || Number(route.query.get('year')) || latestYear
-  const initialMonth = Number(route.query.get('m')) || Number(route.query.get('month')) || new Date().getMonth() + 1
-  const [year, setYear] = useState(initialYear)
-  const [month, setMonth] = useState(initialMonth)
+  const [initial] = useState(() => {
+    const now = new Date()
+    const queryYear = Number(route.query.get('y')) || Number(route.query.get('year'))
+    const queryMonth = Number(route.query.get('m')) || Number(route.query.get('month'))
+    const stored = readStoredMonth()
+    return {
+      year: queryYear || stored?.year || now.getFullYear(),
+      month: queryMonth || stored?.month || now.getMonth() + 1,
+      // URL 参数或历史选择都表示用户已明确指定，不再自动定位
+      explicit: Boolean(queryYear || queryMonth || stored),
+    }
+  })
+  const [year, setYear] = useState(initial.year)
+  const [month, setMonth] = useState(initial.month)
+  const [positioned, setPositioned] = useState(initial.explicit)
   const [filter, setFilter] = useState<CalFilter>('all')
+
+  const selectMonth = (nextYear: number, nextMonth: number) => {
+    setPositioned(true)
+    setYear(nextYear)
+    setMonth(nextMonth)
+    try {
+      localStorage.setItem(CALENDAR_MONTH_KEY, JSON.stringify({ year: nextYear, month: nextMonth }))
+    } catch {
+      // 本地存储不可用时仍然允许浏览
+    }
+  }
+
+  // 索引异步载入：等条目可用后只自动定位一次；用户已选择过则跳过
+  useEffect(() => {
+    if (positioned || !items.length) return
+    const target = resolveInitialMonth(items, getDate, new Date())
+    setPositioned(true)
+    if (target.year !== year || target.month !== month) {
+      setYear(target.year)
+      setMonth(target.month)
+    }
+  }, [items, getDate, positioned, year, month])
 
   const byDay = useMemo(() => {
     const map = new Map<string, DiaryItem[]>()
@@ -58,13 +153,11 @@ export function CalendarView({ route }: { route: Route }) {
   const step = (delta: number) => {
     const next = month + delta
     if (next < 1) {
-      setYear((y) => y - 1)
-      setMonth(12)
+      selectMonth(year - 1, 12)
     } else if (next > 12) {
-      setYear((y) => y + 1)
-      setMonth(1)
+      selectMonth(year + 1, 1)
     } else {
-      setMonth(next)
+      selectMonth(year, next)
     }
   }
 
@@ -98,8 +191,7 @@ export function CalendarView({ route }: { route: Route }) {
               className="btn btn-sm"
               onClick={() => {
                 const now = new Date()
-                setYear(now.getFullYear())
-                setMonth(now.getMonth() + 1)
+                selectMonth(now.getFullYear(), now.getMonth() + 1)
               }}
             >
               今天
@@ -108,14 +200,14 @@ export function CalendarView({ route }: { route: Route }) {
               <Icon name="right" />
             </button>
           </div>
-          <select className="select" style={{ width: 104 }} value={year} onChange={(e) => setYear(Number(e.target.value))}>
+          <select className="select" style={{ width: 104 }} value={year} onChange={(e) => selectMonth(Number(e.target.value), month)}>
             {years.map((y) => (
               <option key={y} value={y}>
                 {y} 年
               </option>
             ))}
           </select>
-          <select className="select" style={{ width: 96 }} value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+          <select className="select" style={{ width: 96 }} value={month} onChange={(e) => selectMonth(year, Number(e.target.value))}>
             {MONTHS_CN.map((name, idx) => (
               <option key={name} value={idx + 1}>
                 {name}
@@ -130,8 +222,7 @@ export function CalendarView({ route }: { route: Route }) {
             onChange={(e) => {
               const [y, m] = e.target.value.split('-').map(Number)
               if (y && m) {
-                setYear(y)
-                setMonth(m)
+                selectMonth(y, m)
               }
             }}
           />
@@ -163,7 +254,7 @@ export function CalendarView({ route }: { route: Route }) {
           <button
             key={idx}
             className={`year-month${idx + 1 === month ? ' active' : ''}${count ? '' : ' empty-month'}`}
-            onClick={() => setMonth(idx + 1)}
+            onClick={() => selectMonth(year, idx + 1)}
             title={`${MONTHS_CN[idx]} · ${count} 张`}
           >
             <span>{idx + 1}</span>
