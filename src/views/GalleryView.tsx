@@ -18,6 +18,7 @@ export function GalleryView({ route }: { route: Route }) {
   const {
     items,
     excludedItems,
+    confirmedDiaryItems,
     pendingReviewItems,
     itemMap,
     annotations,
@@ -55,6 +56,8 @@ export function GalleryView({ route }: { route: Route }) {
   })
 
   const [selectMode, setSelectMode] = useState(false)
+  // 管理端默认只看已确认的绘日记；?diary=all 显示全部条目
+  const [diaryOnly, setDiaryOnly] = useState(route.query.get('diary') !== 'all')
   const [showExcluded, setShowExcluded] = useState(route.query.get('excluded') === '1')
   const [zipProgress, setZipProgress] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -89,9 +92,16 @@ export function GalleryView({ route }: { route: Route }) {
     filter.unconfirmedOnly,
     filter.tagIds.length > 0,
     filter.collectionId !== DEFAULT_FILTER.collectionId,
+    !IS_PUBLIC && !diaryOnly,
   ].filter(Boolean).length
 
-  const sourceItems = showExcluded ? excludedItems : items
+  const sourceItems = showExcluded
+    ? excludedItems
+    : IS_PUBLIC
+      ? items
+      : diaryOnly
+        ? confirmedDiaryItems
+        : [...items, ...excludedItems]
 
   const filtered = useMemo(
     () =>
@@ -164,6 +174,7 @@ export function GalleryView({ route }: { route: Route }) {
           <h2 className="page-title">{showExcluded ? '非绘日记排除区' : '图库'}</h2>
           <div className="page-sub">
             {filtered.length} / {sourceItems.length} 张 · {groups.length} 个月份
+            {!IS_PUBLIC && !showExcluded && (diaryOnly ? ' · 仅绘日记' : ' · 全部条目（含非绘日记与待确认）')}
             {!showExcluded && ' · 默认按图内日记日期排列'}
             {filter.tagIds.length > 0 && ` · 已筛选 ${filter.tagIds.length} 个标签`}
           </div>
@@ -286,6 +297,14 @@ export function GalleryView({ route }: { route: Route }) {
         <div className="row" style={{ gap: 6 }}>
           {!IS_PUBLIC && (
             <>
+              <button
+                className={`chip${diaryOnly ? ' active' : ''}`}
+                onClick={() => setDiaryOnly((value) => !value)}
+                title="开启时只显示已确认的绘日记"
+              >
+                <Icon name="book" size={11} />
+                只看绘日记
+              </button>
               <button
                 className={`chip${filter.favoriteOnly ? ' active' : ''}`}
                 onClick={() => setFilter((f) => ({ ...f, favoriteOnly: !f.favoriteOnly }))}
