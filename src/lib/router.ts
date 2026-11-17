@@ -9,6 +9,7 @@ export type RouteName =
   | 'stats'
   | 'tags'
   | 'characters'
+  | 'character-tagging'
   | 'collections'
   | 'collection'
   | 'storylines'
@@ -34,6 +35,7 @@ const KNOWN: RouteName[] = [
   'stats',
   'tags',
   'characters',
+  'character-tagging',
   'collections',
   'collection',
   'storylines',

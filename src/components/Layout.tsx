@@ -16,6 +16,7 @@ const PAGE_TITLES: Record<string, { eyebrow: string; title: string }> = {
   reader: { eyebrow: 'Diary', title: '翻阅' },
   search: { eyebrow: 'Search', title: '搜索与筛选' },
   tags: { eyebrow: 'Tags', title: '标签' },
+  'character-tagging': { eyebrow: 'Tagging', title: '人物标注' },
   characters: { eyebrow: 'Characters', title: '角色图鉴' },
   collections: { eyebrow: 'Collections', title: '合集' },
   collection: { eyebrow: 'Collections', title: '合集详情' },
@@ -138,6 +139,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
       items: [
         { path: '/tags', label: '标签', icon: 'tag', count: tags.length },
         { path: '/characters', label: '角色图鉴', icon: 'users' },
+        { path: '/character-tagging', label: '人物标注', icon: 'eye' },
         { path: '/collections', label: '合集', icon: 'folder', count: collections.length },
         { path: '/diary-review', label: '绘日记审核', icon: 'checkSquare', count: pendingReviewItems.length },
         { path: '/review', label: '日期校对', icon: 'check', count: pendingCount },

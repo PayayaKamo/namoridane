@@ -3123,6 +3123,186 @@
   color: var(--accent);
 }
 
+/* ============================================================
+   人物标注
+   ============================================================ */
+.tagging-view {
+  max-width: 1020px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tagging-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tagging-progress {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tagging-progress strong {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.tagging-todo {
+  padding: 1px 8px;
+  border-radius: 20px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.tagging-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.tagging-nav {
+  display: flex;
+  gap: 8px;
+}
+
+.tagging-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tagging-figure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.tagging-figure img {
+  width: auto;
+  max-width: 100%;
+  max-height: 62vh;
+  object-fit: contain;
+}
+
+.tagging-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.tagging-code {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--surface-3);
+  font-size: 11px;
+}
+
+.tagging-pos {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.tagging-picker {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.tagging-view .character-picker-wrap {
+  margin-top: 0;
+}
+
+.tagging-view .character-chips {
+  max-height: none;
+}
+
+.tagging-view .character-chip {
+  min-height: 34px;
+  padding: 3px 12px 3px 4px;
+}
+
+.tagging-hint {
+  font-size: 11.5px;
+  color: var(--faint);
+}
+
+.tagging-hint kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+}
+
+.tagging-empty {
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .tagging-bar {
+    gap: 8px;
+  }
+  .tagging-filters {
+    width: 100%;
+    margin-left: 0;
+  }
+  .tagging-filters .select {
+    flex: 1;
+    min-width: 0;
+  }
+  .tagging-nav {
+    width: 100%;
+  }
+  .tagging-nav .btn {
+    flex: 1;
+    min-height: 44px;
+  }
+  .tagging-card {
+    padding: 12px;
+  }
+  .tagging-figure img {
+    max-height: 46vh;
+  }
+}
+
+/* 窄屏放不下头像：退化为纯名字，避免挤成一行 */
+@media (max-width: 640px) {
+  .tagging-view .character-avatar {
+    display: none;
+  }
+  .tagging-view .character-chip {
+    min-height: 42px;
+    padding: 0 14px;
+    font-size: 14px;
+  }
+  .tagging-hint {
+    display: none;
+  }
+}
+
 /* 翻译面板 */
 .translation-panel {
   display: flex;

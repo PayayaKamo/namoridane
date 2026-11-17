@@ -32,6 +32,12 @@ const StatsView =
   __APP_MODE__ === 'public' ? null : lazy(() => import('./views/StatsView').then((m) => ({ default: m.StatsView })))
 const DataView =
   __APP_MODE__ === 'public' ? null : lazy(() => import('./views/DataView').then((m) => ({ default: m.DataView })))
+const CharacterTaggingView =
+  __APP_MODE__ === 'public'
+    ? null
+    : lazy(() =>
+        import('./views/CharacterTaggingView').then((m) => ({ default: m.CharacterTaggingView })),
+      )
 
 function AdminFallback() {
   return (
@@ -64,6 +70,8 @@ function CurrentView({ route }: { route: ReturnType<typeof useRoute> }) {
       return adminOnly(TagsView ? <TagsView /> : null)
     case 'characters':
       return <CharactersView />
+    case 'character-tagging':
+      return adminOnly(CharacterTaggingView ? <CharacterTaggingView /> : null)
     case 'collections':
     case 'collection':
       return adminOnly(CollectionsView ? <CollectionsView route={route} /> : null)
