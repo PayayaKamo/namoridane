@@ -2,7 +2,7 @@
 
 [English](README.md) · [中文](README.zh-CN.md) · [日本語](README.ja.md)
 
-Namori さん（Instagram [@namori__](https://www.instagram.com/namori__/)）が投稿する毎日の手描き「絵日記」を、閲覧・整理・読み返すための完全に静的なフロントエンドのみのサイトです。中国語名は「水母绘日记」、ブランド名は **Namori Diary** です。
+Namori さん（Instagram [@namoridane](https://www.instagram.com/namoridane)）が投稿する毎日の手描き「絵日記」を、閲覧・整理・読み返すための完全に静的なフロントエンドのみのサイトです。中国語名は「水母绘日记」、ブランド名は **Namori Diary** です。
 
 - **アーカイブは 1,123 枚**（2021-03 → 2025）：うち 1,037 枚が絵日記として確認済み、86 枚が絵日記以外として確認済み
 - **1 つのコードベースから 2 つの成果物**：ローカル用の **admin** と、読み取り専用の **public**
@@ -157,7 +157,7 @@ namoridane/
 │  ├─ lib/                  # router、dates、filtering、storage、publish、trash、canvas
 │  ├─ state/store.tsx       # グローバル状態 + localStorage 永続化
 │  ├─ views/                # home、calendar、gallery、detail、review、date-find、characters、
-│  │                        # storylines、translations、stickers、stats、data
+│  │                        # storylines、translations、stats、data
 │  ├─ styles.css
 │  └─ styles-views.css
 ├─ vite.config.ts           # ローカル書き戻し用の dev 専用ミドルウェア
@@ -186,7 +186,6 @@ namoridane/
 | タグ | 5 つの組み込み次元 + カスタム次元。作成・編集・削除、色、使用数、一括タグ付け |
 | 翻訳 | 日本語原文 + 多言語スロット。校正用の OCR 下書き。翻訳済み / 未翻訳の絞り込み。CSV/JSON 入出力 |
 | コレクション | 名前付きコレクション、複数選択で追加、ドラッグ並べ替え、カバー、閲覧、md/json/csv 出力 |
-| スタンプ工房 | 被写体を切り抜き、許容値で白を透明化し、240/512 の正方形 PNG/WebP を出力。単体または ZIP |
 | 模写分解 | 構図 / 配色 / 線 / 表情のメモ、自動パレット、類似画像の提案 |
 | 統計 | 総数、作画日数、最長連続、レビュー進捗。月別バー、年別概要、タグと色の分布 |
 | データと設定 | 完全な JSON 入出力、レビュー JSON、翻訳 CSV/JSON、公開シードのエクスポート、**dev 専用の書き戻し**、クリーンアップ待ち一覧、リセット、スキーマとショートカット |
@@ -203,7 +202,7 @@ namoridane/
 | `F` | 現在の画像をお気に入り |
 | `Enter` | レビューで確認して次へ。選択 UI では入力名で作成 / 追加 |
 | `N` | レビューで非絵日記としてマーク |
-| `1` / `2` / `3` | 詳細タブ：情報 / 模写 / スタンプ |
+| `1` / `2` | 詳細タブ：情報 / 模写 |
 | `?` | ショートカットパネル |
 
 ---
@@ -276,7 +275,7 @@ public モードでは `inferred*`・`ocr`・`suggestedDiaryDate` を除去し�
   "dimensions": [{ "id": "character", "name": "人物/角色", "order": 0, "builtIn": true }],
   "tags": [{ "id": "t_xxx", "name": "赤座灯里", "dimensionId": "character", "color": "#c96f4a" }],
   "characters": [{ "id": "t_xxx", "avatarItemId": "…" }],
-  "collections": [{ "id": "c_xxx", "name": "スタンプ素材", "itemIds": ["…"] }],
+  "collections": [{ "id": "c_xxx", "name": "模写参考", "itemIds": ["…"] }],
   "storylines": [{ "id": "story_xxx", "title": "夏の一週間", "blocks": [], "published": true }],
   "items": {
     "2021-06-01-CPlLQUStuZq": {

@@ -2,7 +2,7 @@
 
 [English](README.md) · [中文](README.zh-CN.md) · [日本語](README.ja.md)
 
-A fully static, front-end-only site for browsing, curating and re-reading the daily sketches ("絵日記") that **Namori** ([@namori__](https://www.instagram.com/namori__/)) posts on Instagram.
+A fully static, front-end-only site for browsing, curating and re-reading the daily sketches ("絵日記") that **Namori** ([@namoridane](https://www.instagram.com/namoridane)) posts on Instagram.
 
 - **1,123 images in the archive** (2021-03 → 2025): 1,037 confirmed diary pages and 86 images reviewed as non-diary
 - **Two builds from one codebase**: a full local **admin** app and a read-only **public** site
@@ -157,7 +157,7 @@ namoridane/
 │  ├─ lib/                  # router, dates, filters, storage, publish, trash, canvas
 │  ├─ state/store.tsx       # global state + localStorage persistence
 │  ├─ views/                # home, calendar, gallery, detail, review, date-find, characters,
-│  │                        # storylines, translations, stickers, stats, data
+│  │                        # storylines, translations, stats, data
 │  ├─ styles.css
 │  └─ styles-views.css
 ├─ vite.config.ts           # dev-only middleware for local write-back
@@ -186,7 +186,6 @@ namoridane/
 | Tags | Five built-in dimensions plus custom ones; create/edit/delete, colours, usage counts, batch tagging |
 | Translations | Japanese source plus multi-language slots; OCR draft kept for proofreading; translated/untranslated filters; CSV/JSON export and import |
 | Collections | Named collections, multi-select add, drag reorder, cover, browse, export as md/json/csv |
-| Sticker studio | Crop the subject, white-to-transparent with tolerance, export 240/512 squares as PNG/WebP; single or ZIP |
 | Study mode | Composition / palette / linework / expression notes, automatic palette, similar-image recommendations |
 | Stats | Totals, drawing days, longest streak, review progress; monthly bars, yearly overview, tag and colour distribution |
 | Data & settings | Full JSON export/import, review JSON, translation CSV/JSON, public seed export, **dev-only write-back**, pending-cleanup list, reset, schema and shortcuts |
@@ -203,7 +202,7 @@ namoridane/
 | `F` | Favourite the current item |
 | `Enter` | Confirm and advance in the review page; add a shortcode or create a character in the pickers |
 | `N` | Mark non-diary in the review page |
-| `1` / `2` / `3` | Detail tabs: info / study / sticker |
+| `1` / `2` | Detail tabs: info / study |
 | `?` | Shortcut panel |
 
 ---
@@ -287,7 +286,7 @@ Storage key: `namori.diary.userdata.v2`. Full types: [`src/types.ts`](src/types.
   "dimensions": [{ "id": "character", "name": "人物/角色", "order": 0, "builtIn": true }],
   "tags": [{ "id": "t_xxx", "name": "赤座灯里", "dimensionId": "character", "color": "#c96f4a" }],
   "characters": [{ "id": "t_xxx", "avatarItemId": "…", "avatarCrop": { "cx": 0.5, "cy": 0.5 } }],
-  "collections": [{ "id": "c_xxx", "name": "表情包素材", "itemIds": ["…"] }],
+  "collections": [{ "id": "c_xxx", "name": "临摹参考", "itemIds": ["…"] }],
   "storylines": [{
     "id": "story_xxx",
     "title": "夏日的一周",

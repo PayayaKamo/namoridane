@@ -2,7 +2,7 @@
 
 [English](README.md) · [中文](README.zh-CN.md) · [日本語](README.ja.md)
 
-一个纯静态、无后端的前端站点，用来浏览、整理和重读 Namori（[@namori__](https://www.instagram.com/namori__/)）在 Instagram 发布的每日手绘「绘日记」。
+一个纯静态、无后端的前端站点，用来浏览、整理和重读 Namori（[@namoridane](https://www.instagram.com/namoridane)）在 Instagram 发布的每日手绘「绘日记」。
 
 - **收录 1,123 张图**（2021-03 → 2025）：其中 1,037 张确认为绘日记，86 张确认为非绘日记
 - **一套代码两种构建**：完整的本地 **管理端** 和只读的 **公开端**
@@ -157,7 +157,7 @@ namoridane/
 │  ├─ lib/                  # router、dates、filtering、storage、publish、trash、canvas
 │  ├─ state/store.tsx       # 全局状态 + localStorage 持久化
 │  ├─ views/                # home、calendar、gallery、detail、review、date-find、characters、
-│  │                        # storylines、translations、stickers、stats、data
+│  │                        # storylines、translations、stats、data
 │  ├─ styles.css
 │  └─ styles-views.css
 ├─ vite.config.ts           # 本地写回用的 dev 专用中间件
@@ -186,7 +186,6 @@ namoridane/
 | 标签 | 五个内置维度 + 自定义维度；增删改、颜色、使用计数、批量打标签 |
 | 翻译 | 日文原文 + 多语言槽位；OCR 草稿供校对；已译 / 未译筛选；CSV/JSON 导入导出 |
 | 合集 | 命名合集、多选加入、拖拽排序、封面、浏览、导出 md/json/csv |
-| 表情包工坊 | 裁出主体、按容差去白、导出 240/512 方形 PNG/WebP；单张或 ZIP |
 | 临摹拆解 | 构图 / 配色 / 线条 / 表情备注，自动取色，相似图推荐 |
 | 统计 | 总数、作画天数、最长连续、审核进度；月度柱状、年度概览、标签与颜色分布 |
 | 数据与设置 | 完整 JSON 导入导出、审核 JSON、翻译 CSV/JSON、发布种子导出、**仅 dev 的本地写回**、待清理列表、重置、schema 与快捷键 |
@@ -203,7 +202,7 @@ namoridane/
 | `F` | 收藏当前图 |
 | `Enter` | 审核页确认并前进；选择器中按输入新建或添加 |
 | `N` | 审核页标记为非绘日记 |
-| `1` / `2` / `3` | 详情页切换 信息 / 拆解 / 表情包 |
+| `1` / `2` | 详情页切换 信息 / 拆解 |
 | `?` | 快捷键面板 |
 
 ---
@@ -276,7 +275,7 @@ unknown-<原始文件名>.jpg
   "dimensions": [{ "id": "character", "name": "人物/角色", "order": 0, "builtIn": true }],
   "tags": [{ "id": "t_xxx", "name": "赤座灯里", "dimensionId": "character", "color": "#c96f4a" }],
   "characters": [{ "id": "t_xxx", "avatarItemId": "…" }],
-  "collections": [{ "id": "c_xxx", "name": "表情包素材", "itemIds": ["…"] }],
+  "collections": [{ "id": "c_xxx", "name": "临摹参考", "itemIds": ["…"] }],
   "storylines": [{ "id": "story_xxx", "title": "夏日的一周", "blocks": [], "published": true }],
   "items": {
     "2021-06-01-CPlLQUStuZq": {
