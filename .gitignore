@@ -11,5 +11,7 @@ public/data/userdata.seed.json
 
 # 本地个人标注（导入导出的 JSON 可以放在这里，但默认忽略）
 *.local.json
+# 管理端完整审核数据（含备注、私稿等，仅本地 dev 使用）
+data/userdata.json
 .DS_Store
 Thumbs.db

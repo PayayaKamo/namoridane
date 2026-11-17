@@ -7,10 +7,13 @@ import { downloadBlob } from '../lib/image'
 import { relativeTime } from '../lib/dates'
 import { downloadReviewJson, parseReviewExport } from '../lib/review'
 import { buildPublicData } from '../lib/publish'
+import { IS_PUBLIC } from '../lib/appMode'
 import { purgeTrashFiles, restoreFilesFromTrash } from '../lib/trash'
 import type { DiaryItem, TranslationSlot } from '../types'
 
 const PUBLIC_STAMP_KEY = 'namori.diary.publishedAt'
+// 仅本地 dev 管理端提供写盘按钮；正式构建里会被静态折叠掉
+const CAN_WRITE_LOCAL = import.meta.env.DEV && !IS_PUBLIC
 const TRANSLATION_META_COLUMNS = new Set(['id', 'file', 'publishedAt', 'source', 'sourcedraft', 'updatedAt'])
 
 interface TranslationRow {
@@ -49,6 +52,7 @@ export function DataView() {
   const [confirmReset, setConfirmReset] = useState(false)
   const [importing, setImporting] = useState(false)
   const [purging, setPurging] = useState(false)
+  const [writingLocal, setWritingLocal] = useState<'public' | 'review' | null>(null)
   const [translationImporting, setTranslationImporting] = useState(false)
   const [publishedAt, setPublishedAt] = useState(() => localStorage.getItem(PUBLIC_STAMP_KEY) ?? '')
 
@@ -107,6 +111,38 @@ export function DataView() {
     localStorage.setItem(PUBLIC_STAMP_KEY, data.updatedAt)
     setPublishedAt(data.updatedAt)
     notify('已导出发布数据，请把 public.json 放到 data/public.json 后提交', 'success')
+  }
+
+  const writeToRepo = async (target: 'public' | 'review') => {
+    const isPublic = target === 'public'
+    const message = isPublic
+      ? '确认把当前数据裁剪成公开内容并写入仓库 data/public.json？旧文件会先备份。'
+      : '确认把完整审核数据写入仓库 data/userdata.json？其中包含备注等私有内容，该文件已被 gitignore。旧文件会先备份。'
+    if (!window.confirm(message)) return
+    setWritingLocal(target)
+    try {
+      const payload = isPublic ? buildPublicData(data) : data
+      const res = await fetch(`/__admin/write-data?target=${target}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const json = (await res.json().catch(() => null)) as
+        | { ok?: boolean; error?: string; path?: string; backup?: string | null; writtenAt?: string; items?: number }
+        | null
+      if (!res.ok || !json?.ok) throw new Error(json?.error || `写入失败（HTTP ${res.status}）`)
+      if (isPublic) {
+        localStorage.setItem(PUBLIC_STAMP_KEY, data.updatedAt)
+        setPublishedAt(data.updatedAt)
+      }
+      const time = json.writtenAt ? new Date(json.writtenAt).toLocaleTimeString() : ''
+      const backup = json.backup ? `，备份 ${json.backup}` : ''
+      notify(`已写入 ${json.path}（${json.items ?? 0} 条）${backup}，${time}`, 'success')
+    } catch (error) {
+      notify(`写入失败：${(error as Error).message}`, 'error')
+    } finally {
+      setWritingLocal(null)
+    }
   }
 
   const exportReview = () => {
@@ -319,6 +355,33 @@ export function DataView() {
               合并仓库种子标注
             </button>
           </div>
+          {CAN_WRITE_LOCAL && (
+            <>
+              <div className="divider" />
+              <p className="muted" style={{ fontSize: 12.5 }}>
+                本地开发写盘（仅 dev 管理端可用）：直接写入仓库文件，写入前自动备份到{' '}
+                <code>.cache/data-backups/</code>。公开写回会再次裁剪私有字段。
+              </p>
+              <div className="row row-wrap" style={{ gap: 8, marginTop: 12 }}>
+                <button
+                  className="btn"
+                  onClick={() => void writeToRepo('public')}
+                  disabled={writingLocal !== null}
+                >
+                  <Icon name="database" size={14} />
+                  {writingLocal === 'public' ? '写入中…' : '写入 data/public.json'}
+                </button>
+                <button
+                  className="btn"
+                  onClick={() => void writeToRepo('review')}
+                  disabled={writingLocal !== null}
+                >
+                  <Icon name="check" size={14} />
+                  {writingLocal === 'review' ? '写入中…' : '写入审核数据'}
+                </button>
+              </div>
+            </>
+          )}
           <div className="divider" />
           <div className="panel-head">
             <h3>危险操作</h3>

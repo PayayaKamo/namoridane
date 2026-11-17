@@ -9,10 +9,11 @@
     "data:force": "node scripts/build-index.mjs --force",
     "ocr": "node scripts/ocr-dates.mjs",
     "import": "node scripts/import-images.mjs",
+    "import:data": "node scripts/import-data.mjs",
     "dev": "node scripts/build-index.mjs --mode=admin && vite --mode admin",
     "build": "npm run build:admin",
     "build:admin": "node scripts/build-index.mjs --mode=admin && tsc -b && vite build --mode admin",
-    "build:public": "node scripts/build-index.mjs --mode=public && tsc -b && vite build --mode public",
+    "build:public": "node scripts/build-index.mjs --mode=public && tsc -b && vite build --mode public && node scripts/build-index.mjs --mode=admin",
     "purge": "node scripts/purge-trash.mjs",
     "preview": "vite preview",
     "deploy": "npm run build:public && gh-pages -d dist"
