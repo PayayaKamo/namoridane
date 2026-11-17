@@ -7,6 +7,7 @@ import { IS_PUBLIC } from '../lib/appMode'
 import { restoreFilesFromTrash } from '../lib/trash'
 
 const PUBLIC_PATHS = new Set(['/', '/calendar', '/gallery', '/storylines', '/reader', '/search', '/characters', '/stickers'])
+const SIDEBAR_KEY = 'namori.sidebar.collapsed'
 
 const PAGE_TITLES: Record<string, { eyebrow: string; title: string }> = {
   home: { eyebrow: 'Overview', title: '概览' },
@@ -54,7 +55,12 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
   const searchRef = useRef<HTMLInputElement>(null)
   const [term, setTerm] = useState(route.query.get('q') ?? '')
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === '1')
   const [undoVisible, setUndoVisible] = useState(false)
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0')
+  }, [collapsed])
 
   useEffect(() => {
     if (!lastDeletion?.length) {
@@ -160,7 +166,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${collapsed ? ' is-collapsed' : ''}`}>
       {mobileOpen && (
         <button className="mobile-nav-backdrop" onClick={() => setMobileOpen(false)} aria-label="关闭导航菜单" />
       )}
@@ -198,6 +204,16 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
               ))}
             </div>
           ))}
+          <button
+            className="nav-item sidebar-toggle"
+            onClick={() => setCollapsed((value) => !value)}
+            title={collapsed ? '展开侧栏' : '收起侧栏'}
+            aria-label={collapsed ? '展开侧栏' : '收起侧栏'}
+            aria-pressed={collapsed}
+          >
+            <Icon name={collapsed ? 'right' : 'left'} className="nav-icon" size={17} />
+            <span className="nav-text">{collapsed ? '展开侧栏' : '收起侧栏'}</span>
+          </button>
         </nav>
         <div className="sidebar-foot">
           <div className="sidebar-meta">

@@ -320,6 +320,81 @@ hr {
   font-variant-numeric: tabular-nums;
 }
 
+/* 手动收起侧栏：只留图标窄栏，主内容区自动变宽 */
+.app-shell {
+  transition: grid-template-columns 0.18s var(--ease);
+}
+
+/* 收起态只在宽屏由用户手动触发；窄屏本身已是图标窄栏 */
+@media (min-width: 1181px) {
+  .app-shell.is-collapsed {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+.app-shell.is-collapsed .sidebar {
+  padding: 18px 10px;
+  align-items: center;
+}
+
+.app-shell.is-collapsed .brand {
+  padding: 0 0 14px;
+  justify-content: center;
+}
+
+.app-shell.is-collapsed .brand-text,
+.app-shell.is-collapsed .nav-label,
+.app-shell.is-collapsed .nav-item .nav-text,
+.app-shell.is-collapsed .sidebar-meta,
+.app-shell.is-collapsed .sidebar-foot .btn span {
+  display: none;
+}
+
+.app-shell.is-collapsed .nav,
+.app-shell.is-collapsed .sidebar-foot {
+  width: 100%;
+}
+
+.app-shell.is-collapsed .nav-item {
+  width: 46px;
+  height: 44px;
+  justify-content: center;
+  padding: 0;
+}
+
+.app-shell.is-collapsed .nav-item.active::before {
+  left: -10px;
+}
+
+.app-shell.is-collapsed .nav-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 9px;
+  line-height: 16px;
+}
+
+.app-shell.is-collapsed .sidebar-foot .btn {
+  width: 44px;
+  padding: 0;
+}
+}
+
+.sidebar-toggle {
+  width: 100%;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.sidebar-toggle:hover {
+  color: var(--ink);
+}
+
 .main {
   min-width: 0;
   display: flex;
@@ -1056,6 +1131,10 @@ hr {
   .sidebar-foot .btn {
     width: 44px;
     padding: 0;
+  }
+  /* 窄屏默认就是图标窄栏，无需再收起 */
+  .sidebar-toggle {
+    display: none;
   }
 }
 

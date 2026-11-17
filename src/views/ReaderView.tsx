@@ -6,13 +6,22 @@ import { Icon } from '../components/Icon'
 import { formatFullDate, weekdayLabel } from '../lib/dates'
 
 const BASE = import.meta.env.BASE_URL
+const SCOPE_KEY = 'namori.reader.scope'
+
+type Scope = 'all' | 'diary'
+
+const dateValue = (iso: string) => {
+  const time = Date.parse(iso)
+  return Number.isNaN(time) ? 0 : time
+}
 
 export function ReaderView({ route }: { route: Route }) {
-  const { items, getDate, annotations, toggleFavorite, notify } = useStore()
-  const ordered = useMemo(
-    () => [...items].sort((a, b) => getDate(a).iso.localeCompare(getDate(b).iso) || a.postIndex - b.postIndex),
-    [items, getDate],
-  )
+  const { items, confirmedDiaryItems, getDate, annotations, toggleFavorite, notify } = useStore()
+  const [scope, setScope] = useState<Scope>(() => (localStorage.getItem(SCOPE_KEY) === 'diary' ? 'diary' : 'all'))
+  const ordered = useMemo(() => {
+    const pool = scope === 'diary' ? confirmedDiaryItems : items
+    return [...pool].sort((a, b) => getDate(a).iso.localeCompare(getDate(b).iso) || a.postIndex - b.postIndex)
+  }, [scope, items, confirmedDiaryItems, getDate])
   const startId = route.query.get('start')
   const [index, setIndex] = useState(() => {
     const found = startId ? ordered.findIndex((i) => i.id === startId) : -1
@@ -87,6 +96,36 @@ export function ReaderView({ route }: { route: Route }) {
     }
   }
 
+  // 切换范围时保留当前作品；若被过滤掉，则定位到日期最近的可用作品
+  const switchScope = (next: Scope) => {
+    if (next === scope) return
+    localStorage.setItem(SCOPE_KEY, next)
+    const current = ordered[index]
+    const pool = next === 'diary' ? confirmedDiaryItems : items
+    const nextOrdered = [...pool].sort(
+      (a, b) => getDate(a).iso.localeCompare(getDate(b).iso) || a.postIndex - b.postIndex,
+    )
+    let nextIndex = 0
+    if (current) {
+      const found = nextOrdered.findIndex((entry) => entry.id === current.id)
+      if (found >= 0) {
+        nextIndex = found
+      } else {
+        const target = dateValue(getDate(current).iso)
+        let bestDist = Infinity
+        nextOrdered.forEach((entry, position) => {
+          const dist = Math.abs(dateValue(getDate(entry).iso) - target)
+          if (dist < bestDist) {
+            bestDist = dist
+            nextIndex = position
+          }
+        })
+      }
+    }
+    setIndex(nextIndex)
+    setScope(next)
+  }
+
   return (
     <div className={`reader${chrome ? '' : ' chrome-hidden'}`} ref={shellRef}>
       <div className="reader-chrome reader-top">
@@ -96,6 +135,24 @@ export function ReaderView({ route }: { route: Route }) {
         </button>
         <div className="reader-progress">
           <div className="reader-progress-fill" style={{ width: `${((index + 1) / ordered.length) * 100}%` }} />
+        </div>
+        <div className="reader-scope" role="tablist" aria-label="翻阅范围">
+          <button
+            className={scope === 'all' ? 'active' : ''}
+            onClick={() => switchScope('all')}
+            role="tab"
+            aria-selected={scope === 'all'}
+          >
+            全部
+          </button>
+          <button
+            className={scope === 'diary' ? 'active' : ''}
+            onClick={() => switchScope('diary')}
+            role="tab"
+            aria-selected={scope === 'diary'}
+          >
+            绘日记
+          </button>
         </div>
         <span className="num reader-count">
           {index + 1} / {ordered.length}

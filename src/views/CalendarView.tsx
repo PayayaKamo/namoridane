@@ -280,11 +280,6 @@ export function CalendarView({ route }: { route: Route }) {
             </button>
           ))}
         </div>
-        <div className="cal-legend">
-          <span><i className="legend-dot filled" />有画</span>
-          <span><i className="legend-dot empty" />缺</span>
-          <span><i className="legend-dot pending" />待校对</span>
-        </div>
       </div>
 
       <div className="cal-grid">
