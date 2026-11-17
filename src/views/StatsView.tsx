@@ -2,9 +2,26 @@ import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
 import { MONTHS_CN, effectiveDate } from '../lib/dates'
+import { presetAvatarPath } from '../lib/constants'
+
+const BASE = import.meta.env.BASE_URL
 
 export function StatsView() {
-  const { items, annotations, tags, dimensions, tagUsage, collections, data, getDate } = useStore()
+  const {
+    items,
+    confirmedDiaryItems,
+    annotations,
+    tags,
+    tagMap,
+    dimensions,
+    tagUsage,
+    characters,
+    itemMap,
+    collections,
+    data,
+    getDate,
+  } = useStore()
+  const [openDims, setOpenDims] = useState<Record<string, boolean>>({ character: true })
   const [year, setYear] = useState(() => {
     const years = [...new Set(items.map((i) => getDate(i).year))].sort()
     return years[years.length - 1] ?? new Date().getFullYear()
@@ -91,14 +108,95 @@ export function StatsView() {
           dim,
           tags: tags
             .filter((t) => t.dimensionId === dim.id && (tagUsage[t.id] ?? 0) > 0)
-            .sort((a, b) => (tagUsage[b.id] ?? 0) - (tagUsage[a.id] ?? 0))
-            .slice(0, 6),
+            .sort((a, b) => (tagUsage[b.id] ?? 0) - (tagUsage[a.id] ?? 0)),
         }))
         .filter((g) => g.tags.length > 0),
     [dimensions, tags, tagUsage],
   )
 
-  const maxTag = Math.max(1, ...tags.map((t) => tagUsage[t.id] ?? 0))
+  // 人物组合：只取已确认绘日记的人物标注，同图内角色两两配对
+  const cast = useMemo(() => {
+    const charTagIds = new Set(tags.filter((tag) => tag.dimensionId === 'character').map((tag) => tag.id))
+    const pairCounts = new Map<string, number>()
+    const doublePairCounts = new Map<string, number>()
+    const groupCounts = new Map<string, number>()
+    const singleCounts = new Map<string, number>()
+    let single = 0
+    let double = 0
+    let multi = 0
+    for (const item of confirmedDiaryItems) {
+      const ids = [...new Set((annotations[item.id]?.tags ?? []).filter((id) => charTagIds.has(id)))].sort()
+      if (!ids.length) continue
+      if (ids.length === 1) {
+        single++
+        singleCounts.set(ids[0], (singleCounts.get(ids[0]) ?? 0) + 1)
+        continue
+      }
+      if (ids.length === 2) {
+        double++
+        const key = ids.join('|')
+        doublePairCounts.set(key, (doublePairCounts.get(key) ?? 0) + 1)
+      } else {
+        multi++
+        const groupKey = ids.join('|')
+        groupCounts.set(groupKey, (groupCounts.get(groupKey) ?? 0) + 1)
+      }
+      for (let i = 0; i < ids.length; i += 1) {
+        for (let j = i + 1; j < ids.length; j += 1) {
+          const key = `${ids[i]}|${ids[j]}`
+          pairCounts.set(key, (pairCounts.get(key) ?? 0) + 1)
+        }
+      }
+    }
+    const toRanking = (counts: Map<string, number>) =>
+      [...counts.entries()]
+        .map(([key, count]) => ({ ids: key.split('|'), count }))
+        .sort((a, b) => b.count - a.count || a.ids.join().localeCompare(b.ids.join()))
+    return {
+      single,
+      double,
+      multi,
+      total: single + double + multi,
+      pairImages: double + multi,
+      pairs: toRanking(pairCounts),
+      groups: toRanking(groupCounts),
+      topSingle: toRanking(singleCounts)[0],
+      topDoublePair: toRanking(doublePairCounts)[0],
+    }
+  }, [confirmedDiaryItems, annotations, tags])
+
+  const characterMap = useMemo(() => new Map(characters.map((c) => [c.id, c])), [characters])
+
+  const pct = (count: number, total: number) => (total ? `${Math.round((count / total) * 100)}%` : '0%')
+
+  const castNames = (ids: string[]) => ids.map((id) => tagMap.get(id)?.name ?? id).join(' × ')
+
+  const castAvatar = (id: string) => {
+    const tag = tagMap.get(id)
+    const character = characterMap.get(id)
+    const avatarItem = character?.avatarItemId ? itemMap.get(character.avatarItemId) : undefined
+    const position = character?.avatarCrop
+      ? `${Math.round(character.avatarCrop.cx * 100)}% ${Math.round(character.avatarCrop.cy * 100)}%`
+      : '50% 50%'
+    return (
+      <span key={id} className="cast-avatar" style={{ background: tag?.color }} title={tag?.name}>
+        {character?.avatarDataUrl ? (
+          <img src={character.avatarDataUrl} alt="" />
+        ) : avatarItem ? (
+          <img src={`${BASE}${avatarItem.thumb}`} alt="" style={{ objectPosition: position }} />
+        ) : character?.avatar ? (
+          <img src={`${BASE}${character.avatar}`} alt="" loading="lazy" />
+        ) : presetAvatarPath(id) ? (
+          <img src={`${BASE}${presetAvatarPath(id)}`} alt="" loading="lazy" />
+        ) : (
+          (tag?.name ?? '?').slice(0, 1)
+        )}
+      </span>
+    )
+  }
+
+  const topDoublePair = cast.topDoublePair
+  const topGroup = cast.groups[0]
 
   return (
     <div className="stats-view">
@@ -219,30 +317,124 @@ export function StatsView() {
       <section className="panel">
         <div className="panel-head">
           <h3>标签分布</h3>
-          <span className="faint">按维度分组 · 前 6 名</span>
+          <span className="faint">按维度分组 · 全部标签</span>
         </div>
         {tagGroups.length ? (
           <div className="tag-dist-grid">
-            {tagGroups.map(({ dim, tags: groupTags }) => (
-              <div key={dim.id} className="tag-dist">
-                <div className="field-label">{dim.name}</div>
-                {groupTags.map((tag) => (
-                  <div key={tag.id} className="dist-row">
-                    <span className="dist-name">{tag.name}</span>
-                    <span className="dist-track">
-                      <span
-                        className="dist-fill"
-                        style={{ width: `${((tagUsage[tag.id] ?? 0) / maxTag) * 100}%`, background: tag.color }}
-                      />
+            {tagGroups.map(({ dim, tags: groupTags }) => {
+              const open = openDims[dim.id] ?? false
+              const groupTotal = groupTags.reduce((sum, tag) => sum + (tagUsage[tag.id] ?? 0), 0)
+              const groupMax = Math.max(1, ...groupTags.map((tag) => tagUsage[tag.id] ?? 0))
+              return (
+                <div key={dim.id} className={`tag-dist${open ? ' is-open' : ''}`}>
+                  <button
+                    className="tag-dist-head"
+                    onClick={() => setOpenDims((prev) => ({ ...prev, [dim.id]: !open }))}
+                    aria-expanded={open}
+                  >
+                    <span className="field-label">{dim.name}</span>
+                    <span className="num faint">{groupTags.length} 项 · {groupTotal} 次</span>
+                    <span className="tag-dist-caret" aria-hidden>
+                      {open ? '▾' : '▸'}
                     </span>
-                    <span className="num dist-count">{tagUsage[tag.id] ?? 0}</span>
-                  </div>
-                ))}
+                  </button>
+                  {open && (
+                    <div className="tag-bars-scroll">
+                      <div className="tag-bars">
+                        {groupTags.map((tag) => {
+                          const count = tagUsage[tag.id] ?? 0
+                          return (
+                            <div key={tag.id} className="tag-bar" title={`${tag.name} · ${count} 次`}>
+                              <span className="num tag-bar-value">{count}</span>
+                              <div className="tag-bar-track">
+                                <div
+                                  className="tag-bar-fill"
+                                  style={{ height: `${(count / groupMax) * 100}%`, background: tag.color }}
+                                />
+                              </div>
+                              <span className="tag-bar-name">{tag.name}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="faint">还没有使用标签。去图库多选作品批量打标签后，这里会出现分布。</p>
+        )}
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h3>人物组合</h3>
+          <span className="faint">仅统计已确认的绘日记 · 同图内角色两两配对</span>
+        </div>
+        <div className="cast-buckets">
+          <div className="cast-card">
+            <div className="cast-card-head">
+              <span>单人</span>
+              <span className="num">{cast.single} 张</span>
+            </div>
+            <div className="cast-share num">{pct(cast.single, cast.total)}</div>
+            <div className="cast-top">
+              出场最多：{cast.topSingle ? `${castNames(cast.topSingle.ids)} · ${cast.topSingle.count} 张` : '暂无'}
+            </div>
+          </div>
+          <div className="cast-card">
+            <div className="cast-card-head">
+              <span>双人</span>
+              <span className="num">{cast.double} 张</span>
+            </div>
+            <div className="cast-share num">{pct(cast.double, cast.total)}</div>
+            <div className="cast-top">
+              最常见搭档：{topDoublePair ? `${castNames(topDoublePair.ids)} · ${topDoublePair.count} 张` : '暂无'}
+            </div>
+          </div>
+          <div className="cast-card">
+            <div className="cast-card-head">
+              <span>多人（3 人及以上）</span>
+              <span className="num">{cast.multi} 张</span>
+            </div>
+            <div className="cast-share num">{pct(cast.multi, cast.total)}</div>
+            <div className="cast-top">
+              最常见群像：{topGroup ? `${castNames(topGroup.ids)} · ${topGroup.count} 张` : '暂无'}
+            </div>
+          </div>
+        </div>
+        <p className="cast-note">
+          口径：同一张图内的角色两两配对，3 人及以上会拆成多组（如 3 人 = 3 组），所以下方占比以「有 2
+          人及以上标注的图」为分母，合计可能超过 100%。另有 {cast.multi} 张 3 人及以上群像单独计数，避免被误读为
+          CP。
+        </p>
+        {cast.pairs.length ? (
+          <div className="cast-pairs">
+            {cast.pairs.map((pair) => (
+              <div key={pair.ids.join('|')} className="cast-pair-row">
+                <span className="cast-pair-who">
+                  {castAvatar(pair.ids[0])}
+                  {castAvatar(pair.ids[1])}
+                </span>
+                <span className="cast-pair-name">{castNames(pair.ids)}</span>
+                <span className="cast-pair-track">
+                  <span
+                    className="cast-pair-fill"
+                    style={{ width: `${(pair.count / Math.max(1, cast.pairs[0].count)) * 100}%` }}
+                  />
+                </span>
+                <span className="num cast-pair-count">
+                  {pair.count} 张 · {pct(pair.count, cast.pairImages)}
+                </span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="faint">还没有使用标签。去图库多选作品批量打标签后，这里会出现分布。</p>
+          <p className="faint">
+            暂时没有可配对的出场标注。至少需要一张已确认绘日记标注了 2 位及以上角色，组合才会出现在这里。
+          </p>
         )}
       </section>
     </div>

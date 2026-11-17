@@ -2335,38 +2335,227 @@
   gap: 7px;
 }
 
-.dist-row {
-  display: grid;
-  grid-template-columns: 74px 1fr 30px;
+/* 标签分布：按维度分组、可折叠，长列表内部滚动 */
+.tag-dist-head {
+  display: flex;
   align-items: center;
   gap: 7px;
+  width: 100%;
+  padding: 0 0 8px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tag-dist-head .num {
+  margin-left: auto;
+  font-size: 10.5px;
+}
+
+.tag-dist-caret {
+  width: 12px;
+  text-align: center;
+  color: var(--faint);
+  font-size: 10px;
+}
+
+/* 标签竖柱：全量横排，超出时区块内横向滚动 */
+.tag-bars-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 10px 2px 2px;
+  scrollbar-width: thin;
+}
+
+.tag-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 188px;
+  width: max-content;
+  min-width: 100%;
+}
+
+.tag-bar {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.tag-bar-value {
+  height: 12px;
+  font-size: 9.5px;
+  line-height: 12px;
+  color: var(--muted);
+}
+
+.tag-bar-track {
+  flex: 1;
+  width: 22px;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 4px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.tag-bar-fill {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.4s var(--ease);
+}
+
+.tag-bar-name {
+  width: 100%;
+  min-height: 26px;
+  font-size: 10px;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--ink-2);
+  word-break: break-all;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* 人物组合与构图分布 */
+.cast-buckets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cast-card {
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.cast-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.cast-share {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  line-height: 1.2;
+  margin-top: 4px;
+}
+
+.cast-top {
+  margin-top: 4px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.cast-note {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 11.5px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+
+.cast-pairs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.cast-pair-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1.2fr) minmax(50px, 0.9fr) 82px;
+  align-items: center;
+  gap: 8px;
   font-size: 11px;
 }
 
-.dist-name {
-  color: var(--ink-2);
+.cast-pair-who {
+  display: flex;
+  gap: 2px;
+}
+
+.cast-avatar {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 50%;
+  overflow: hidden;
+  font-size: 11px;
+  color: #fff;
+}
+
+.cast-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cast-pair-name {
+  font-size: 11.5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.dist-track {
-  height: 6px;
-  border-radius: 10px;
+.cast-pair-track {
+  height: 8px;
+  border-radius: 4px;
   background: var(--surface-3);
   overflow: hidden;
 }
 
-.dist-fill {
+.cast-pair-fill {
   display: block;
   height: 100%;
-  border-radius: 10px;
+  border-radius: 4px;
+  background: var(--accent);
 }
 
-.dist-count {
+.cast-pair-count {
   text-align: right;
-  color: var(--faint);
-  font-size: 10px;
+  color: var(--ink-2);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .cast-buckets {
+    grid-template-columns: 1fr;
+  }
+  .cast-pair-row {
+    grid-template-columns: 44px minmax(0, 1fr) 52px 74px;
+    gap: 6px;
+  }
+  .cast-pair-name {
+    font-size: 11px;
+  }
+  .cast-pair-count {
+    font-size: 10px;
+  }
 }
 
 .stats-view .panel,
