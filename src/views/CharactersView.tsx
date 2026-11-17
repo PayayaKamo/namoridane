@@ -85,16 +85,16 @@ export function CharactersView({ route }: { route: Route }) {
   const coverOverrideCount = characters.filter((character) => character.coverItemId || character.coverCrop).length
   const clearCoverOverrides = () => {
     if (!coverOverrideCount) {
-      notify('当前没有封面覆盖')
+      notify('当前没有封面覆盖，所有角色都是默认显示')
       return
     }
-    if (!window.confirm(`将清空 ${coverOverrideCount} 位角色的封面来源与焦点/缩放，恢复预置头像链路。继续？`)) return
+    if (!window.confirm(`将清空 ${coverOverrideCount} 个角色的封面来源与焦点/缩放，全部恢复默认封面。继续？`)) return
     for (const character of characters) {
       if (character.coverItemId || character.coverCrop) {
         updateCharacter(character.id, { coverItemId: undefined, coverCrop: undefined })
       }
     }
-    notify(`已清空 ${coverOverrideCount} 位角色的封面覆盖`, 'success')
+    notify(`已恢复 ${coverOverrideCount} 个角色的默认封面`, 'success')
   }
 
   return (
@@ -123,9 +123,9 @@ export function CharactersView({ route }: { route: Route }) {
                 <Icon name="tag" size={14} />
                 管理人物标签
               </button>
-              <button className="btn" onClick={clearCoverOverrides} disabled={!coverOverrideCount}>
+              <button className="btn" onClick={clearCoverOverrides}>
                 <Icon name="trash" size={14} />
-                清空封面覆盖{coverOverrideCount ? `（${coverOverrideCount}）` : ''}
+                全部恢复默认封面{coverOverrideCount ? `（${coverOverrideCount}）` : ''}
               </button>
             </>
           )}
@@ -141,16 +141,21 @@ export function CharactersView({ route }: { route: Route }) {
             const coverItem = character?.coverItemId
               ? items.find((item) => item.id === character.coverItemId)
               : undefined
-            const coverCrop = character?.coverCrop
+            // 指定的封面作品已不存在时忽略旧焦点，避免默认头像出现缩放残留或错位
+            const coverMissing = Boolean(character?.coverItemId) && !coverItem
+            const coverCrop = coverMissing ? undefined : character?.coverCrop
+            const cropX = Math.min(100, Math.max(0, coverCrop?.x ?? 50))
+            const cropY = Math.min(100, Math.max(0, coverCrop?.y ?? 50))
+            const cropZoom = Math.min(2, Math.max(1, coverCrop?.zoom ?? 1))
             const position = coverCrop
-              ? `${coverCrop.x}% ${coverCrop.y}%`
+              ? `${cropX}% ${cropY}%`
               : character?.avatarCrop
                 ? `${Math.round(character.avatarCrop.cx * 100)}% ${Math.round(character.avatarCrop.cy * 100)}%`
                 : '50% 50%'
             const coverStyle = {
               objectPosition: position,
               transformOrigin: position,
-              transform: coverCrop && coverCrop.zoom !== 1 ? `scale(${coverCrop.zoom})` : undefined,
+              transform: coverCrop && cropZoom !== 1 ? `scale(${cropZoom})` : undefined,
             }
             const profile = character?.profile ?? presetCharacterProfile(tag.id)
             return (
