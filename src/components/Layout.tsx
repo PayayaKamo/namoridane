@@ -330,7 +330,25 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
             <Icon name="info" />
           </button>
         </header>
-        <div className="content">{children}</div>
+        <div className="content">
+          {children}
+          <footer className="site-footer">
+            <span className="site-footer-copy">水母绘日记 · Namori Diary</span>
+            <a className="site-footer-link" href="https://github.com/payayakamo" target="_blank" rel="noopener noreferrer">
+              GitHub 主页
+              <Icon name="share" size={12} />
+            </a>
+            <a
+              className="site-footer-link"
+              href="https://github.com/PayayaKamo/namoridane"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              站点仓库
+              <Icon name="share" size={12} />
+            </a>
+          </footer>
+        </div>
       </div>
       {!IS_PUBLIC && undoVisible && lastDeletion?.length ? (
         <div className="undo-bar" role="status">
