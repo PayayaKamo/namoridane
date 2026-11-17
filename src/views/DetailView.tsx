@@ -3,7 +3,7 @@ import { useStore } from '../state/store'
 import { navigate, closeItem } from '../lib/router'
 import { formatFullDate, formatMonthDay, weekdayLabel } from '../lib/dates'
 import { similarItems } from '../lib/filtering'
-import { STUDY_FIELDS, EMPTY_STUDY } from '../lib/constants'
+import { STUDY_FIELDS, EMPTY_STUDY, presetAvatarPath } from '../lib/constants'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
 import { DateEditor } from '../components/DateEditor'
@@ -396,6 +396,10 @@ export function DetailView({ itemId }: { itemId: string }) {
                                   <img src={character.avatarDataUrl} alt="" />
                                 ) : avatarItem ? (
                                   <img src={`${BASE}${avatarItem.thumb}`} alt="" style={{ objectPosition: position }} />
+                                ) : character?.avatar ? (
+                                  <img src={`${BASE}${character.avatar}`} alt="" loading="lazy" />
+                                ) : presetAvatarPath(tag!.id) ? (
+                                  <img src={`${BASE}${presetAvatarPath(tag!.id)}`} alt="" loading="lazy" />
                                 ) : (
                                   tag!.name.slice(0, 1)
                                 )}
@@ -536,6 +540,10 @@ export function DetailView({ itemId }: { itemId: string }) {
                     </div>
                     <div className="meta-row">
                       <span>原始文件名</span>
+                      <span className="num meta-file">{item.sourceFile ?? '未记录'}</span>
+                    </div>
+                    <div className="meta-row">
+                      <span>导入后文件名</span>
                       <span className="num meta-file">{item.file}</span>
                     </div>
                     <div className="meta-row">
@@ -544,6 +552,9 @@ export function DetailView({ itemId }: { itemId: string }) {
                         {item.inferredYear}-{String(item.inferredMonth).padStart(2, '0')}-
                         {String(item.inferredDay).padStart(2, '0')}
                       </span>
+                    </div>
+                    <div className="faint" style={{ fontSize: 12, marginTop: 6 }}>
+                      发布日期来自帖子元数据；文件名是导入时按发布日期重命名的，原始 CDN 文件名保留在上方。
                     </div>
                   </section>
                 </>

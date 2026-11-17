@@ -29,6 +29,7 @@ const OUT_FILE = path.join(ROOT, 'data', 'ocr.json')
 const PS1 = path.join(__dirname, 'ocr-windows.ps1')
 
 const FORCE = process.argv.includes('--force')
+const ONLY = process.argv.find((arg) => arg.startsWith('--only='))?.split('=')[1] ?? ''
 const NAME_RE = /^(\d{4})-(\d{2})-(\d{2})-[A-Za-z0-9_-]{11}(?:-\d+)?\.jpe?g$/i
 const log = (...m) => console.log('[ocr]', ...m)
 
@@ -87,8 +88,8 @@ async function findTextBlock(file, width, height) {
   if (boxW < 24 || boxH < 14 || boxW * boxH > regionW * regionH * 0.92) {
     left = 0
     top = 0
-    boxW = Math.round(width * 0.4)
-    boxH = Math.round(height * 0.16)
+    boxW = Math.round(width * 0.5)
+    boxH = Math.round(height * 0.22)
   }
   return { left, top, width: boxW, height: boxH }
 }
@@ -108,8 +109,8 @@ async function prepareCrops(name) {
   const box = (await findTextBlock(file, width, height)) ?? {
     left: 0,
     top: 0,
-    width: Math.round(width * 0.4),
-    height: Math.round(height * 0.16),
+    width: Math.round(width * 0.5),
+    height: Math.round(height * 0.22),
   }
 
   const scale = Math.max(2, Math.min(4, Math.round(360 / Math.max(1, box.width))))
@@ -127,10 +128,17 @@ function normalizeText(text) {
     .replace(/[－ー—−]/g, '-')
     .replace(/[　]/g, ' ')
     // Windows OCR 常把手写「月」认成这些形近字
-    .replace(/[目且巪冃冚冄]/g, '月')
-    // 手写数字常被拆开：把「2 0 日」「1 0 月」粘回去
+    .replace(/[目且巪冃冚冄闫闰]|冂/g, '月')
+    // 手写「1」常被认成反斜杠、竖线或字母 l / I；只在该位置像数字时替换
+    .replace(/\\/g, ' 1 ')
+    .replace(/(?<=\d)\s*[|lI]\s*(?=\d|\s*(?:日|月|$))/g, '1')
+    // 行尾的 B / 白 / 曰 多半是「日」
+    .replace(/(?<=\d)\s*[B白曰]\s*$/g, ' 日')
+    // 手写数字常被拆开：把「2 0 日」「1 0 月」「3 1 日」粘回去
     .replace(/(\d)\s+(\d)(?=\s*月)/g, '$1$2')
     .replace(/(\d)\s+(\d)(?=\s*日)/g, '$1$2')
+    // 「5 月 3 1」这类月份后面被拆开的两位日号（没有「日」字结尾）也要粘回去
+    .replace(/(月)\s*(\d)\s+(\d)(?!\d)/g, '$1$2$3')
     .replace(/\s+/g, ' ')
     .trim()
 }
@@ -159,6 +167,24 @@ function extractMatches(text) {
     const day = Number(m[2])
     if (validMonthDay(month, day)) {
       out.push({ raw: m[0].trim(), year: 0, month, day, base: 0.7, atStart: m.index === 0 })
+    }
+  }
+  // OCR 把「月」误认成「日」时：5 日 31 日 也要能读成 5/31
+  const confused = /(\d{1,2})\s*[月日]\s*(\d{1,2})\s*日/g
+  while ((m = confused.exec(text))) {
+    const month = Number(m[1])
+    const day = Number(m[2])
+    if (validMonthDay(month, day)) {
+      out.push({ raw: m[0].trim(), year: 0, month, day, base: 0.6, atStart: m.index === 0 })
+    }
+  }
+  // 只剩三位数字 + 日（分隔符完全丢失）：5 31 日 / 531 日
+  const compact = /(\d{1,2})(\d{2})\s*日/g
+  while ((m = compact.exec(text))) {
+    const month = Number(m[1])
+    const day = Number(m[2])
+    if (validMonthDay(month, day)) {
+      out.push({ raw: m[0].trim(), year: 0, month, day, base: 0.45, atStart: m.index === 0 })
     }
   }
   const slash = /(\d{1,2})\s*[/.-]\s*(\d{1,2})(?!\d)/g
@@ -225,6 +251,7 @@ async function main() {
 
   const names = (await fsp.readdir(SRC_DIR))
     .filter((name) => /\.jpe?g$/i.test(name))
+    .filter((name) => !ONLY || name.includes(ONLY))
     .sort()
   log(`共 ${names.length} 张图片，准备左上角裁切…`)
 
@@ -247,6 +274,11 @@ async function main() {
     }
   }
   const missing = cropNames.filter((name) => typeof raw[name] !== 'string')
+  if (FORCE) {
+    for (const name of cropNames) delete raw[name]
+    missing.length = 0
+    missing.push(...cropNames)
+  }
   if (missing.length) {
     log(`调用 Windows OCR 识别 ${cropNames.length} 个裁切（缺失 ${missing.length} 个）…`)
     execFileSync(
@@ -301,7 +333,13 @@ async function main() {
   log(`结果写入 ${path.relative(ROOT, OUT_FILE)}，用时 ${((Date.now() - started) / 1000).toFixed(1)}s`)
 }
 
-main().catch((err) => {
-  console.error('[ocr] 失败：', err)
-  process.exit(1)
-})
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+
+if (isMain) {
+  main().catch((err) => {
+    console.error('[ocr] 失败：', err)
+    process.exit(1)
+  })
+}
+
+export { normalizeText, extractMatches, candidatesOf }

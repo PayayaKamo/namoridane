@@ -4,7 +4,7 @@ import { Icon } from '../components/Icon'
 import { Empty, Modal } from '../components/Modal'
 import { effectiveDate } from '../lib/dates'
 import { navigate } from '../lib/router'
-import { CHARACTER_PRESETS } from '../lib/constants'
+import { CHARACTER_PRESETS, presetAvatarPath } from '../lib/constants'
 import { IS_PUBLIC } from '../lib/appMode'
 import type { Character, DiaryItem, Tag } from '../types'
 
@@ -112,6 +112,10 @@ export function CharactersView() {
                     <img src={character.avatarDataUrl} alt={tag.name} />
                   ) : avatarItem ? (
                     <img src={`${BASE}${avatarItem.thumb}`} alt={tag.name} style={{ objectPosition: position }} />
+                  ) : character?.avatar ? (
+                    <img src={`${BASE}${character.avatar}`} alt={tag.name} loading="lazy" />
+                  ) : presetAvatarPath(tag.id) ? (
+                    <img src={`${BASE}${presetAvatarPath(tag.id)}`} alt={tag.name} loading="lazy" />
                   ) : cover ? (
                     <img src={`${BASE}${cover.thumb}`} alt={tag.name} loading="lazy" />
                   ) : (
@@ -249,6 +253,10 @@ function CharacterEditModal({
           <span className="character-avatar" style={{ background: color, width: 56, height: 56 }}>
             {avatarDataUrl ? (
               <img src={avatarDataUrl} alt="" />
+            ) : character?.avatar ? (
+              <img src={`${BASE}${character.avatar}`} alt="" />
+            ) : presetAvatarPath(tag.id) ? (
+              <img src={`${BASE}${presetAvatarPath(tag.id)}`} alt="" />
             ) : latest ? (
               <img src={`${BASE}${latest.thumb}`} alt="" />
             ) : (

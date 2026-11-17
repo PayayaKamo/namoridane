@@ -18,6 +18,8 @@ export interface DiaryItem {
   id: string
   shortcode: string
   file: string
+  /** 导入时的原始文件名（Instagram CDN 名，含 _n 后缀）；旧索引可能为 null */
+  sourceFile: string | null
   postIndex: number
   postCount: number
   /** 发布日期，来自文件名；日期未知时为空字符串 */
@@ -123,6 +125,10 @@ export interface Character {
   avatarCrop?: CropParams
   /** 或直接上传的小图（data URL） */
   avatarDataUrl?: string
+  /** 占位头像（相对站点根，如 characters/char_x.webp）；上传/裁切头像优先 */
+  avatar?: string
+  /** 占位头像来源（URL 或站点名），便于替换时追溯 */
+  avatarSource?: string
   note?: string
   createdAt: string
 }

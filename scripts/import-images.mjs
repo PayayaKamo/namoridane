@@ -32,6 +32,8 @@ const DEST_DIR = path.join(ROOT, 'images', 'original')
 const CACHE_DIR = path.join(ROOT, '.cache')
 const MANIFEST_FILE = path.join(CACHE_DIR, 'import-manifest.json')
 const REPORT_FILE = path.join(CACHE_DIR, 'import-report.json')
+/** 提交到仓库的映射：目标文件名 -> 导入时的原始文件名（Instagram CDN 名） */
+const SOURCE_NAMES_FILE = path.join(ROOT, 'data', 'source-names.json')
 const MANIFEST_VERSION = 1
 
 const args = process.argv.slice(2)
@@ -71,7 +73,13 @@ async function walk(dir, match) {
 async function loadManifest() {
   try {
     const parsed = JSON.parse(await fsp.readFile(MANIFEST_FILE, 'utf8'))
-    if (parsed && parsed.version === MANIFEST_VERSION && parsed.files) return parsed
+    if (parsed && parsed.version === MANIFEST_VERSION && parsed.files) {
+      // 旧清单没有 sourceName：用 source 的 basename 补齐，保证历史数据也能追溯
+      for (const entry of Object.values(parsed.files)) {
+        if (!entry.sourceName && entry.source) entry.sourceName = path.basename(entry.source)
+      }
+      return parsed
+    }
   } catch {
     // 不存在或损坏时重建
   }
@@ -287,6 +295,7 @@ async function main() {
       file: name,
       bytes: stat.size,
       source: file,
+      sourceName: basename,
       importedAt: new Date().toISOString(),
     }
     usedNames.add(name)
@@ -298,6 +307,13 @@ async function main() {
 
   if (!DRY_RUN) {
     await fsp.writeFile(MANIFEST_FILE, JSON.stringify(manifest, null, 2))
+    const sourceNames = {}
+    for (const entry of Object.values(manifest.files)) {
+      if (entry.file && entry.sourceName) sourceNames[entry.file] = entry.sourceName
+    }
+    const sorted = Object.fromEntries(Object.entries(sourceNames).sort(([a], [b]) => a.localeCompare(b)))
+    await fsp.writeFile(SOURCE_NAMES_FILE, JSON.stringify(sorted, null, 2) + '\n')
+    log(`原始文件名映射：${Object.keys(sorted).length} 条 -> ${path.relative(ROOT, SOURCE_NAMES_FILE)}`)
   }
   await fsp.writeFile(REPORT_FILE, JSON.stringify(report, null, 2))
 

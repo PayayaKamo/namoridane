@@ -46,6 +46,7 @@ const OUT_DATA = path.join(ROOT, 'public', 'data')
 const CACHE_DIR = path.join(ROOT, '.cache')
 const CACHE_FILE = path.join(CACHE_DIR, 'images.json')
 const OCR_FILE = path.join(ROOT, 'data', 'ocr.json')
+const SOURCE_NAMES_FILE = path.join(ROOT, 'data', 'source-names.json')
 const PUBLIC_DATA_FILE = path.join(ROOT, 'data', 'public.json')
 
 const MODE =
@@ -58,7 +59,7 @@ const MODE =
 const THUMB_WIDTH = 480
 const LARGE_WIDTH = 1400
 const CACHE_VERSION = 4
-const INDEX_VERSION = 6
+const INDEX_VERSION = 7
 const CONCURRENCY = 6
 
 const NAME_RE = /^(\d{4})-(\d{2})-(\d{2})-([A-Za-z0-9_-]{11})(?:-(\d+))?\.jpe?g$/i
@@ -295,6 +296,18 @@ async function loadOcrResults() {
   }
 }
 
+/** 导入时保留的原始 CDN 文件名：目标文件名 -> sourceFile */
+async function loadSourceNames() {
+  try {
+    const parsed = JSON.parse(await fsp.readFile(SOURCE_NAMES_FILE, 'utf8'))
+    log(`原始文件名映射：${Object.keys(parsed).length} 条`)
+    return parsed
+  } catch {
+    log('未找到 data/source-names.json，索引不含 sourceFile')
+    return {}
+  }
+}
+
 /** 公开站种子：去掉非绘日记、私密备注、未确认推测日期与草稿故事线 */
 function prunePublicData(data) {
   const items = {}
@@ -338,6 +351,7 @@ async function main() {
   const started = Date.now()
   await fsp.mkdir(SRC_DIR, { recursive: true })
   const ocrFiles = await loadOcrResults()
+  const sourceNames = await loadSourceNames()
   await Promise.all([
     fsp.mkdir(OUT_THUMB, { recursive: true }),
     fsp.mkdir(OUT_LARGE, { recursive: true }),
@@ -449,7 +463,7 @@ async function main() {
     }
     // 日记日期的默认值：OCR 候选优先，没有 OCR 时用发布日期前一天（明确标注为推测）
     const ocrEntry = ocrFiles[e.name]
-    const ocrBest = ocrEntry?.best && ocrEntry.best.year ? ocrEntry.best : null
+    const ocrBest = ocrEntry?.best ?? null
     const inferred = ocrBest
       ? { year: ocrBest.year, month: ocrBest.month, day: ocrBest.day }
       : e.parsed.dateKnown
@@ -460,6 +474,7 @@ async function main() {
       id,
       shortcode: e.parsed.shortcode,
       file: e.name,
+      sourceFile: sourceNames[e.name] ?? null,
       postIndex,
       postCount: list.length,
       publishedAt: e.parsed.publishedAt,

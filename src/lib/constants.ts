@@ -65,6 +65,13 @@ export function defaultCharacterTags(): Tag[] {
   }))
 }
 
+const PRESET_AVATAR_IDS: ReadonlySet<string> = new Set(CHARACTER_PRESETS.map((character) => character.id))
+
+/** 预置角色在 public/characters/<id>.webp 有占位头像；用户新增角色返回 null */
+export function presetAvatarPath(tagId: string): string | null {
+  return PRESET_AVATAR_IDS.has(tagId) ? `characters/${tagId}.webp` : null
+}
+
 export const STUDY_FIELDS: { key: keyof StudyNotes; label: string; hint: string }[] = [
   { key: 'composition', label: '构图', hint: '主体位置、留白、视线引导、视角' },
   { key: 'palette', label: '配色', hint: '主色、辅助色、冷暖对比' },

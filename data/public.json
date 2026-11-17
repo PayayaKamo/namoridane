@@ -3,54 +3,307 @@
   "updatedAt": "2026-11-17T00:00:00.000Z",
   "dimensions": [],
   "tags": [
-    { "id": "char_akaza_akari", "name": "赤座灯里", "dimensionId": "character", "color": "#b0553b", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_toshinou_kyouko", "name": "岁纳京子", "dimensionId": "character", "color": "#c07a3e", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_funami_yui", "name": "船见结衣", "dimensionId": "character", "color": "#5f7663", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_yoshikawa_chinatsu", "name": "吉川千夏", "dimensionId": "character", "color": "#a45c76", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_sugiura_ayano", "name": "杉浦绫乃", "dimensionId": "character", "color": "#8d6a92", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_ikeda_chitose", "name": "池田千岁", "dimensionId": "character", "color": "#5b7f9c", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_oomuro_sakurako", "name": "大室樱子", "dimensionId": "character", "color": "#b68a4b", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_furutani_himawari", "name": "古谷向日葵", "dimensionId": "character", "color": "#6d6c9c", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_oomuro_nadeshiko", "name": "大室抚子", "dimensionId": "character", "color": "#4f7f7a", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_oomuro_hanako", "name": "大室花子", "dimensionId": "character", "color": "#7d8a52", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_miwa_ai", "name": "三轮蓝", "dimensionId": "character", "color": "#5b7f9c", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_yaeno_miho", "name": "八重野美穗", "dimensionId": "character", "color": "#a45c76", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_sonokawa_megumi", "name": "园川惠", "dimensionId": "character", "color": "#c07a3e", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_ogawa_kokoro", "name": "小川心", "dimensionId": "character", "color": "#8d6a92", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_souma_mirai", "name": "相马未来", "dimensionId": "character", "color": "#b0553b", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_takasaki_misaki", "name": "高崎美咲", "dimensionId": "character", "color": "#5f7663", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_matsumoto_rise", "name": "松本理世", "dimensionId": "character", "color": "#8a6a4f", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_nishigaki_nana", "name": "西垣奈奈", "dimensionId": "character", "color": "#6f6a5f", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_furutani_kaede", "name": "古谷枫", "dimensionId": "character", "color": "#b68a4b", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_akaza_akane", "name": "赤座茜", "dimensionId": "character", "color": "#b0553b", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_yoshikawa_tomoko", "name": "吉川友子", "dimensionId": "character", "color": "#a45c76", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_ikeda_chizuru", "name": "池田千鹤", "dimensionId": "character", "color": "#5b7f9c", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_funami_mari", "name": "船见真理", "dimensionId": "character", "color": "#4f7f7a", "createdAt": "2026-01-01T00:00:00.000Z" }
+    {
+      "id": "char_akaza_akari",
+      "name": "赤座灯里",
+      "dimensionId": "character",
+      "color": "#b0553b",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_toshinou_kyouko",
+      "name": "岁纳京子",
+      "dimensionId": "character",
+      "color": "#c07a3e",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_funami_yui",
+      "name": "船见结衣",
+      "dimensionId": "character",
+      "color": "#5f7663",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_yoshikawa_chinatsu",
+      "name": "吉川千夏",
+      "dimensionId": "character",
+      "color": "#a45c76",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_sugiura_ayano",
+      "name": "杉浦绫乃",
+      "dimensionId": "character",
+      "color": "#8d6a92",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_ikeda_chitose",
+      "name": "池田千岁",
+      "dimensionId": "character",
+      "color": "#5b7f9c",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_oomuro_sakurako",
+      "name": "大室樱子",
+      "dimensionId": "character",
+      "color": "#b68a4b",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_furutani_himawari",
+      "name": "古谷向日葵",
+      "dimensionId": "character",
+      "color": "#6d6c9c",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_oomuro_nadeshiko",
+      "name": "大室抚子",
+      "dimensionId": "character",
+      "color": "#4f7f7a",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_oomuro_hanako",
+      "name": "大室花子",
+      "dimensionId": "character",
+      "color": "#7d8a52",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_miwa_ai",
+      "name": "三轮蓝",
+      "dimensionId": "character",
+      "color": "#5b7f9c",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_yaeno_miho",
+      "name": "八重野美穗",
+      "dimensionId": "character",
+      "color": "#a45c76",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_sonokawa_megumi",
+      "name": "园川惠",
+      "dimensionId": "character",
+      "color": "#c07a3e",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_ogawa_kokoro",
+      "name": "小川心",
+      "dimensionId": "character",
+      "color": "#8d6a92",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_souma_mirai",
+      "name": "相马未来",
+      "dimensionId": "character",
+      "color": "#b0553b",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_takasaki_misaki",
+      "name": "高崎美咲",
+      "dimensionId": "character",
+      "color": "#5f7663",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_matsumoto_rise",
+      "name": "松本理世",
+      "dimensionId": "character",
+      "color": "#8a6a4f",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_nishigaki_nana",
+      "name": "西垣奈奈",
+      "dimensionId": "character",
+      "color": "#6f6a5f",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_furutani_kaede",
+      "name": "古谷枫",
+      "dimensionId": "character",
+      "color": "#b68a4b",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_akaza_akane",
+      "name": "赤座茜",
+      "dimensionId": "character",
+      "color": "#b0553b",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_yoshikawa_tomoko",
+      "name": "吉川友子",
+      "dimensionId": "character",
+      "color": "#a45c76",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_ikeda_chizuru",
+      "name": "池田千鹤",
+      "dimensionId": "character",
+      "color": "#5b7f9c",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_funami_mari",
+      "name": "船见真理",
+      "dimensionId": "character",
+      "color": "#4f7f7a",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    }
   ],
   "characters": [
-    { "id": "char_akaza_akari", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_toshinou_kyouko", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_funami_yui", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_yoshikawa_chinatsu", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_sugiura_ayano", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_ikeda_chitose", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_oomuro_sakurako", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_furutani_himawari", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_oomuro_nadeshiko", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_oomuro_hanako", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_miwa_ai", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_yaeno_miho", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_sonokawa_megumi", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_ogawa_kokoro", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_souma_mirai", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_takasaki_misaki", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_matsumoto_rise", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_nishigaki_nana", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_furutani_kaede", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_akaza_akane", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_yoshikawa_tomoko", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_ikeda_chizuru", "createdAt": "2026-01-01T00:00:00.000Z" },
-    { "id": "char_funami_mari", "createdAt": "2026-01-01T00:00:00.000Z" }
+    {
+      "id": "char_akaza_akari",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_akaza_akari.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b35872-UDUICza8npWd.png"
+    },
+    {
+      "id": "char_toshinou_kyouko",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_toshinou_kyouko.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b35871-3HaZzNNNGqjT.png"
+    },
+    {
+      "id": "char_funami_yui",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_funami_yui.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b35874-UQMOJBrjk4ZV.png"
+    },
+    {
+      "id": "char_yoshikawa_chinatsu",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_yoshikawa_chinatsu.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b35875-cQE3iy5DUL0y.png"
+    },
+    {
+      "id": "char_sugiura_ayano",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_sugiura_ayano.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b35876-wUVzqbvWN8DE.png"
+    },
+    {
+      "id": "char_ikeda_chitose",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_ikeda_chitose.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b35877-tmYiWXrYjHJ4.png"
+    },
+    {
+      "id": "char_oomuro_sakurako",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_oomuro_sakurako.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b35878-RQF5QFp0y0WS.png"
+    },
+    {
+      "id": "char_furutani_himawari",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_furutani_himawari.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b35879-qkGoYTmsMVD1.png"
+    },
+    {
+      "id": "char_oomuro_nadeshiko",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_oomuro_nadeshiko.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b66563-iTthhHrxcdQU.png"
+    },
+    {
+      "id": "char_oomuro_hanako",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_oomuro_hanako.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b66565-KaRI6aaQsGg0.png"
+    },
+    {
+      "id": "char_miwa_ai",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_miwa_ai.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b216796-dByLK3Q1ALYN.png"
+    },
+    {
+      "id": "char_yaeno_miho",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_yaeno_miho.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b216797-027HTdPsGoDM.png"
+    },
+    {
+      "id": "char_sonokawa_megumi",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_sonokawa_megumi.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b216794-0JHZjDCwMb4l.png"
+    },
+    {
+      "id": "char_ogawa_kokoro",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_ogawa_kokoro.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b216792-b009hqZrquHx.png"
+    },
+    {
+      "id": "char_souma_mirai",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_souma_mirai.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b216793-25eHshQtDzOs.png"
+    },
+    {
+      "id": "char_takasaki_misaki",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_takasaki_misaki.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b121845-K2Nn8y8zZYgM.jpg"
+    },
+    {
+      "id": "char_matsumoto_rise",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_matsumoto_rise.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b45531-DDrWh2eMEhBr.png"
+    },
+    {
+      "id": "char_nishigaki_nana",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_nishigaki_nana.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b45529-IW8BG889IUDx.png"
+    },
+    {
+      "id": "char_furutani_kaede",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_furutani_kaede.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b45525-GKQjwpsXQ48T.png"
+    },
+    {
+      "id": "char_akaza_akane",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_akaza_akane.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b45533-joJXH0RPMZmR.png"
+    },
+    {
+      "id": "char_yoshikawa_tomoko",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_yoshikawa_tomoko.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b47599-Fq7CtntdzSZe.png"
+    },
+    {
+      "id": "char_ikeda_chizuru",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_ikeda_chizuru.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b45527-GwT5fQp1T1FI.png"
+    },
+    {
+      "id": "char_funami_mari",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "avatar": "characters/char_funami_mari.webp",
+      "avatarSource": "https://s4.anilist.co/file/anilistcdn/character/large/b47595-wSnpk7uKEaUS.png"
+    }
   ],
   "collections": [],
   "storylines": [],

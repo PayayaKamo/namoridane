@@ -89,6 +89,8 @@ export function normalizeUserData(raw: unknown): UserData {
       const character: Character = { id: c.id, createdAt: str(c.createdAt, new Date().toISOString()) }
       if (typeof c.avatarItemId === 'string') character.avatarItemId = c.avatarItemId
       if (typeof c.avatarDataUrl === 'string') character.avatarDataUrl = c.avatarDataUrl
+      if (typeof c.avatar === 'string') character.avatar = c.avatar
+      if (typeof c.avatarSource === 'string') character.avatarSource = c.avatarSource
       if (typeof c.note === 'string') character.note = c.note
       if (c.avatarCrop && typeof c.avatarCrop === 'object') {
         character.avatarCrop = {

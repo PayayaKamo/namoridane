@@ -7,6 +7,7 @@ import { Icon } from '../components/Icon'
 import { Masonry } from '../components/ItemCard'
 import { Empty, Modal } from '../components/Modal'
 import { TagPicker } from '../components/TagPicker'
+import { IS_PUBLIC } from '../lib/appMode'
 import type { DiaryItem } from '../types'
 
 export function DateFindView({ route }: { route: Route }) {
@@ -257,16 +258,18 @@ export function DateFindView({ route }: { route: Route }) {
           icon="calendar"
           title={formatMonthDayCN(month, day) + ' 暂无已确认的绘日记'}
           hint={
-            includeInferred
-              ? '可以到「绘日记审核」确认日期，或检查标签筛选条件。'
-              : '可打开「包含推测日期」查看发布日 - 1 的推测结果。'
+            IS_PUBLIC
+              ? '这个日期暂无已确认的绘日记，可以换一天或调整筛选条件。'
+              : includeInferred
+                ? '可以到「绘日记审核」确认日期，或检查标签筛选条件。'
+                : '可打开「包含推测日期」查看发布日 - 1 的推测结果。'
           }
           action={
             !includeInferred ? (
               <button className="btn btn-sm" style={{ marginTop: 16 }} onClick={toggleInferred}>
                 包含推测日期
               </button>
-            ) : (
+            ) : IS_PUBLIC ? null : (
               <button className="btn btn-sm" style={{ marginTop: 16 }} onClick={() => navigate('/diary-review')}>
                 去审核日期
               </button>

@@ -4,7 +4,8 @@
 
 纯前端静态站点，用来浏览、搜索、整理 Namori 老师（Instagram [@namori__](https://www.instagram.com/namori__/)）的「绘日记」插画。
 
-- **默认空归档**：仓库不再携带旧图片集，请用 `npm run import -- "<目录>"` 重新导入；数据管线按完整 1086 张（2021-03 → 2025）的数据集验证过
+- **仓库内置 1,086 张完整归档**：2021-03 → 2025，从 1,171 个源文件 hash 去重而来；其中 1,031 张带有 Instagram 发布日期，55 张为 `unknown-*`，等待人工录入日期
+- **可随时清空重来**：删除归档后用 `npm run import -- "<目录>"` 重新导入；即使 0 张图，两套构建也能通过并显示导入提示
 - 支持原始 JPG 单张下载与多选 ZIP 打包
 - 同一套代码产出两个版本：本地自用的 **admin** 管理端与粉丝只读的 **public** 公开站
 - 本地优先：标注保存在浏览器 `localStorage`，可导出 / 导入 JSON
@@ -32,7 +33,7 @@ npm run preview      # 预览最近一次构建
 
 要求 Node.js 18+。
 
-`images/original/` 为空时两套构建仍可通过，站点会显示「还没有图片」的空状态与导入命令。审核与标注数据绑定数据集版本，导入新数据集后旧标注会自动作废。
+`images/original/` 已内置 1,086 张去重后的原始 JPG，两套构建开箱即得完整站点。若清空该目录（例如重置归档），两套构建仍可通过，站点会显示「还没有图片」的空状态与导入命令。审核与标注数据绑定数据集版本，导入新数据集后旧标注会自动作废。
 
 ### npm scripts
 
@@ -85,13 +86,14 @@ npm run preview      # 预览最近一次构建
 ```
 namori-diary/
 ├─ images/
-│  ├─ original/             # 原图归档（清空后为空，由 npm run import 填充）
+│  ├─ original/             # 原图归档（已入库 1,086 张，由 npm run import 替换）
 │  └─ _trash/               # 待清理的已删除原图（gitignore）
 ├─ data/
 │  ├─ public.json           # 公开站种子，build:public 读取（入库）
 │  ├─ userdata.example.json # 管理端种子 schema 示例
 │  └─ ocr.json              # 可选 OCR 结果（入库，仅管理端使用）
 ├─ public/
+│  ├─ characters/           # 23 位预置角色的 512×512 占位头像（入库）
 │  ├─ images/thumb/         # 480px WebP 缩略图（构建生成，gitignore）
 │  ├─ images/large/         # 1400px WebP 大图（构建生成，gitignore）
 │  ├─ images/original/      # 供下载的原图副本（构建同步，gitignore）
@@ -127,6 +129,8 @@ namori-diary/
 
 不会自动回退到仓库外的旧目录，清空后会保持空归档，直到重新导入。
 
+仓库内归档共 1,086 张：2021 年 242 张、2022 年 326 张、2023 年 154 张、2024 年 308 张、2025 年 1 张，另有 55 张早期图片无法还原发布日期。这 55 张会一直留在审核队列里，直到人工补上日期。
+
 文件名必须可追溯：
 
 ```
@@ -150,20 +154,21 @@ unknown-<原始文件名>.jpg
 
 ### 1. 作品索引 `public/data/index.json`
 
-由脚本生成，前端只读（`version: 6`）：
+由脚本生成，前端只读（`version: 7`）：
 
 ```jsonc
 {
-  "version": 6,
+  "version": 7,
   "generatedAt": "2026-11-17T00:00:00.000Z",
-  "datasetId": "1f2e3d4c5b6a",
+  "datasetId": "2fa1e39768d2",
   "count": 1086,
-  "years": { "2021": 242, "2022": 325, "2023": 154, "2024": 308, "2025": 1 },
+  "years": { "2021": 242, "2022": 326, "2023": 154, "2024": 308, "2025": 1 },
   "items": [
     {
       "id": "2021-06-01-CPlLQUStuZq",
       "shortcode": "CPlLQUStuZq",
       "file": "2021-06-01-CPlLQUStuZq.jpg",
+      "sourceFile": "624731284_18111775369652284_6650922443708114316_n.jpg",
       "postIndex": 0,
       "postCount": 1,
       "publishedAt": "2021-06-01",
@@ -186,7 +191,7 @@ unknown-<原始文件名>.jpg
 }
 ```
 
-公开模式下会剥离 `inferred*`、`ocr` 与 `suggestedDiaryDate`。
+公开模式下会剥离 `inferred*`、`ocr` 与 `suggestedDiaryDate`。`sourceFile` 保留导入时的 Instagram CDN 原始文件名（含 `_n` 后缀）；`postIndex` / `postCount` 保留同帖多图的顺序。详情页与审核页会同时显示原始文件名与导入后文件名。
 
 ### 2. 用户标注 v2 — `localStorage` / 导入导出
 
@@ -196,7 +201,7 @@ unknown-<原始文件名>.jpg
 {
   "version": 2,
   "updatedAt": "2026-11-17T00:00:00.000Z",
-  "datasetId": "1f2e3d4c5b6a",
+  "datasetId": "2fa1e39768d2",
   "dimensions": [{ "id": "character", "name": "人物/角色", "order": 0, "builtIn": true }],
   "tags": [{ "id": "t_xxx", "name": "小魔女", "dimensionId": "character", "color": "#c96f4a", "createdAt": "..." }],
   "characters": [{
@@ -328,11 +333,11 @@ npm run import -- "C:\path\to\new\images"
 
 1. 递归扫描 `.jpg` / `.jpeg`，忽略页面里的 PNG / WebP 界面资源。
 2. 解析页面 JSON、GraphQL 响应和 base64 `_DataURI` 中的 `shortcode`、`taken_at` 与图片 URL；能对应上的图片按发布时间命名为 `YYYY-MM-DD-<shortcode>[-n].jpg`。
-3. 以文件内容 SHA-256 去重：已入库或同批重复的文件会跳过。
+3. 以文件内容 SHA-256 去重：已入库或同批重复的文件会跳过。每个文件都会把原始 CDN 文件名记入 `sourceFile`；重跑导入可补齐旧条目，不会新增重复项。
 4. `--name-map` 可提供显式 `hash → 文件名` 映射，优先级最高。
 5. 拿不到日期的图片落到 `unknown-<shortcode>.jpg` 或 `unknown-<原始文件名>.jpg`，等待人工录入日期。
 6. 只复制文件，不改动源目录。
-7. 输出新增 / 跳过报告，并记录到 `.cache/import-report.json`；清单在 `.cache/import-manifest.json`。
+7. 输出新增 / 跳过报告，并记录到 `.cache/import-report.json`；清单在 `.cache/import-manifest.json`。每次导入都会重新生成并提交 `data/source-names.json` 映射。
 8. 之后运行 `npm run data`（或直接构建）生成衍生图并更新索引。
 
 重复执行同一批不会产生重复条目。
@@ -348,7 +353,7 @@ npm run import -- "C:\path\to\new\images"
 ## 审核绘日记日期（绝不修改原图）
 
 1. 管理端打开 **绘日记审核**（`#/diary-review`）。
-2. 有 OCR 结果时预填建议值并展示候选与裁切预览；没有时预填 **发布日 − 1 天** 并标注 **推测**。
+2. 有 OCR 结果时预填建议值并展示候选与裁切预览；没有时预填 **发布日 − 1 天** 并标注 **推测**。页面同时显示原始 CDN 文件名、导入后文件名与同帖多图顺序。
 3. `Enter` 确认并跳到下一张；`N` 标记非绘日记；`←` / `→` 翻页。
 4. 顶部显示已确认 / 总数与剩余数量。
 5. 可导出审核 JSON 备份或恢复；导入只更新审核状态与已确认日期。
@@ -372,6 +377,17 @@ npm run purge
 ```
 
 公开构建不包含任何删除接口或删除代码路径。必须本地执行的动作，界面会明确提示。
+
+---
+
+## 角色占位头像
+
+`public/characters/<角色id>.webp` 为 23 位预置角色（《摇曳百合》阵容）各存了一张 512×512 占位头像。角色数据里用 `avatar` 记录路径，用 `avatarSource` 记录来源。
+
+- 上传或裁切过的头像始终优先；没有设置头像时才显示占位图。
+- 替换时直接用 512×512 的 WebP 覆盖同名文件即可，不需要改代码或数据；只有需要绕过浏览器缓存时才改文件名。
+- 占位图取自 [AniList](https://anilist.co/) 的第三方参考图，仅作临时示意，不进入原图下载或 ZIP 打包。
+- 找不到的角色保留首字 / 封面兜底，不用无关图片凑数。
 
 ---
 
@@ -413,7 +429,6 @@ npx serve dist
 - OCR 是可选项，仅 Windows 可用（PowerShell WinRT，不新增依赖）。它是审核辅助，日期始终由人工确认。
 - 只有确认后的日期才会发布，公开站不会把猜测当作事实。
 - 部署产物包含原图与 WebP 衍生图（约 260 MB）。如需更轻量，可在 `scripts/build-index.mjs` 调整大图尺寸或移除原图发布，但会影响下载功能。
-- 上一版 1086 张数据集的批量 OCR 统计：79 张识别出日期候选（约 7%），手写字识别率有限，结果仅作建议。
 
 ---
 

@@ -355,7 +355,11 @@ export function GalleryView({ route }: { route: Route }) {
           <Empty
             icon="image"
             title={showExcluded ? '排除区是空的' : '没有符合条件的作品'}
-            hint={showExcluded ? '在审核页或详情中点「非绘日记」，图片就会集中到这里；原始文件始终保留。' : '试试清除关键词、年份或标签筛选。'}
+            hint={
+              showExcluded
+                ? '在详情中点「非绘日记」，图片就会集中到这里；原始文件始终保留。'
+                : '试试清除关键词、年份或标签筛选。'
+            }
             action={
               <button className="btn btn-sm" onClick={() => setFilter(DEFAULT_FILTER)}>
                 重置筛选

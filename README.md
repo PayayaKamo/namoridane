@@ -4,7 +4,8 @@
 
 A fully static, front-end-only site for browsing and curating the daily sketches ("絵日記") of **Namori** ([@namori__](https://www.instagram.com/namori__/) on Instagram).
 
-- **Empty archive by default**: the repository no longer ships the old image set. Import a fresh folder with `npm run import -- "<dir>"`; the pipeline was built and tested against the full 1,086-image archive (2021-03 → 2025)
+- **Full 1,086-image archive included**: 2021-03 → 2025, hash-deduplicated from 1,171 source files. 1,031 images carry an Instagram publish date; 55 are `unknown-*` and wait for a manual date
+- **Resettable by design**: remove the archive and import a fresh folder with `npm run import -- "<dir>"`; both builds also work with zero images and show an import hint
 - Download single originals or pack a multi-selection into a ZIP
 - Two builds from one codebase: a full local **admin** app and a read-only **public** site
 - Local-first data: annotations live in `localStorage` and can be exported / imported as JSON
@@ -32,7 +33,7 @@ npm run preview      # preview the last build
 
 Requires Node.js 18+.
 
-With an empty `images/original/`, both builds still succeed and the site shows a clear "还没有图片" empty state with the import command. Review and annotation data is bound to the dataset version, so importing a new dataset automatically invalidates annotations that point at older files.
+The committed archive in `images/original/` contains 1,086 unique JPEGs, so both builds produce a full site out of the box. With an empty folder (for example after a reset), both builds still succeed and the site shows a clear "还没有图片" empty state with the import command. Review and annotation data is bound to the dataset version, so importing a new dataset automatically invalidates annotations that point at older files.
 
 ### npm scripts
 
@@ -85,13 +86,14 @@ The export keeps only manually confirmed dates, published storylines, translatio
 ```
 namori-diary/
 ├─ images/
-│  ├─ original/             # image archive (empty after reset, filled by npm run import)
+│  ├─ original/             # image archive (1,086 committed files; replaced by npm run import)
 │  └─ _trash/               # deleted originals waiting for purge (gitignored)
 ├─ data/
 │  ├─ public.json           # published seed used by build:public (committed)
 │  ├─ userdata.example.json # empty schema example for the admin seed
 │  └─ ocr.json              # optional OCR output (committed, admin only)
 ├─ public/
+│  ├─ characters/           # 512×512 placeholder avatars for the 23 preset characters (committed)
 │  ├─ images/thumb/         # 480px WebP thumbnails (generated, gitignored)
 │  ├─ images/large/         # 1400px WebP large images (generated, gitignored)
 │  ├─ images/original/      # originals copied for download (generated, gitignored)
@@ -127,6 +129,8 @@ namori-diary/
 
 There is no automatic fallback to an old sibling folder, so a reset archive stays empty until you import new files.
 
+The committed archive holds 1,086 unique images: 2021 (242), 2022 (326), 2023 (154), 2024 (308), 2025 (1), plus 55 early files whose publish date could not be recovered. Those 55 stay pending in the review queue until a human names them.
+
 File names must be traceable:
 
 ```
@@ -150,20 +154,21 @@ The date prefix is the Instagram **publish date** (`publishedAt`). Multi-image p
 
 ### 1. Item index — `public/data/index.json`
 
-Generated, read-only for the front end (`version: 6`):
+Generated, read-only for the front end (`version: 7`):
 
 ```jsonc
 {
-  "version": 6,
+  "version": 7,
   "generatedAt": "2026-11-17T00:00:00.000Z",
-  "datasetId": "1f2e3d4c5b6a",
+  "datasetId": "2fa1e39768d2",
   "count": 1086,
-  "years": { "2021": 242, "2022": 325, "2023": 154, "2024": 308, "2025": 1 },
+  "years": { "2021": 242, "2022": 326, "2023": 154, "2024": 308, "2025": 1 },
   "items": [
     {
       "id": "2021-06-01-CPlLQUStuZq",
       "shortcode": "CPlLQUStuZq",
       "file": "2021-06-01-CPlLQUStuZq.jpg",
+      "sourceFile": "624731284_18111775369652284_6650922443708114316_n.jpg",
       "postIndex": 0,
       "postCount": 1,
       "publishedAt": "2021-06-01",
@@ -186,7 +191,7 @@ Generated, read-only for the front end (`version: 6`):
 }
 ```
 
-In public mode, `inferred*`, `ocr` and `suggestedDiaryDate` are stripped.
+In public mode, `inferred*`, `ocr` and `suggestedDiaryDate` are stripped. `sourceFile` keeps the original Instagram CDN filename (including the `_n` suffix); `postIndex` / `postCount` keep the order inside a multi-image post. Details and the review page show both the original and the imported filename.
 
 ### 2. User data v2 — `localStorage` / import-export
 
@@ -196,7 +201,7 @@ Storage key: `namori.diary.userdata.v2`. Full types: [`src/types.ts`](src/types.
 {
   "version": 2,
   "updatedAt": "2026-11-17T00:00:00.000Z",
-  "datasetId": "1f2e3d4c5b6a",
+  "datasetId": "2fa1e39768d2",
   "dimensions": [{ "id": "character", "name": "人物/角色", "order": 0, "builtIn": true }],
   "tags": [{ "id": "t_xxx", "name": "小魔女", "dimensionId": "character", "color": "#c96f4a", "createdAt": "..." }],
   "characters": [{
@@ -328,11 +333,11 @@ The script accepts both a plain image folder and an **Instagram saved-page direc
 
 1. Recursively scans `.jpg` / `.jpeg`; page assets and PNG/WebP UI images are ignored.
 2. Parses embedded page JSON, GraphQL responses and base64 `_DataURI` payloads for `shortcode`, `taken_at` and image URLs. Known images are named `YYYY-MM-DD-<shortcode>[-n].jpg` in publish-time order.
-3. Dedupe uses the file content SHA-256. Files already present or duplicated within the batch are skipped.
+3. Dedupe uses the file content SHA-256. Files already present or duplicated within the batch are skipped. Every imported file keeps its original CDN name in `sourceFile`; re-running the import backfills old entries without adding duplicates.
 4. `--name-map` can supply an explicit `hash → filename` mapping and takes precedence.
 5. Images without a recoverable date become `unknown-<shortcode>.jpg` or `unknown-<original>.jpg` and stay pending for manual date entry.
 6. It only copies files; the source directory is never modified.
-7. A report is printed and stored at `.cache/import-report.json`; the manifest is `.cache/import-manifest.json`.
+7. A report is printed and stored at `.cache/import-report.json`; the manifest is `.cache/import-manifest.json`. The committed mapping `data/source-names.json` is regenerated on every import.
 8. Then run `npm run data` (or a build) to produce derivatives and update the index.
 
 Re-running the same folder is idempotent and creates no duplicate entries.
@@ -348,7 +353,7 @@ Re-running the same folder is idempotent and creates no duplicate entries.
 ## Reviewing diary dates (originals are never modified)
 
 1. Open **绘日记审核** (`#/diary-review`) in the admin app.
-2. The page pre-fills an OCR suggestion when available, with candidates and a crop preview; otherwise it pre-fills **publish date − 1 day** labelled **推测**.
+2. The page pre-fills an OCR suggestion when available, with candidates and a crop preview; otherwise it pre-fills **publish date − 1 day** labelled **推测**. It shows the original CDN filename, the renamed filename and the multi-image order.
 3. Press `Enter` to confirm and jump to the next item; press `N` if the image is not a diary page; use `←` / `→` to page.
 4. The progress line shows confirmed / total and the remaining count.
 5. Export a review JSON for backup or restore; importing it updates only review state and confirmed dates.
@@ -372,6 +377,17 @@ npm run purge
 ```
 
 The public build contains no delete endpoint or delete code path. If cleanup must happen locally, the UI says so explicitly.
+
+---
+
+## Character placeholder avatars
+
+`public/characters/<character-id>.webp` holds a 512×512 placeholder for each of the 23 preset characters (Yuru Yuri cast). The character record stores the path in `avatar` and the origin in `avatarSource`.
+
+- An uploaded or cropped avatar always wins; the placeholder appears only when no avatar is set.
+- To replace one, overwrite the file with a 512×512 WebP and keep the same filename. No code or data change is needed; rename only if you need to bypass browser caching.
+- Placeholders are third-party reference images fetched from [AniList](https://anilist.co/), used only as temporary art. They are not part of original-image downloads or ZIP exports.
+- Characters that cannot be found keep the letter/cover fallback instead of an unrelated image.
 
 ---
 
@@ -413,7 +429,6 @@ npx serve dist
 - OCR is optional and Windows-only (PowerShell WinRT, no extra dependencies). It is a review aid; the date is always confirmed by a human.
 - A date is only published after confirmation. Guesses never appear as facts on the public site.
 - The deploy output includes originals plus WebP derivatives (roughly 260 MB). Reduce the large-image size or drop originals in `scripts/build-index.mjs` if you want a lighter deploy, at the cost of download features.
-- The optional OCR statistics from the previous 1,086-image set: 79 pages produced a date candidate (about 7%), skewed by handwritten dates. Treat OCR results as suggestions only.
 
 ---
 

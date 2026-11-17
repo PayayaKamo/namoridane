@@ -265,10 +265,13 @@ function ReviewStage({
         </div>
 
         <div className="diary-review-file">
-          <strong>{item.file}</strong>
+          <strong>{item.sourceFile ?? item.file}</strong>
+          <span>原始文件名 · {item.sourceFile ? 'Instagram CDN' : '未记录'}</span>
+          <span>导入后文件名 · {item.file}</span>
           <span>Shortcode · {item.shortcode}</span>
           <span>原图尺寸 · {item.w} × {item.h}</span>
           {item.postCount > 1 && <span>同帖图片 · 第 {item.postIndex + 1} / {item.postCount} 张</span>}
+          <span className="faint">发布日期来自帖子元数据；文件名是导入时重命名的。</span>
         </div>
 
         {item.ocr?.candidates?.length ? (
@@ -300,7 +303,7 @@ function ReviewStage({
         ) : null}
 
         <section className="diary-review-section">
-          <div className="field-label">发布日期（文件名）</div>
+          <div className="field-label">发布日期（导入时写入文件名）</div>
           <div className="diary-review-published num">{item.publishedAt || '未知（文件名没有日期）'}</div>
         </section>
 
