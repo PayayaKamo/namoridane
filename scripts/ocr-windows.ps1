@@ -1,6 +1,7 @@
 param(
   [Parameter(Mandatory = $true)][string]$CropDir,
-  [Parameter(Mandatory = $true)][string]$OutFile
+  [Parameter(Mandatory = $true)][string]$OutFile,
+  [switch]$Resume
 )
 
 # Windows OCR runner (PowerShell 5.1 / Windows Runtime).
@@ -48,30 +49,52 @@ if ($engine -eq $null) {
 }
 
 $results = @{}
-$files = Get-ChildItem -Path $CropDir -Filter '*.png' -File
-$index = 0
-foreach ($file in $files) {
-  $index++
-  $text = ''
+
+# Resume: keep results from a previous interrupted run and skip those crops.
+if ($Resume -and (Test-Path $OutFile)) {
   try {
-    $storageFile = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync($file.FullName)) ([Windows.Storage.StorageFile])
-    $stream = Await ($storageFile.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
-    $decoder = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder])
-    $bitmap = Await ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
-    $ocrResult = Await ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
-    $text = $ocrResult.Text
-    $bitmap.Dispose()
-    $stream.Dispose()
+    $existing = Get-Content -Path $OutFile -Raw -Encoding UTF8 | ConvertFrom-Json
+    foreach ($p in $existing.PSObject.Properties) {
+      $results[$p.Name] = [string]$p.Value
+    }
   } catch {
-    $text = ''
-  }
-  $results[$file.Name] = $text
-  if (($index % 20) -eq 0) {
-    Write-Host "[ocr] $index / $($files.Count)"
+    $results = @{}
   }
 }
 
-$json = $results | ConvertTo-Json -Compress
-$utf8 = New-Object System.Text.UTF8Encoding($false)
-[System.IO.File]::WriteAllText($OutFile, $json, $utf8)
+function Save-Results {
+  $json = $results | ConvertTo-Json -Compress
+  $utf8 = New-Object System.Text.UTF8Encoding($false)
+  [System.IO.File]::WriteAllText($OutFile, $json, $utf8)
+}
+
+$files = @(Get-ChildItem -Path $CropDir -Filter '*.png' -File | Where-Object { -not $results.ContainsKey($_.Name) })
+$total = $files.Count
+$index = 0
+try {
+  foreach ($file in $files) {
+    $index++
+    $text = ''
+    try {
+      $storageFile = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync($file.FullName)) ([Windows.Storage.StorageFile])
+      $stream = Await ($storageFile.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
+      $decoder = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder])
+      $bitmap = Await ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
+      $ocrResult = Await ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
+      $text = $ocrResult.Text
+      $bitmap.Dispose()
+      $stream.Dispose()
+    } catch {
+      $text = ''
+    }
+    $results[$file.Name] = $text
+    if (($index % 25) -eq 0) {
+      Save-Results
+      Write-Host "[ocr] $index / $total"
+    }
+  }
+} finally {
+  Save-Results
+}
+
 Write-Host "[ocr] wrote $($results.Count) results to $OutFile"

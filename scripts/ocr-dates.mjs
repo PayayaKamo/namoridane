@@ -256,14 +256,22 @@ async function main() {
   log(`共 ${names.length} 张图片，准备左上角裁切…`)
 
   const cropNames = []
+  const cropFailures = []
   for (let i = 0; i < names.length; i++) {
-    const crops = await prepareCrops(names[i])
-    for (const crop of crops) cropNames.push(path.basename(crop))
+    try {
+      const crops = await prepareCrops(names[i])
+      if (!crops.length) throw new Error('无法读取图片尺寸或裁切区域')
+      for (const crop of crops) cropNames.push(path.basename(crop))
+    } catch (err) {
+      // 单张裁切失败只记录，不中断整批；下次运行会自动重试
+      cropFailures.push({ file: names[i], stage: 'crop', reason: err?.message || String(err) })
+    }
     if ((i + 1) % 50 === 0 || i + 1 === names.length) {
       process.stdout.write(`\r[ocr] 裁切 ${i + 1}/${names.length}`)
     }
   }
   process.stdout.write('\n')
+  if (cropFailures.length) log(`裁切失败 ${cropFailures.length} 张，已记录并继续`)
 
   let raw = {}
   if (!FORCE && fs.existsSync(RAW_FILE)) {
@@ -281,24 +289,36 @@ async function main() {
   }
   if (missing.length) {
     log(`调用 Windows OCR 识别 ${cropNames.length} 个裁切（缺失 ${missing.length} 个）…`)
-    execFileSync(
-      'powershell',
-      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', PS1, '-CropDir', CROP_DIR, '-OutFile', RAW_FILE],
-      { stdio: 'inherit' },
-    )
-    raw = JSON.parse(await fsp.readFile(RAW_FILE, 'utf8'))
+    const args = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', PS1, '-CropDir', CROP_DIR, '-OutFile', RAW_FILE]
+    if (!FORCE && fs.existsSync(RAW_FILE)) args.push('-Resume')
+    try {
+      execFileSync('powershell', args, { stdio: 'inherit' })
+    } catch (err) {
+      // PowerShell 异常退出时保留已增量写入的结果，继续生成部分 OCR 数据
+      log(`Windows OCR 进程提前退出：${err?.message || err}`)
+    }
+    try {
+      raw = JSON.parse(await fsp.readFile(RAW_FILE, 'utf8'))
+    } catch {
+      raw = {}
+      log('未能读取 OCR 原始结果，将把受影响图片记录为失败')
+    }
   }
 
   const files = {}
+  const failures = [...cropFailures]
+  const cropFailed = new Set(cropFailures.map((f) => f.file))
   let recognized = 0
   let high = 0
   let mid = 0
   let low = 0
+  let blank = 0
+  let noDate = 0
   for (const name of names) {
     const base = name.replace(/\.jpe?g$/i, '')
-    const texts = [raw[`${base}__a.png`], raw[`${base}__b.png`]]
-      .map(normalizeText)
-      .filter(Boolean)
+    const rawA = raw[`${base}__a.png`]
+    const rawB = raw[`${base}__b.png`]
+    const texts = [rawA, rawB].map(normalizeText).filter(Boolean)
     const publishedAt = publishedAtOf(name)
     const candidates = candidatesOf(texts, publishedAt)
     const rawText = texts.join(' / ').slice(0, 300)
@@ -309,13 +329,27 @@ async function main() {
       if (confidence >= 0.75) high++
       else if (confidence >= 0.5) mid++
       else low++
+    } else if (cropFailed.has(name)) {
+      // 裁切阶段已记录
+    } else if (typeof rawA !== 'string' && typeof rawB !== 'string') {
+      blank++
+      failures.push({ file: name, stage: 'ocr', reason: '没有 OCR 结果' })
+    } else if (!texts.length) {
+      blank++
+      failures.push({ file: name, stage: 'ocr', reason: 'OCR 结果为空' })
+    } else {
+      noDate++
+      failures.push({ file: name, stage: 'parse', reason: '识别到文字但没有可用日期' })
     }
   }
 
   const stats = {
     total: names.length,
     recognized,
+    failed: failures.length,
     noResult: names.length - recognized,
+    blank,
+    noDate,
     high,
     mid,
     low,
@@ -327,9 +361,11 @@ async function main() {
     generatedAt: new Date().toISOString(),
     stats,
     files,
+    failures: failures.sort((a, b) => a.file.localeCompare(b.file)),
   }
   await fsp.writeFile(OUT_FILE, JSON.stringify(payload))
   log(`识别成功 ${recognized}/${names.length}（${stats.rate}%）：高置信 ${high}，中 ${mid}，低 ${low}`)
+  log(`未识别：空结果/失败 ${blank}，有文字但无日期 ${noDate}，裁切失败 ${cropFailures.length}`)
   log(`结果写入 ${path.relative(ROOT, OUT_FILE)}，用时 ${((Date.now() - started) / 1000).toFixed(1)}s`)
 }
 
