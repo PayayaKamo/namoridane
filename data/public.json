@@ -185,35 +185,16 @@
     {
       "id": "char_toshinou_kyouko",
       "createdAt": "2026-11-17T16:49:31.740Z",
-      "avatarItemId": "CnZB82fvLgq",
-      "coverCrop": {
-        "x": 47.47476288766572,
-        "y": 54,
-        "zoom": 1.6
-      },
       "note": ""
     },
     {
       "id": "char_akaza_akari",
       "createdAt": "2026-11-17T16:50:01.404Z",
-      "avatarItemId": "CnbjPOBP-pc",
-      "coverItemId": "Cmqpn3WvR2Z",
-      "coverCrop": {
-        "x": 50,
-        "y": 62,
-        "zoom": 1.6
-      },
       "note": ""
     },
     {
       "id": "char_funami_yui",
       "createdAt": "2026-11-17T16:50:11.219Z",
-      "avatarItemId": "Cnl4mMQviAt",
-      "coverCrop": {
-        "x": 50,
-        "y": 70,
-        "zoom": 1.45
-      },
       "note": ""
     }
   ],

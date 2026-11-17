@@ -403,8 +403,37 @@ function CharacterEditModal({
     setCrop({ x: 50, y: 50, zoom: 1 })
   }
 
+  const save = () =>
+    onSave(
+      { name: name.trim() || tag.name, color },
+      {
+        note,
+        profile: {
+          cv: profile.cv.trim(),
+          role: profile.role.trim(),
+          traits: profile.traits.trim(),
+        },
+        avatarDataUrl: avatarDataUrl || undefined,
+        avatarItemId: avatarItemId || undefined,
+        coverItemId: coverItemId || undefined,
+        coverCrop:
+          crop.x === 50 && crop.y === 50 && crop.zoom === 1
+            ? undefined
+            : { x: crop.x, y: crop.y, zoom: crop.zoom },
+      },
+    )
+
   return (
-    <Modal title="编辑角色" onClose={onClose}>
+    <Modal
+      title="编辑角色"
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn" onClick={onClose}>取消</button>
+          <button className="btn btn-primary" onClick={save}>保存</button>
+        </>
+      }
+    >
       <div className="character-edit">
         <label className="character-edit-avatar">
           <span className="character-avatar" style={{ background: color, width: 56, height: 56 }}>
@@ -487,12 +516,12 @@ function CharacterEditModal({
               ) : (
                 <span className="cover-editor-empty">{name.slice(0, 1)}</span>
               )}
-              <span className="cover-editor-hint">拖动调整焦点 · 方向键微调</span>
+              <span className="cover-editor-hint">拖动或方向键调整焦点</span>
             </div>
             <div className="cover-editor-controls">
               <div className="field cover-source">
                 <span className="field-label">封面来源</span>
-                <div className="cover-source-grid" role="listbox" aria-label="封面来源，点击切换预览">
+                <div className="cover-source-strip" role="listbox" aria-label="封面来源，点击切换预览">
                   <button
                     type="button"
                     className={`cover-source-item${coverItemId ? '' : ' active'}`}
@@ -500,13 +529,11 @@ function CharacterEditModal({
                     title="默认：预置头像 / 最近作品"
                     onClick={() => setCoverItemId('')}
                   >
-                    <span className="cover-source-thumb" style={{ background: color }}>
-                      {avatarFallback ? (
-                        <img src={avatarFallback} alt="" loading="lazy" draggable={false} />
-                      ) : (
-                        name.slice(0, 1)
-                      )}
-                    </span>
+                    {avatarFallback ? (
+                      <img src={avatarFallback} alt="" loading="lazy" draggable={false} />
+                    ) : (
+                      <span className="cover-source-fallback" style={{ background: color }}>{name.slice(0, 1)}</span>
+                    )}
                     <span className="cover-source-date">默认</span>
                     {!coverItemId && <span className="cover-source-check"><Icon name="check" size={11} /></span>}
                   </button>
@@ -519,9 +546,7 @@ function CharacterEditModal({
                       title={option.label}
                       onClick={() => setCoverItemId(option.id)}
                     >
-                      <span className="cover-source-thumb">
-                        <img src={option.thumb} alt={option.label} loading="lazy" draggable={false} />
-                      </span>
+                      <img src={option.thumb} alt={option.label} loading="lazy" draggable={false} />
                       <span className="cover-source-date">{option.date}</span>
                       {coverItemId === option.id && <span className="cover-source-check"><Icon name="check" size={11} /></span>}
                     </button>
@@ -568,9 +593,6 @@ function CharacterEditModal({
                 <button className="btn btn-sm btn-ghost" onClick={resetCover}>
                   恢复默认
                 </button>
-                <span className="faint" style={{ fontSize: 11 }}>
-                  只调整显示位置，不修改图片文件
-                </span>
               </div>
             </div>
           </div>
@@ -603,34 +625,6 @@ function CharacterEditModal({
             </button>
           )}
         </div>
-      </div>
-      <div className="modal-foot">
-        <button className="btn" onClick={onClose}>取消</button>
-        <button
-          className="btn btn-primary"
-          onClick={() =>
-            onSave(
-              { name: name.trim() || tag.name, color },
-              {
-                note,
-                profile: {
-                  cv: profile.cv.trim(),
-                  role: profile.role.trim(),
-                  traits: profile.traits.trim(),
-                },
-                avatarDataUrl: avatarDataUrl || undefined,
-                avatarItemId: avatarItemId || undefined,
-                coverItemId: coverItemId || undefined,
-                coverCrop:
-                  crop.x === 50 && crop.y === 50 && crop.zoom === 1
-                    ? undefined
-                    : { x: crop.x, y: crop.y, zoom: crop.zoom },
-              },
-            )
-          }
-        >
-          保存
-        </button>
       </div>
     </Modal>
   )

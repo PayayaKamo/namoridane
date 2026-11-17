@@ -4217,30 +4217,31 @@
   color: var(--ink-2);
 }
 
-/* 封面来源缩略图网格：可滚动、懒加载，选中项带对勾 */
-.cover-source-grid {
+/* 封面来源：固定两排的横向缩略图带，小图带日期角标，选中项描边 */
+.cover-source-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+  grid-auto-flow: column;
+  grid-template-rows: repeat(2, 76px);
+  grid-auto-columns: 76px;
   gap: 8px;
-  max-height: 178px;
-  overflow-y: auto;
-  padding: 2px;
-  overscroll-behavior: contain;
+  height: 172px;
+  padding: 2px 2px 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
 }
 
 .cover-source-item {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  width: 100%;
+  height: 100%;
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--surface);
   overflow: hidden;
+  background: var(--surface-2);
   cursor: pointer;
-  color: var(--muted);
-  text-align: left;
 }
 
 .cover-source-item:hover {
@@ -4249,29 +4250,36 @@
 
 .cover-source-item.active {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
-.cover-source-thumb {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1 / 1;
-  overflow: hidden;
-  background: var(--surface-2);
-  color: #fff;
-  font-size: 18px;
-}
-
-.cover-source-thumb img {
+.cover-source-item img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
+.cover-source-fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+  font-size: 20px;
+}
+
 .cover-source-date {
-  padding: 0 5px 4px;
-  font-size: 10px;
-  line-height: 1.4;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 9px 4px 2px;
+  font-size: 9.5px;
+  line-height: 1.3;
+  text-align: right;
+  color: #fff;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.72));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4279,8 +4287,8 @@
 
 .cover-source-check {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 3px;
+  right: 3px;
   display: grid;
   place-items: center;
   width: 16px;
@@ -4296,18 +4304,21 @@
   }
 
   .cover-editor-preview {
-    max-width: 280px;
+    max-width: 260px;
   }
 
-  .cover-source-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    max-height: 200px;
+  .cover-source-strip {
+    grid-template-rows: repeat(2, 68px);
+    grid-auto-columns: 68px;
+    height: 156px;
   }
 }
 
 @media (max-width: 420px) {
-  .cover-source-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .cover-source-strip {
+    grid-template-rows: repeat(2, 64px);
+    grid-auto-columns: 64px;
+    height: 148px;
   }
 }
 
