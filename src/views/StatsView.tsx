@@ -49,8 +49,11 @@ export function StatsView() {
     for (const item of items) {
       const d = effectiveDate(item, annotations[item.id])
       dates.add(d.iso)
-      if (!minDate || d.iso < minDate) minDate = d.iso
-      if (!maxDate || d.iso > maxDate) maxDate = d.iso
+      // 没有日期的条目不参与覆盖跨度，避免把起始日期清空
+      if (d.iso) {
+        if (!minDate || d.iso < minDate) minDate = d.iso
+        if (!maxDate || d.iso > maxDate) maxDate = d.iso
+      }
       if (d.confirmed) confirmed++
       if (annotations[item.id]?.favorite) favorites++
       if (annotations[item.id]?.note || annotations[item.id]?.study) withNotes++
