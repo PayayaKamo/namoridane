@@ -3,6 +3,8 @@ import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
 import { MONTHS_CN, effectiveDate } from '../lib/dates'
 import { presetAvatarPath } from '../lib/constants'
+import { IS_PUBLIC } from '../lib/appMode'
+import { navigate } from '../lib/router'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -94,7 +96,7 @@ export function StatsView() {
     const counts = Array.from({ length: 12 }, () => 0)
     for (const item of items) {
       const d = getDate(item)
-      if (d.year === year) counts[d.month - 1]++
+      if (d.year === year && counts[d.month - 1] !== undefined) counts[d.month - 1]++
     }
     return counts
   }, [items, getDate, year])
@@ -104,7 +106,8 @@ export function StatsView() {
     const sets = Array.from({ length: 12 }, () => new Set<string>())
     for (const item of items) {
       const d = getDate(item)
-      if (d.year === year) sets[d.month - 1].add(d.iso)
+      const bucket = d.year === year ? sets[d.month - 1] : undefined
+      if (bucket) bucket.add(d.iso)
     }
     return sets.map((s) => s.size)
   }, [items, getDate, year])
@@ -122,7 +125,8 @@ export function StatsView() {
     [dimensions, tags, tagUsage],
   )
 
-  // 人物组合：只取已确认绘日记的人物标注，同图内角色两两配对
+  // 人物组合：管理端取已确认绘日记，公开端取公开数据集（不含审核状态）
+  const castItems = IS_PUBLIC ? items : confirmedDiaryItems
   const cast = useMemo(() => {
     const charTagIds = new Set(tags.filter((tag) => tag.dimensionId === 'character').map((tag) => tag.id))
     const pairCounts = new Map<string, number>()
@@ -131,7 +135,7 @@ export function StatsView() {
     let single = 0
     let double = 0
     let multi = 0
-    for (const item of confirmedDiaryItems) {
+    for (const item of castItems) {
       const ids = [...new Set((annotations[item.id]?.tags ?? []).filter((id) => charTagIds.has(id)))].sort()
       if (!ids.length) continue
       if (ids.length === 1) {
@@ -167,13 +171,43 @@ export function StatsView() {
       singles: toRanking(singleCounts),
       groups: toRanking(groupCounts),
     }
-  }, [confirmedDiaryItems, annotations, tags])
+  }, [castItems, annotations, tags])
+
+  const characterRank = useMemo(() => {
+    return tags
+      .filter((tag) => tag.dimensionId === 'character' && (tagUsage[tag.id] ?? 0) > 0)
+      .map((tag) => ({ id: tag.id, count: tagUsage[tag.id] ?? 0 }))
+      .sort((a, b) => b.count - a.count || a.id.localeCompare(b.id))
+  }, [tags, tagUsage])
+  const characterTotal = characterRank.reduce((sum, row) => sum + row.count, 0)
 
   const characterMap = useMemo(() => new Map(characters.map((c) => [c.id, c])), [characters])
 
   const pct = (count: number, total: number) => (total ? `${Math.round((count / total) * 100)}%` : '0%')
 
-  const castNames = (ids: string[]) => ids.map((id) => tagMap.get(id)?.name ?? id).join(' × ')
+  const openCharacter = (id: string) => navigate(`/characters?char=${encodeURIComponent(id)}`)
+
+  const castAvatarLink = (id: string) => (
+    <button
+      key={id}
+      type="button"
+      className="cast-avatar-btn"
+      onClick={() => openCharacter(id)}
+      title={`查看「${tagMap.get(id)?.name ?? id}」的角色图鉴`}
+    >
+      {castAvatar(id)}
+    </button>
+  )
+
+  const castNameLinks = (ids: string[]) =>
+    ids.map((id, index) => (
+      <span key={id}>
+        <button type="button" className="cast-name-link" onClick={() => openCharacter(id)}>
+          {tagMap.get(id)?.name ?? id}
+        </button>
+        {index < ids.length - 1 ? <span className="cast-sep"> × </span> : null}
+      </span>
+    ))
 
   const castAvatar = (id: string) => {
     const tag = tagMap.get(id)
@@ -234,24 +268,39 @@ export function StatsView() {
             <span className="stat-label">已归类</span>
           </div>
           <div className="stat-value num">{summary.tagged}</div>
-          <div className="stat-hint">{tags.length} 个标签 · {collections.length} 个合集</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-top">
-            <span className="stat-icon"><Icon name="check" size={16} /></span>
-            <span className="stat-label">日期已确认</span>
+          <div className="stat-hint">
+            {tags.length} 个标签{IS_PUBLIC ? '' : ` · ${collections.length} 个合集`}
           </div>
-          <div className="stat-value num">{summary.confirmed}</div>
-          <div className="stat-hint">待校对 {items.length - summary.confirmed}</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-top">
-            <span className="stat-icon"><Icon name="heart" size={16} /></span>
-            <span className="stat-label">收藏 / 笔记</span>
+        {IS_PUBLIC ? (
+          <div className="stat-card">
+            <div className="stat-top">
+              <span className="stat-icon"><Icon name="users" size={16} /></span>
+              <span className="stat-label">人物出场</span>
+            </div>
+            <div className="stat-value num">{characterTotal}</div>
+            <div className="stat-hint">{characterRank.length} 位角色有出场记录</div>
           </div>
-          <div className="stat-value num">{summary.favorites}</div>
-          <div className="stat-hint">拆解或备注 {summary.withNotes} 张</div>
-        </div>
+        ) : (
+          <>
+            <div className="stat-card">
+              <div className="stat-top">
+                <span className="stat-icon"><Icon name="check" size={16} /></span>
+                <span className="stat-label">日期已确认</span>
+              </div>
+              <div className="stat-value num">{summary.confirmed}</div>
+              <div className="stat-hint">待校对 {items.length - summary.confirmed}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-top">
+                <span className="stat-icon"><Icon name="heart" size={16} /></span>
+                <span className="stat-label">收藏 / 笔记</span>
+              </div>
+              <div className="stat-value num">{summary.favorites}</div>
+              <div className="stat-hint">拆解或备注 {summary.withNotes} 张</div>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="stats-two">
@@ -307,10 +356,12 @@ export function StatsView() {
               <span>覆盖跨度</span>
               <span className="num">{summary.minDate} → {summary.maxDate}</span>
             </div>
-            <div className="meta-row">
-              <span>本地标注</span>
-              <span className="num">{Object.keys(data.items).length} 条记录</span>
-            </div>
+            {!IS_PUBLIC && (
+              <div className="meta-row">
+                <span>本地标注</span>
+                <span className="num">{Object.keys(data.items).length} 条记录</span>
+              </div>
+            )}
           </div>
         </section>
       </div>
@@ -344,17 +395,23 @@ export function StatsView() {
                       {groupTags.map((tag) => {
                         const count = tagUsage[tag.id] ?? 0
                         return (
-                          <div key={tag.id} className="tag-bar" title={`${tag.name} · ${count} 次`}>
-                            <div className="tag-bar-track">
-                              <div
+                          <button
+                            key={tag.id}
+                            type="button"
+                            className="tag-bar"
+                            title={`${tag.name} · ${count} 次 · 点击查看相关作品`}
+                            onClick={() => navigate(`/gallery?tag=${encodeURIComponent(tag.id)}`)}
+                          >
+                            <span className="tag-bar-track">
+                              <span
                                 className="tag-bar-fill"
                                 style={{ height: `${(count / groupMax) * 100}%`, background: tag.color }}
                               />
-                            </div>
+                            </span>
                             <span className="num tag-bar-value">{count}</span>
                             <span className="tag-bar-name">{tag.name}</span>
                             <span className="tag-bar-avatar">{castAvatar(tag.id)}</span>
-                          </div>
+                          </button>
                         )
                       })}
                     </div>
@@ -364,14 +421,58 @@ export function StatsView() {
             })}
           </div>
         ) : (
-          <p className="faint">还没有使用标签。去图库多选作品批量打标签后，这里会出现分布。</p>
+          <p className="faint">
+            {IS_PUBLIC
+              ? '目前还没有可展示的标签分布。'
+              : '还没有使用标签。去图库多选作品批量打标签后，这里会出现分布。'}
+          </p>
         )}
       </section>
+
+      {IS_PUBLIC && (
+        <section className="panel">
+          <div className="panel-head">
+            <h3>角色出场榜</h3>
+            <span className="faint">
+              {characterRank.length} 位角色 · 累计 {characterTotal} 次出场
+            </span>
+          </div>
+          {characterRank.length ? (
+            <div className="cast-pairs">
+              {characterRank.map((row) => (
+                <button
+                  key={row.id}
+                  type="button"
+                  className="rank-row"
+                  onClick={() => openCharacter(row.id)}
+                  title={`查看「${tagMap.get(row.id)?.name ?? row.id}」的角色图鉴`}
+                >
+                  <span className="cast-avatar-btn">{castAvatar(row.id)}</span>
+                  <span className="rank-name">{tagMap.get(row.id)?.name ?? row.id}</span>
+                  <span className="cast-pair-track">
+                    <span
+                      className="cast-pair-fill"
+                      style={{ width: `${(row.count / Math.max(1, characterRank[0].count)) * 100}%` }}
+                    />
+                  </span>
+                  <span className="num cast-pair-count">
+                    {row.count} 次 · {pct(row.count, characterTotal)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="faint">目前还没有公开的角色出场记录。</p>
+          )}
+        </section>
+      )}
 
       <section className="panel">
         <div className="panel-head">
           <h3>人物组合</h3>
-          <span className="faint">仅统计已确认的绘日记 · 共 {cast.total} 张有人物标注</span>
+          <span className="faint">
+            仅统计{IS_PUBLIC ? '公开的' : '已确认的'}绘日记 · 共 {cast.total} 张有人物标注
+          </span>
         </div>
         <div className="cast-tabs" role="tablist" aria-label="人物组合">
           {(
@@ -408,8 +509,8 @@ export function StatsView() {
               <div className="cast-pairs">
                 {cast.singles.map((row) => (
                   <div key={row.ids[0]} className="cast-pair-row">
-                    <span className="cast-pair-who">{castAvatar(row.ids[0])}</span>
-                    <span className="cast-pair-name">{castNames(row.ids)}</span>
+                    <span className="cast-pair-who">{castAvatarLink(row.ids[0])}</span>
+                    <span className="cast-pair-name">{castNameLinks(row.ids)}</span>
                     <span className="cast-pair-track">
                       <span
                         className="cast-pair-fill"
@@ -424,7 +525,11 @@ export function StatsView() {
               </div>
             </>
           ) : (
-            <p className="faint">还没有「单人出镜」的标注。给只有一位角色的绘日记标上人物后，这里会按角色排名。</p>
+            <p className="faint">
+              {IS_PUBLIC
+                ? '目前还没有单人出镜的公开标注。'
+                : '还没有「单人出镜」的标注。给只有一位角色的绘日记标上人物后，这里会按角色排名。'}
+            </p>
           ))}
 
         {castTab === 'double' &&
@@ -438,10 +543,10 @@ export function StatsView() {
                 {cast.pairs.map((pair) => (
                   <div key={pair.ids.join('|')} className="cast-pair-row">
                     <span className="cast-pair-who">
-                      {castAvatar(pair.ids[0])}
-                      {castAvatar(pair.ids[1])}
+                      {castAvatarLink(pair.ids[0])}
+                      {castAvatarLink(pair.ids[1])}
                     </span>
-                    <span className="cast-pair-name">{castNames(pair.ids)}</span>
+                    <span className="cast-pair-name">{castNameLinks(pair.ids)}</span>
                     <span className="cast-pair-track">
                       <span
                         className="cast-pair-fill"
@@ -457,7 +562,9 @@ export function StatsView() {
             </>
           ) : (
             <p className="faint">
-              暂时没有可配对的出场标注。至少需要一张已确认绘日记标注了 2 位及以上角色，组合才会出现在这里。
+              {IS_PUBLIC
+                ? '目前还没有可展示的双人组合。'
+                : '暂时没有可配对的出场标注。至少需要一张已确认绘日记标注了 2 位及以上角色，组合才会出现在这里。'}
             </p>
           ))}
 
@@ -472,9 +579,9 @@ export function StatsView() {
                 {cast.groups.map((group) => (
                   <div key={group.ids.join('|')} className="cast-pair-row is-group">
                     <span className="cast-pair-who">
-                      {group.ids.slice(0, 3).map((id) => castAvatar(id))}
+                      {group.ids.slice(0, 3).map((id) => castAvatarLink(id))}
                     </span>
-                    <span className="cast-pair-name">{castNames(group.ids)}</span>
+                    <span className="cast-pair-name">{castNameLinks(group.ids)}</span>
                     <span className="cast-pair-track">
                       <span
                         className="cast-pair-fill"
@@ -489,7 +596,11 @@ export function StatsView() {
               </div>
             </>
           ) : (
-            <p className="faint">还没有 3 人及以上的群像标注。标注多位角色后，完整组合会按张数排在这里。</p>
+            <p className="faint">
+              {IS_PUBLIC
+                ? '目前还没有 3 人及以上的公开群像。'
+                : '还没有 3 人及以上的群像标注。标注多位角色后，完整组合会按张数排在这里。'}
+            </p>
           ))}
       </section>
     </div>

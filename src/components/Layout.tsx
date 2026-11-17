@@ -6,7 +6,7 @@ import { effectiveDate, parseDateQuery, dayQueryOf } from '../lib/dates'
 import { IS_PUBLIC } from '../lib/appMode'
 import { restoreFilesFromTrash } from '../lib/trash'
 
-const PUBLIC_PATHS = new Set(['/', '/calendar', '/gallery', '/storylines', '/reader', '/search', '/characters'])
+const PUBLIC_PATHS = new Set(['/', '/calendar', '/gallery', '/storylines', '/reader', '/search', '/characters', '/stats'])
 const SIDEBAR_KEY = 'namori.sidebar.collapsed'
 
 const PAGE_TITLES: Record<string, { eyebrow: string; title: string }> = {
@@ -132,6 +132,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
         { path: '/storylines', label: '故事线', icon: 'book' },
         { path: '/reader', label: '翻阅', icon: 'book' },
         { path: '/search', label: '搜索', icon: 'search' },
+        ...(IS_PUBLIC ? [{ path: '/stats', label: '统计', icon: 'chart' }] : []),
       ],
     },
     {
@@ -148,7 +149,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
     {
       label: '工具',
       items: [
-        { path: '/stats', label: '统计', icon: 'chart' },
+        ...(IS_PUBLIC ? [] : [{ path: '/stats', label: '统计', icon: 'chart' }]),
         { path: '/data', label: '数据与设置', icon: 'database' },
       ],
     },

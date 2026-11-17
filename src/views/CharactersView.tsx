@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
 import { Empty, Modal } from '../components/Modal'
@@ -7,10 +7,11 @@ import { navigate } from '../lib/router'
 import { CHARACTER_PRESETS, presetAvatarPath, sortCharacterTags } from '../lib/constants'
 import { IS_PUBLIC } from '../lib/appMode'
 import type { Character, DiaryItem, Tag } from '../types'
+import type { Route } from '../lib/router'
 
 const BASE = import.meta.env.BASE_URL
 
-export function CharactersView() {
+export function CharactersView({ route }: { route: Route }) {
   const {
     tags,
     dimensions,
@@ -33,6 +34,7 @@ export function CharactersView() {
 
   const [editing, setEditing] = useState<Tag | null>(null)
   const [creating, setCreating] = useState(false)
+  const highlightId = route.query.get('char') ?? ''
 
   const data = useMemo(() => {
     return charTags.map((tag) => {
@@ -59,6 +61,11 @@ export function CharactersView() {
     })
   }, [charTags, items, annotations, tags, getDate, characterMap])
 
+  useEffect(() => {
+    if (!highlightId) return
+    document.getElementById(`character-${highlightId}`)?.scrollIntoView({ block: 'center' })
+  }, [highlightId, data.length])
+
   const totalTagged = data.reduce((sum, d) => sum + d.count, 0)
   const existingNames = new Set(charTags.map((tag) => tag.name))
   const missingCount = CHARACTER_PRESETS.filter((character) => !existingNames.has(character.name)).length
@@ -83,14 +90,18 @@ export function CharactersView() {
               <Icon name="plus" size={14} />新建角色
             </button>
           )}
-          <button className="btn" onClick={addPresets} disabled={!missingCount}>
-            <Icon name={missingCount ? 'plus' : 'check'} size={14} />
-            {missingCount ? `补齐 ${missingCount} 位角色预置` : `${CHARACTER_PRESETS.length} 位角色已就绪`}
-          </button>
-          <button className="btn" onClick={() => navigate('/tags')}>
-            <Icon name="tag" size={14} />
-            管理人物标签
-          </button>
+          {!IS_PUBLIC && (
+            <>
+              <button className="btn" onClick={addPresets} disabled={!missingCount}>
+                <Icon name={missingCount ? 'plus' : 'check'} size={14} />
+                {missingCount ? `补齐 ${missingCount} 位角色预置` : `${CHARACTER_PRESETS.length} 位角色已就绪`}
+              </button>
+              <button className="btn" onClick={() => navigate('/tags')}>
+                <Icon name="tag" size={14} />
+                管理人物标签
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -104,7 +115,11 @@ export function CharactersView() {
               ? `${Math.round(character.avatarCrop.cx * 100)}% ${Math.round(character.avatarCrop.cy * 100)}%`
               : '50% 50%'
             return (
-              <div key={tag.id} className="character-card">
+              <div
+                key={tag.id}
+                id={`character-${tag.id}`}
+                className={`character-card${tag.id === highlightId ? ' is-highlight' : ''}`}
+              >
                 <button className="character-cover" style={{ background: tag.color }} onClick={() => navigate(`/gallery?tag=${tag.id}`)}>
                   {character?.avatarDataUrl ? (
                     <img src={character.avatarDataUrl} alt={tag.name} />

@@ -13,6 +13,7 @@ import { StorylineView } from './views/StorylineView'
 import { DateFindView } from './views/DateFindView'
 import { ReaderView } from './views/ReaderView'
 import { CharactersView } from './views/CharactersView'
+import { StatsView } from './views/StatsView'
 import { DetailView } from './views/DetailView'
 
 // 管理端视图只在 admin 构建中打包；public 构建会把下面的分支整体折叠掉。
@@ -28,8 +29,6 @@ const CollectionsView =
   __APP_MODE__ === 'public'
     ? null
     : lazy(() => import('./views/CollectionsView').then((m) => ({ default: m.CollectionsView })))
-const StatsView =
-  __APP_MODE__ === 'public' ? null : lazy(() => import('./views/StatsView').then((m) => ({ default: m.StatsView })))
 const DataView =
   __APP_MODE__ === 'public' ? null : lazy(() => import('./views/DataView').then((m) => ({ default: m.DataView })))
 const CharacterTaggingView =
@@ -69,7 +68,7 @@ function CurrentView({ route }: { route: ReturnType<typeof useRoute> }) {
     case 'tags':
       return adminOnly(TagsView ? <TagsView /> : null)
     case 'characters':
-      return <CharactersView />
+      return <CharactersView route={route} />
     case 'character-tagging':
       return adminOnly(CharacterTaggingView ? <CharacterTaggingView /> : null)
     case 'collections':
@@ -83,7 +82,7 @@ function CurrentView({ route }: { route: ReturnType<typeof useRoute> }) {
     case 'reader':
       return <ReaderView route={route} />
     case 'stats':
-      return adminOnly(StatsView ? <StatsView /> : null)
+      return <StatsView />
     case 'data':
       return adminOnly(DataView ? <DataView /> : null)
     case 'item':

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Route } from '../lib/router'
 import { navigate } from '../lib/router'
 import { useStore } from '../state/store'
@@ -67,9 +67,17 @@ export function GalleryView({ route }: { route: Route }) {
   const [storylineIds, setStorylineIds] = useState<string[] | null>(null)
   const [newStoryline, setNewStoryline] = useState('')
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [tagFilterOpen, setTagFilterOpen] = useState(false)
+  const [tagFilterOpen, setTagFilterOpen] = useState(route.query.get('tag') !== null)
   // 手机端顶部控件默认收起，只留一行紧凑入口
   const [filtersOpen, setFiltersOpen] = useState(false)
+
+  // 支持 #/gallery?tag=… 直接打开；同一页面内切换 tag 参数时同步筛选
+  const queryTag = route.query.get('tag') ?? ''
+  useEffect(() => {
+    if (!queryTag) return
+    setFilter((f) => (f.tagIds.length === 1 && f.tagIds[0] === queryTag ? f : { ...f, tagIds: [queryTag] }))
+    setTagFilterOpen(true)
+  }, [queryTag])
 
   const activeFilterCount = [
     filter.keyword !== DEFAULT_FILTER.keyword,
@@ -276,20 +284,24 @@ export function GalleryView({ route }: { route: Route }) {
           <option value="translated">已翻译</option>
         </select>
         <div className="row" style={{ gap: 6 }}>
-          <button
-            className={`chip${filter.favoriteOnly ? ' active' : ''}`}
-            onClick={() => setFilter((f) => ({ ...f, favoriteOnly: !f.favoriteOnly }))}
-          >
-            <Icon name="heart" size={11} />
-            只看收藏
-          </button>
-          <button
-            className={`chip${filter.unconfirmedOnly ? ' active' : ''}`}
-            onClick={() => setFilter((f) => ({ ...f, unconfirmedOnly: !f.unconfirmedOnly }))}
-          >
-            <Icon name="check" size={11} />
-            待校对
-          </button>
+          {!IS_PUBLIC && (
+            <>
+              <button
+                className={`chip${filter.favoriteOnly ? ' active' : ''}`}
+                onClick={() => setFilter((f) => ({ ...f, favoriteOnly: !f.favoriteOnly }))}
+              >
+                <Icon name="heart" size={11} />
+                只看收藏
+              </button>
+              <button
+                className={`chip${filter.unconfirmedOnly ? ' active' : ''}`}
+                onClick={() => setFilter((f) => ({ ...f, unconfirmedOnly: !f.unconfirmedOnly }))}
+              >
+                <Icon name="check" size={11} />
+                待校对
+              </button>
+            </>
+          )}
           <button className={`chip${tagFilterOpen ? ' active' : ''}`} onClick={() => setTagFilterOpen((v) => !v)}>
             <Icon name="tag" size={11} />
             标签{filter.tagIds.length ? ` ${filter.tagIds.length}` : ''}
