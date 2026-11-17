@@ -16,6 +16,7 @@
  */
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
+import crypto from 'node:crypto'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
@@ -27,13 +28,14 @@ const args = process.argv.slice(2)
 const FORCE = args.includes('--force')
 const srcArg = args.find((a) => a.startsWith('--src='))
 
-/** 仓库内 images/original 优先，其次兼容仓库外的 ../namoridane */
+/**
+ * 原图目录：显式参数 / 环境变量优先，否则固定使用仓库内的 images/original。
+ * 不再自动回退到仓库外的旧目录，避免清空后重新吸入旧数据。
+ */
 function resolveSourceDir() {
   if (srcArg) return path.resolve(ROOT, srcArg.slice('--src='.length))
   if (process.env.NAMORI_SRC) return path.resolve(ROOT, process.env.NAMORI_SRC)
-  const repoDir = path.join(ROOT, 'images', 'original')
-  if (fs.existsSync(repoDir)) return repoDir
-  return path.resolve(ROOT, '..', 'namoridane')
+  return path.join(ROOT, 'images', 'original')
 }
 const SRC_DIR = resolveSourceDir()
 
@@ -43,29 +45,55 @@ const OUT_ORIGINAL = path.join(ROOT, 'public', 'images', 'original')
 const OUT_DATA = path.join(ROOT, 'public', 'data')
 const CACHE_DIR = path.join(ROOT, '.cache')
 const CACHE_FILE = path.join(CACHE_DIR, 'images.json')
+const OCR_FILE = path.join(ROOT, 'data', 'ocr.json')
+const PUBLIC_DATA_FILE = path.join(ROOT, 'data', 'public.json')
+
+const MODE =
+  (process.argv.find((arg) => arg.startsWith('--mode='))?.split('=')[1] ||
+    process.env.APP_MODE ||
+    'admin') === 'public'
+    ? 'public'
+    : 'admin'
 
 const THUMB_WIDTH = 480
 const LARGE_WIDTH = 1400
-const CACHE_VERSION = 3
-const INDEX_VERSION = 4
+const CACHE_VERSION = 4
+const INDEX_VERSION = 6
 const CONCURRENCY = 6
 
 const NAME_RE = /^(\d{4})-(\d{2})-(\d{2})-([A-Za-z0-9_-]{11})(?:-(\d+))?\.jpe?g$/i
+const UNKNOWN_RE = /^unknown-(.+)\.jpe?g$/i
 
 const log = (...m) => console.log('[data]', ...m)
 
 function parseName(fileName) {
   const m = NAME_RE.exec(fileName)
-  if (!m) return null
-  const [, y, mo, d, shortcode, idx] = m
-  return {
-    publishedAt: `${y}-${mo}-${d}`,
-    year: Number(y),
-    month: Number(mo),
-    day: Number(d),
-    shortcode,
-    postIndex: idx === undefined ? 0 : Number(idx),
+  if (m) {
+    const [, y, mo, d, shortcode, idx] = m
+    return {
+      publishedAt: `${y}-${mo}-${d}`,
+      year: Number(y),
+      month: Number(mo),
+      day: Number(d),
+      shortcode,
+      postIndex: idx === undefined ? 0 : Number(idx),
+      dateKnown: true,
+    }
   }
+  // 拿不到发布日期的图片：文件名保留原始来源，日期留待人工审核
+  const u = UNKNOWN_RE.exec(fileName)
+  if (u) {
+    return {
+      publishedAt: '',
+      year: 0,
+      month: 0,
+      day: 0,
+      shortcode: `unknown-${u[1]}`,
+      postIndex: 0,
+      dateKnown: false,
+    }
+  }
+  return null
 }
 
 function isoDate(y, m, d) {
@@ -256,12 +284,60 @@ async function pool(items, limit, worker) {
   return results
 }
 
+async function loadOcrResults() {
+  try {
+    const parsed = JSON.parse(await fsp.readFile(OCR_FILE, 'utf8'))
+    log(`OCR 预识别：${parsed?.stats?.recognized ?? 0}/${parsed?.stats?.total ?? 0} 张有候选日期`)
+    return parsed?.files ?? {}
+  } catch {
+    log('未找到 data/ocr.json，审核页将只提供「发布日 - 1 天」推测值')
+    return {}
+  }
+}
+
+/** 公开站种子：去掉非绘日记、私密备注、未确认推测日期与草稿故事线 */
+function prunePublicData(data) {
+  const items = {}
+  for (const [id, ann] of Object.entries(data.items ?? {})) {
+    if (!ann || ann.excluded || ann.deleted) continue
+    const next = {
+      tags: Array.isArray(ann.tags) ? ann.tags : [],
+      favorite: false,
+      reviewed: Boolean(ann.reviewed),
+      excluded: false,
+      note: '',
+      updatedAt: ann.updatedAt || new Date().toISOString(),
+    }
+    if (ann.date?.confirmed) next.date = ann.date
+    if (ann.translation) {
+      next.translation = {
+        source: ann.translation.source ?? '',
+        slots: (ann.translation.slots ?? []).map((slot) => ({
+          lang: slot.lang,
+          label: slot.label,
+          text: slot.text,
+        })),
+        updatedAt: ann.translation.updatedAt || new Date().toISOString(),
+      }
+    }
+    items[id] = next
+  }
+  return {
+    version: data.version ?? 1,
+    updatedAt: data.updatedAt || new Date().toISOString(),
+    dimensions: data.dimensions ?? [],
+    tags: data.tags ?? [],
+    characters: data.characters ?? [],
+    collections: [],
+    storylines: (data.storylines ?? []).filter((story) => story.published),
+    items,
+  }
+}
+
 async function main() {
   const started = Date.now()
-  if (!fs.existsSync(SRC_DIR)) {
-    console.error(`[data] 找不到原图目录：${SRC_DIR}`)
-    process.exit(1)
-  }
+  await fsp.mkdir(SRC_DIR, { recursive: true })
+  const ocrFiles = await loadOcrResults()
   await Promise.all([
     fsp.mkdir(OUT_THUMB, { recursive: true }),
     fsp.mkdir(OUT_LARGE, { recursive: true }),
@@ -285,7 +361,7 @@ async function main() {
     .map((d) => d.name)
     .sort()
 
-  const entries = []
+  let entries = []
   const skippedNames = []
   for (const name of names) {
     const parsed = parseName(name)
@@ -298,6 +374,41 @@ async function main() {
     const cacheKey = `${name}:${stat.size}:${Math.round(stat.mtimeMs)}`
     const cached = cache.files[cacheKey]
     entries.push({ name, file, parsed, cacheKey, cached, bytes: stat.size })
+  }
+
+  // 稳定 id：同一帖子多图用 shortcode-N；两种构建模式保持一致
+  const idByFile = new Map()
+  {
+    const groups = new Map()
+    for (const entry of entries) {
+      const key = entry.parsed.shortcode
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key).push(entry)
+    }
+    for (const [shortcode, list] of groups) {
+      list.sort((a, b) => a.parsed.postIndex - b.parsed.postIndex || a.name.localeCompare(b.name))
+      list.forEach((entry, index) => {
+        idByFile.set(entry.name, list.length > 1 ? `${shortcode}-${index}` : shortcode)
+      })
+    }
+  }
+
+  let publicData = null
+  let excludedIds = new Set()
+  if (MODE === 'public') {
+    if (!fs.existsSync(PUBLIC_DATA_FILE)) {
+      console.error('[data] 公开构建需要 data/public.json，请先在管理端「数据与设置」导出发布数据')
+      process.exit(1)
+    }
+    publicData = JSON.parse(await fsp.readFile(PUBLIC_DATA_FILE, 'utf8'))
+    excludedIds = new Set(
+      Object.entries(publicData.items ?? {})
+        .filter(([, ann]) => ann?.excluded || ann?.deleted)
+        .map(([id]) => id),
+    )
+    const before = entries.length
+    entries = entries.filter((entry) => !excludedIds.has(idByFile.get(entry.name)))
+    log(`公开模式：排除 ${before - entries.length} 张非绘日记`)
   }
 
   if (skippedNames.length) {
@@ -332,11 +443,19 @@ async function main() {
   for (const e of processed) {
     const list = posts.get(e.parsed.shortcode)
     const postIndex = list.findIndex((x) => x.name === e.name)
-    const id = list.length > 1 ? `${e.parsed.shortcode}-${postIndex}` : e.parsed.shortcode
+    const id = idByFile.get(e.name)
     if (list.length > 1 && list.filter((x) => x.parsed.postIndex === e.parsed.postIndex).length > 1) {
       issues.push(`${e.parsed.shortcode} 存在重复序号`)
     }
-    const inferred = shiftDay(e.parsed, -1)
+    // 日记日期的默认值：OCR 候选优先，没有 OCR 时用发布日期前一天（明确标注为推测）
+    const ocrEntry = ocrFiles[e.name]
+    const ocrBest = ocrEntry?.best && ocrEntry.best.year ? ocrEntry.best : null
+    const inferred = ocrBest
+      ? { year: ocrBest.year, month: ocrBest.month, day: ocrBest.day }
+      : e.parsed.dateKnown
+        ? shiftDay(e.parsed, -1)
+        : { year: 0, month: 0, day: 0 }
+    const isPublic = MODE === 'public'
     items.push({
       id,
       shortcode: e.parsed.shortcode,
@@ -344,11 +463,29 @@ async function main() {
       postIndex,
       postCount: list.length,
       publishedAt: e.parsed.publishedAt,
-      inferredMonth: inferred.month,
-      inferredDay: inferred.day,
-      // 年份按发布年份处理，跨年时在界面上可修改
-      inferredYear: e.parsed.year,
-      rollover: inferred.year !== e.parsed.year ? 'year' : inferred.month !== e.parsed.month ? 'month' : '',
+      dateKnown: e.parsed.dateKnown,
+      // 日记日期的初始建议：OCR 图内日期 > 发布日期前一天；没有发布日期时为 0，等待人工确认
+      inferredMonth: isPublic ? 0 : inferred.month,
+      inferredDay: isPublic ? 0 : inferred.day,
+      inferredYear: isPublic ? 0 : inferred.year,
+      rollover: e.parsed.dateKnown
+        ? inferred.year !== e.parsed.year
+          ? 'year'
+          : inferred.month !== e.parsed.month
+            ? 'month'
+            : ''
+        : '',
+      ocr: isPublic
+        ? null
+        : ocrEntry
+          ? {
+              rawText: ocrEntry.rawText ?? '',
+              candidates: ocrEntry.candidates ?? [],
+            }
+          : null,
+      suggestedDiaryDate: isPublic || !ocrBest
+        ? null
+        : { year: ocrBest.year, month: ocrBest.month, day: ocrBest.day },
       thumb: e.thumb,
       large: e.large,
       original: `images/original/${e.name}`,
@@ -361,20 +498,35 @@ async function main() {
   }
 
   items.sort((a, b) => {
-    if (a.publishedAt !== b.publishedAt) return a.publishedAt < b.publishedAt ? -1 : 1
+    const ak = a.publishedAt || '9999-99-99'
+    const bk = b.publishedAt || '9999-99-99'
+    if (ak !== bk) return ak < bk ? -1 : 1
     return a.postIndex - b.postIndex
   })
 
   const years = {}
+  let undated = 0
   for (const it of items) {
     const y = it.publishedAt.slice(0, 4)
+    if (!y) {
+      undated++
+      continue
+    }
     years[y] = (years[y] || 0) + 1
   }
+
+  const datasetId = crypto
+    .createHash('sha1')
+    .update(items.map((item) => `${item.file}:${item.bytes}`).join('|'))
+    .digest('hex')
+    .slice(0, 12)
 
   const index = {
     version: INDEX_VERSION,
     generatedAt: new Date().toISOString(),
+    datasetId,
     count: items.length,
+    undated,
     years,
     items,
   }
@@ -392,16 +544,21 @@ async function main() {
     }
   }
 
-  // 种子标注数据：优先 data/userdata.json，其次 data/userdata.example.json
-  const seedCandidates = [
-    path.join(ROOT, 'data', 'userdata.json'),
-    path.join(ROOT, 'data', 'userdata.example.json'),
-  ]
-  for (const candidate of seedCandidates) {
-    if (fs.existsSync(candidate)) {
-      await fsp.copyFile(candidate, path.join(OUT_DATA, 'userdata.seed.json'))
-      log(`种子标注：${path.relative(ROOT, candidate)}`)
-      break
+  // 种子标注数据：公开模式用 data/public.json 的裁剪版；管理端优先 data/userdata.json
+  if (MODE === 'public') {
+    await fsp.writeFile(path.join(OUT_DATA, 'userdata.seed.json'), JSON.stringify(prunePublicData(publicData)))
+    log('种子标注：data/public.json（已裁剪公开内容）')
+  } else {
+    const seedCandidates = [
+      path.join(ROOT, 'data', 'userdata.json'),
+      path.join(ROOT, 'data', 'userdata.example.json'),
+    ]
+    for (const candidate of seedCandidates) {
+      if (fs.existsSync(candidate)) {
+        await fsp.copyFile(candidate, path.join(OUT_DATA, 'userdata.seed.json'))
+        log(`种子标注：${path.relative(ROOT, candidate)}`)
+        break
+      }
     }
   }
 

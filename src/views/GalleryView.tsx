@@ -9,24 +9,31 @@ import { Masonry } from '../components/ItemCard'
 import { Empty, Modal } from '../components/Modal'
 import { TagPicker } from '../components/TagPicker'
 import { downloadBlob, downloadOriginalsZip } from '../lib/image'
+import { IS_PUBLIC } from '../lib/appMode'
+import { moveFilesToTrash } from '../lib/trash'
 import type { FilterState } from '../types'
 
 export function GalleryView({ route }: { route: Route }) {
   const {
     items,
     excludedItems,
+    pendingReviewItems,
     itemMap,
     annotations,
     tags,
     collections,
+    storylines,
     data,
     addTagToItems,
     removeTagFromItems,
     setFavorite,
-    setExcluded,
+    setReviewStatus,
     confirmDate,
     addToCollection,
     addCollection,
+    addStoryline,
+    addToStoryline,
+    deleteItems,
     notify,
   } = useStore()
 
@@ -54,6 +61,9 @@ export function GalleryView({ route }: { route: Route }) {
   const [pickTags, setPickTags] = useState<string[]>([])
   const [collectionModal, setCollectionModal] = useState(false)
   const [newCollection, setNewCollection] = useState('')
+  const [storylineIds, setStorylineIds] = useState<string[] | null>(null)
+  const [newStoryline, setNewStoryline] = useState('')
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [tagFilterOpen, setTagFilterOpen] = useState(false)
 
   const sourceItems = showExcluded ? excludedItems : items
@@ -104,7 +114,7 @@ export function GalleryView({ route }: { route: Route }) {
   const exportExcluded = () => {
     const text = excludedItems.map((item) => item.file).join('\r\n')
     downloadBlob(new Blob([text], { type: 'text/plain;charset=utf-8' }), 'namori-excluded-files.txt')
-    notify(`已导出 ${excludedItems.length} 个待剔除文件名`, 'success')
+    notify(`已导出 ${excludedItems.length} 个非绘日记文件名`, 'success')
   }
 
   const clearSelection = () => setSelected(new Set())
@@ -116,7 +126,10 @@ export function GalleryView({ route }: { route: Route }) {
     }))
   }
 
-  const years = useMemo(() => [...new Set(sourceItems.map((i) => i.publishedAt.slice(0, 4)))].sort(), [sourceItems])
+  const years = useMemo(
+    () => [...new Set(sourceItems.map((i) => i.publishedAt.slice(0, 4)).filter(Boolean))].sort(),
+    [sourceItems],
+  )
 
   return (
     <div className="gallery-view">
@@ -131,26 +144,34 @@ export function GalleryView({ route }: { route: Route }) {
           </div>
         </div>
         <div className="page-actions">
-          <button
-            className={`btn${showExcluded ? ' btn-primary' : ''}`}
-            onClick={() => {
-              setShowExcluded((value) => !value)
-              clearSelection()
-            }}
-          >
-            <Icon name={showExcluded ? 'gallery' : 'trash'} size={15} />
-            {showExcluded ? '返回图库' : `排除区 ${excludedItems.length}`}
-          </button>
-          <button
-            className={`btn${selectMode ? ' btn-primary' : ''}`}
-            onClick={() => {
-              setSelectMode((v) => !v)
-              clearSelection()
-            }}
-          >
-            <Icon name="checkSquare" size={15} />
-            {selectMode ? '退出多选' : '多选整理'}
-          </button>
+          {!IS_PUBLIC && (
+            <>
+              <button className="btn" onClick={() => navigate('/diary-review')}>
+                <Icon name="checkSquare" size={15} />
+                绘日记审核 · {pendingReviewItems.length}
+              </button>
+              <button
+                className={`btn${showExcluded ? ' btn-primary' : ''}`}
+                onClick={() => {
+                  setShowExcluded((value) => !value)
+                  clearSelection()
+                }}
+              >
+                <Icon name={showExcluded ? 'gallery' : 'trash'} size={15} />
+                {showExcluded ? '返回图库' : `排除区 ${excludedItems.length}`}
+              </button>
+              <button
+                className={`btn${selectMode ? ' btn-primary' : ''}`}
+                onClick={() => {
+                  setSelectMode((v) => !v)
+                  clearSelection()
+                }}
+              >
+                <Icon name="checkSquare" size={15} />
+                {selectMode ? '退出多选' : '多选整理'}
+              </button>
+            </>
+          )}
           <button className="btn btn-ghost" onClick={() => navigate('/search')}>
             <Icon name="filter" size={15} />
             高级筛选
@@ -158,14 +179,14 @@ export function GalleryView({ route }: { route: Route }) {
         </div>
       </div>
 
-      {showExcluded && (
+      {!IS_PUBLIC && showExcluded && (
         <div className="excluded-banner">
           <div>
             <strong>这里只放你标记的「非绘日记」</strong>
-            <span>排除只是本地整理标记，不会删除文件；可批量恢复，或导出名单后再从 images/original 剔除。</span>
+            <span>这里只修改浏览器中的审核标注，不会修改、移动或删除原始图片；构建和原图 ZIP 仍包含全部图片。</span>
           </div>
           <button className="btn btn-sm" onClick={exportExcluded} disabled={!excludedItems.length}>
-            <Icon name="download" size={14} />导出剔除名单
+            <Icon name="download" size={14} />导出非绘日记名单
           </button>
         </div>
       )}
@@ -217,6 +238,16 @@ export function GalleryView({ route }: { route: Route }) {
           <option value="diaryDesc">日记日 · 晚→早</option>
           <option value="updatedDesc">最近整理</option>
         </select>
+        <select
+          className="select"
+          style={{ width: 112 }}
+          value={filter.translation}
+          onChange={(e) => setFilter((f) => ({ ...f, translation: e.target.value as FilterState['translation'] }))}
+        >
+          <option value="any">翻译不限</option>
+          <option value="none">未翻译</option>
+          <option value="translated">已翻译</option>
+        </select>
         <div className="row" style={{ gap: 6 }}>
           <button
             className={`chip${filter.favoriteOnly ? ' active' : ''}`}
@@ -238,17 +269,30 @@ export function GalleryView({ route }: { route: Route }) {
           </button>
         </div>
         <div className="spacer" />
-        {selectMode && (
+        {!IS_PUBLIC && (
           <>
             <button
               className="btn btn-sm"
-              onClick={() => setSelected(new Set(filtered.map((i) => i.id)))}
+              onClick={() => setStorylineIds(filtered.map((i) => i.id))}
+              disabled={!filtered.length}
+              title="把当前筛选结果的顺序保存为故事线"
             >
-              全选当前
+              <Icon name="book" size={13} />
+              当前筛选加入故事线
             </button>
-            <button className="btn btn-sm btn-ghost" onClick={clearSelection} disabled={!selected.size}>
-              清除
-            </button>
+            {selectMode && (
+              <>
+                <button
+                  className="btn btn-sm"
+                  onClick={() => setSelected(new Set(filtered.map((i) => i.id)))}
+                >
+                  全选当前
+                </button>
+                <button className="btn btn-sm btn-ghost" onClick={clearSelection} disabled={!selected.size}>
+                  清除
+                </button>
+              </>
+            )}
           </>
         )}
       </div>
@@ -297,36 +341,50 @@ export function GalleryView({ route }: { route: Route }) {
       )}
 
       {!groups.length ? (
-        <Empty
-          icon="image"
-          title={showExcluded ? '排除区是空的' : '没有符合条件的作品'}
-          hint={showExcluded ? '在详情中点「非绘日记」，图片就会集中到这里等待处理。' : '试试清除关键词、年份或标签筛选。'}
-          action={
-            <button className="btn btn-sm" onClick={() => setFilter(DEFAULT_FILTER)}>
-              重置筛选
-            </button>
-          }
-        />
+        !sourceItems.length ? (
+          <Empty
+            icon="image"
+            title="还没有图片"
+            hint={
+              IS_PUBLIC
+                ? '公开站还没有发布任何绘日记。'
+                : '把解压后的 Instagram 保存页目录导入：npm run import -- "<解压目录>"，然后运行 npm run data 生成索引。'
+            }
+          />
+        ) : (
+          <Empty
+            icon="image"
+            title={showExcluded ? '排除区是空的' : '没有符合条件的作品'}
+            hint={showExcluded ? '在审核页或详情中点「非绘日记」，图片就会集中到这里；原始文件始终保留。' : '试试清除关键词、年份或标签筛选。'}
+            action={
+              <button className="btn btn-sm" onClick={() => setFilter(DEFAULT_FILTER)}>
+                重置筛选
+              </button>
+            }
+          />
+        )
       ) : (
         <div className="gallery-groups">
           {groups.map((group) => (
             <section key={group.key} className="gallery-group">
               <div className="group-head">
                 <h3>
-                  {group.year} 年 {group.month} 月
+                  {group.key === 'unknown' ? '日期待定' : `${group.year} 年 ${group.month} 月`}
                   <span className="group-count num">{group.items.length} 张</span>
                 </h3>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => navigate(`/calendar?y=${group.year}&m=${group.month}`)}
-                >
-                  在日历中查看
-                  <Icon name="right" size={12} />
-                </button>
+                {group.key !== 'unknown' && (
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => navigate(`/calendar?y=${group.year}&m=${group.month}`)}
+                  >
+                    在日历中查看
+                    <Icon name="right" size={12} />
+                  </button>
+                )}
               </div>
               <Masonry
                 items={group.items}
-                selectable={selectMode}
+                selectable={!IS_PUBLIC && selectMode}
                 selected={selected}
                 onToggleSelect={toggleSelect}
               />
@@ -335,7 +393,7 @@ export function GalleryView({ route }: { route: Route }) {
         </div>
       )}
 
-      {selectMode && selected.size > 0 && (
+      {!IS_PUBLIC && selectMode && selected.size > 0 && (
         <div className="selection-bar">
           <span className="selection-count num">已选 {selected.size} 张</span>
           <div className="divider-v" />
@@ -365,15 +423,32 @@ export function GalleryView({ route }: { route: Route }) {
             <Icon name="folder" size={13} />
             加入合集
           </button>
+          <button className="btn btn-sm btn-soft" onClick={() => setStorylineIds(selectedIds)}>
+            <Icon name="book" size={13} />
+            加入故事线
+          </button>
+          {!showExcluded && (
+            <button
+              className="btn btn-sm btn-soft"
+              onClick={() => {
+                setReviewStatus(selectedIds, 'diary')
+                notify(`已确认 ${selectedIds.length} 张绘日记，原始图片保持不变`, 'success')
+                clearSelection()
+              }}
+            >
+              <Icon name="check" size={13} />
+              确认绘日记
+            </button>
+          )}
           <button
             className={`btn btn-sm${showExcluded ? ' btn-primary' : ' btn-danger'}`}
             onClick={() => {
-              setExcluded(selectedIds, !showExcluded)
-              notify(showExcluded ? `已恢复 ${selectedIds.length} 张绘日记` : `已排除 ${selectedIds.length} 张非绘日记`, 'success')
+              setReviewStatus(selectedIds, showExcluded ? 'diary' : 'not_diary')
+              notify(showExcluded ? `已恢复 ${selectedIds.length} 张绘日记` : `已标记 ${selectedIds.length} 张非绘日记，原始图片仍保留`, 'success')
               clearSelection()
             }}
           >
-            <Icon name={showExcluded ? 'check' : 'trash'} size={13} />
+            <Icon name={showExcluded ? 'check' : 'close'} size={13} />
             {showExcluded ? '恢复为绘日记' : '标记非绘日记'}
           </button>
           <button
@@ -383,10 +458,47 @@ export function GalleryView({ route }: { route: Route }) {
             <Icon name="sticker" size={13} />
             做表情包
           </button>
+          <button className="btn btn-sm btn-danger-ghost" onClick={() => setDeleteOpen(true)}>
+            <Icon name="trash" size={13} />
+            删除
+          </button>
           <button className="icon-btn" onClick={clearSelection} aria-label="清除选择">
             <Icon name="close" size={14} />
           </button>
         </div>
+      )}
+
+      {!IS_PUBLIC && deleteOpen && (
+        <Modal title={`删除 ${selectedIds.length} 张图？`} onClose={() => setDeleteOpen(false)}>
+          <div className="muted" style={{ lineHeight: 1.7 }}>
+            确认后立即从图库、索引和公开数据中移除，并把原图移入
+            <code> images/_trash/</code>。底部提示条可短时间撤销；彻底清理需在本地管理端执行
+            （<code>npm run dev</code> 的「待清理」或 <code>npm run purge</code>），清理后不可恢复。
+          </div>
+          <div className="modal-foot">
+            <button className="btn" onClick={() => setDeleteOpen(false)}>
+              取消
+            </button>
+            <button
+              className="btn btn-danger-ghost"
+              onClick={async () => {
+                const files = selectedItems.map((item) => item.file)
+                const moved = await moveFilesToTrash(files)
+                deleteItems(selectedIds)
+                notify(
+                  moved
+                    ? `已把 ${selectedIds.length} 张移入回收站，可在底部撤销`
+                    : `已移除 ${selectedIds.length} 张；原图清理需在本地管理端执行（npm run dev）`,
+                  'success',
+                )
+                setDeleteOpen(false)
+                clearSelection()
+              }}
+            >
+              确认删除
+            </button>
+          </div>
+        </Modal>
       )}
 
       {tagModal && (
@@ -482,6 +594,60 @@ export function GalleryView({ route }: { route: Route }) {
           </div>
           <div className="faint" style={{ marginTop: 8, fontSize: 11.5 }}>
             当前本地共有 {data.collections.length} 个合集。
+          </div>
+        </Modal>
+      )}
+
+      {storylineIds && (
+        <Modal
+          title={`加入故事线 · ${storylineIds.length} 张`}
+          onClose={() => setStorylineIds(null)}
+          footer={
+            <button className="btn" onClick={() => setStorylineIds(null)}>
+              完成
+            </button>
+          }
+        >
+          <div className="collection-pick-list">
+            {storylines.map((story) => (
+              <button
+                key={story.id}
+                className="collection-pick"
+                onClick={() => {
+                  addToStoryline(story.id, storylineIds)
+                  notify(`已加入「${story.title}」`, 'success')
+                  setStorylineIds(null)
+                }}
+              >
+                <Icon name="book" size={16} />
+                <span>{story.title}</span>
+                <span className="faint">{story.blocks.filter((b) => b.type === 'image').length} 张</span>
+              </button>
+            ))}
+          </div>
+          <div className="divider" />
+          <div className="row">
+            <input
+              className="input"
+              placeholder="新建故事线标题"
+              value={newStoryline}
+              onChange={(e) => setNewStoryline(e.target.value)}
+            />
+            <button
+              className="btn btn-primary"
+              disabled={!newStoryline.trim()}
+              onClick={() => {
+                const story = addStoryline(newStoryline.trim(), storylineIds)
+                setNewStoryline('')
+                notify(`已创建「${story.title}」并加入 ${storylineIds.length} 张`, 'success')
+                setStorylineIds(null)
+              }}
+            >
+              新建并加入
+            </button>
+          </div>
+          <div className="faint" style={{ marginTop: 8, fontSize: 11.5 }}>
+            图片顺序会按当前筛选 / 选择顺序写入，之后可在故事线里拖动调整。
           </div>
         </Modal>
       )}

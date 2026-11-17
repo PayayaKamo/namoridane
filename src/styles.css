@@ -186,6 +186,14 @@ hr {
   border-bottom: 1px solid var(--line);
 }
 
+.brand-home {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .brand-mark {
   width: 44px;
   height: 44px;
@@ -713,6 +721,14 @@ hr {
   flex-wrap: wrap;
 }
 
+.mobile-menu,
+.mobile-search,
+.mobile-bottom-nav,
+.mobile-nav-backdrop,
+.sidebar-close {
+  display: none;
+}
+
 /* 顶栏 */
 .topbar {
   position: sticky;
@@ -1057,18 +1073,190 @@ hr {
 
 @media (max-width: 760px) {
   .app-shell {
-    grid-template-columns: 60px minmax(0, 1fr);
+    display: block;
+    min-height: 100dvh;
   }
-  :root {
-    --sidebar-w: 60px;
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 90;
+    width: min(84vw, 300px);
+    height: 100dvh;
+    padding: 18px 16px;
+    align-items: stretch;
+    transform: translateX(-105%);
+    transition: transform 0.24s var(--ease);
+    box-shadow: var(--shadow-lg);
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .brand {
+    justify-content: flex-start;
+    padding: 0 0 14px;
+  }
+  .brand-text,
+  .nav-label,
+  .nav-item span.nav-text,
+  .sidebar-foot .btn span {
+    display: block;
+  }
+  .sidebar-meta {
+    display: flex;
+  }
+  .sidebar-close {
+    display: inline-grid;
+    margin-left: auto;
+  }
+  .nav-item {
+    width: 100%;
+    min-height: 44px;
+    justify-content: flex-start;
+    padding: 9px 12px;
+  }
+  .nav-item.active::before {
+    left: -16px;
+  }
+  .nav-badge {
+    position: static;
+    min-width: 20px;
+    height: auto;
+    padding: 1px 6px;
+    font-size: 10.5px;
+    line-height: inherit;
+  }
+  .sidebar-foot .btn {
+    width: 100%;
+    padding: 0 12px;
+  }
+  .main {
+    min-height: 100dvh;
   }
   .content {
-    padding: 14px 14px 48px;
+    padding: 14px 14px calc(94px + env(safe-area-inset-bottom));
   }
-  .top-search {
+  .topbar {
+    min-height: 56px;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  .topbar > .top-search {
     display: none;
+  }
+  .mobile-menu,
+  .mobile-search {
+    display: inline-grid;
+  }
+  .crumb {
+    min-width: 0;
+    flex: 1;
+  }
+  .crumb > span,
+  .crumb > svg {
+    display: none;
+  }
+  .crumb b {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mobile-nav-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: block;
+    background: rgba(28, 22, 16, 0.48);
+    backdrop-filter: blur(3px);
+  }
+  .mobile-bottom-nav {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 70;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 -6px 20px rgba(58, 45, 30, 0.06);
+  }
+  .mobile-bottom-nav a {
+    min-width: 0;
+    min-height: 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border-radius: 10px;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.25;
+  }
+  .mobile-bottom-nav a.active {
+    background: var(--accent-soft);
+    color: var(--accent-deep);
+    font-weight: 600;
+  }
+  .btn {
+    min-height: 40px;
+    height: auto;
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+  .btn-sm {
+    min-height: 36px;
+  }
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+  }
+  .input,
+  .select {
+    min-height: 40px;
+    height: 40px;
+  }
+  .toast-stack {
+    right: 12px;
+    bottom: calc(80px + env(safe-area-inset-bottom));
+    left: 12px;
+    align-items: stretch;
   }
   .page-title {
     font-size: 23px;
+  }
+}
+
+@media (max-width: 640px) {
+  .overlay {
+    align-items: flex-end;
+    padding: 12px 0 0;
+  }
+  .modal,
+  .modal.wide {
+    width: 100%;
+    max-height: calc(100dvh - 12px);
+    border-radius: 22px 22px 0 0;
+  }
+  .modal-head,
+  .modal-body {
+    padding: 16px;
+  }
+  .modal-foot {
+    flex-wrap: wrap;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+  .modal-foot .btn {
+    flex: 1 1 auto;
+  }
+}
+
+@media (hover: none) {
+  .select-check {
+    opacity: 1;
+  }
+  .item-caption {
+    display: none;
   }
 }

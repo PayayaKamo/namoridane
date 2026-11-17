@@ -12,6 +12,7 @@ export const DEFAULT_FILTER: FilterState = {
   dimensionModes: {},
   favoriteOnly: false,
   unconfirmedOnly: false,
+  translation: 'any',
   collectionId: '',
   sort: 'diaryAsc',
 }
@@ -30,6 +31,8 @@ function searchText(item: DiaryItem, ann: ItemAnnotation | undefined, tagNames: 
     item.publishedAt,
     date.iso,
     ann?.note ?? '',
+    ann?.translation?.source ?? '',
+    ...(ann?.translation?.slots ?? []).map((s) => s.text),
     ann?.study?.composition ?? '',
     ann?.study?.palette ?? '',
     ann?.study?.linework ?? '',
@@ -38,6 +41,10 @@ function searchText(item: DiaryItem, ann: ItemAnnotation | undefined, tagNames: 
     ...tagNames,
   ]
   return parts.join(' ').toLowerCase()
+}
+
+export function hasTranslation(ann: ItemAnnotation | undefined): boolean {
+  return Boolean(ann?.translation?.slots?.some((slot) => slot.text.trim()))
 }
 
 export function applyFilters(input: FilterContextInput, filter: FilterState): DiaryItem[] {
@@ -61,6 +68,8 @@ export function applyFilters(input: FilterContextInput, filter: FilterState): Di
 
     if (filter.favoriteOnly && !ann?.favorite) return false
     if (filter.unconfirmedOnly && date.confirmed) return false
+    if (filter.translation === 'translated' && !hasTranslation(ann)) return false
+    if (filter.translation === 'none' && hasTranslation(ann)) return false
     if (filter.year && String(date.year) !== filter.year) return false
     if (filter.month && String(date.month) !== filter.month) return false
     if (filter.from && date.iso < filter.from) return false
@@ -120,11 +129,15 @@ export function groupByMonth<T extends DiaryItem>(
   const groups = new Map<string, { key: string; year: number; month: number; items: T[] }>()
   for (const item of items) {
     const d = effectiveDate(item, annotations[item.id])
-    const key = `${d.year}-${String(d.month).padStart(2, '0')}`
+    const key = d.iso ? `${d.year}-${String(d.month).padStart(2, '0')}` : 'unknown'
     if (!groups.has(key)) groups.set(key, { key, year: d.year, month: d.month, items: [] })
     groups.get(key)!.items.push(item)
   }
-  return [...groups.values()].sort((a, b) => a.key.localeCompare(b.key))
+  return [...groups.values()].sort((a, b) => {
+    if (a.key === 'unknown') return 1
+    if (b.key === 'unknown') return -1
+    return a.key.localeCompare(b.key)
+  })
 }
 
 /** 相似作品：标签重合 + 色板相似度 */

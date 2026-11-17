@@ -4,25 +4,31 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react'
 import type {
+  Character,
   Collection,
   DateOverride,
   DiaryItem,
+  DiaryReviewStatus,
   Dimension,
   EffectiveDate,
   ItemAnnotation,
   LibraryIndex,
+  ReviewExportFile,
+  Storyline,
+  StorylineBlock,
   StudyNotes,
   Tag,
+  Translation,
+  TranslationSlot,
   UserData,
 } from '../types'
 import { effectiveDate, isValidYmd, publishedDate, suggestedDate } from '../lib/dates'
+import { defaultCharacterTags } from '../lib/constants'
 import {
-  STORAGE_KEY,
   THEME_KEY,
   emptyAnnotation,
   emptyUserData,
@@ -49,6 +55,10 @@ interface StoreValue {
   items: DiaryItem[]
   allItems: DiaryItem[]
   excludedItems: DiaryItem[]
+  deletedItems: DiaryItem[]
+  lastDeletion: string[] | null
+  confirmedDiaryItems: DiaryItem[]
+  pendingReviewItems: DiaryItem[]
   itemMap: Map<string, DiaryItem>
   loading: boolean
   error: string | null
@@ -59,6 +69,8 @@ interface StoreValue {
   tagUsage: Record<string, number>
   dimensions: Dimension[]
   collections: Collection[]
+  characters: Character[]
+  storylines: Storyline[]
   years: string[]
   theme: Theme
   toasts: Toast[]
@@ -72,6 +84,7 @@ interface StoreValue {
   toggleFavorite: (ids: string[]) => void
   setFavorite: (ids: string[], value: boolean) => void
   setExcluded: (ids: string[], value: boolean) => void
+  setReviewStatus: (ids: string[], status: DiaryReviewStatus) => void
   setNote: (id: string, note: string) => void
   setStudy: (id: string, patch: Partial<StudyNotes>) => void
   setCrop: (id: string, crop: CropParams) => void
@@ -79,6 +92,27 @@ interface StoreValue {
   confirmDate: (ids: string[], kind: 'published' | 'suggested') => void
   setManualDate: (id: string, year: number, month: number, day: number) => void
   addTag: (name: string, dimensionId: string, color: string) => Tag
+  addCharacterPresets: () => void
+  addCharacter: (name: string, color: string) => Tag
+  updateCharacter: (id: string, patch: Partial<Omit<Character, 'id' | 'createdAt'>>) => void
+  setTranslation: (id: string, translation: Translation | null) => void
+  deleteItems: (ids: string[]) => void
+  restoreDeleted: (ids: string[]) => void
+  clearDeletedRecords: (ids: string[]) => void
+  undoDelete: () => void
+  importTranslations: (
+    rows: { id: string; source: string; sourceDraft?: string; slots: TranslationSlot[] }[],
+  ) => number
+  addStoryline: (title?: string, itemIds?: string[]) => Storyline
+  updateStoryline: (
+    id: string,
+    patch: Partial<Pick<Storyline, 'title' | 'description' | 'coverItemId' | 'tags' | 'published'>>,
+  ) => void
+  deleteStoryline: (id: string) => void
+  addToStoryline: (id: string, itemIds: string[]) => void
+  removeStorylineBlock: (id: string, blockId: string) => void
+  reorderStorylineBlocks: (id: string, blocks: StorylineBlock[]) => void
+  addStorylineNote: (id: string, text: string, afterBlockId?: string) => void
   updateTag: (id: string, patch: Partial<Pick<Tag, 'name' | 'color' | 'dimensionId'>>) => void
   deleteTag: (id: string) => void
   addTagToItems: (ids: string[], tagId: string) => void
@@ -93,6 +127,7 @@ interface StoreValue {
   removeFromCollection: (collectionId: string, itemIds: string[]) => void
   reorderCollection: (collectionId: string, itemIds: string[]) => void
   importData: (raw: unknown, mode: 'merge' | 'replace') => void
+  importReview: (file: ReviewExportFile) => number
   loadSeed: () => Promise<void>
   resetData: () => void
 }
@@ -116,9 +151,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<UserData>(() => loadLocalUserData() ?? emptyUserData())
+  const [lastDeletion, setLastDeletion] = useState<string[] | null>(null)
   const [theme, setTheme] = useState<Theme>(currentTheme)
   const [toasts, setToasts] = useState<Toast[]>([])
-  const seedTried = useRef(false)
 
   // 加载索引
   useEffect(() => {
@@ -130,7 +165,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       })
       .then((json) => {
         setIndex(json)
+        setData((prev) => {
+          // 标注与数据集版本绑定：版本不一致时整份作废，避免出现指向不存在图片的死记录
+          if (!json.datasetId || prev.datasetId === json.datasetId) {
+            return json.datasetId && !prev.datasetId ? { ...prev, datasetId: json.datasetId } : prev
+          }
+          const next = emptyUserData(true, json.datasetId)
+          saveLocalUserData(next)
+          return next
+        })
         setLoading(false)
+        if (!json.datasetId) return
+        // 数据集变化或首次访问时，尝试载入仓库种子（公开站的标注来源）
+        loadSeedUserData().then((seed) => {
+          if (!seed) return
+          const hasContent =
+            seed.tags.length > 0 || seed.collections.length > 0 || Object.keys(seed.items).length > 0
+          if (!hasContent) return
+          seed.datasetId = json.datasetId
+          setData((prev) => {
+            if (prev.datasetId !== json.datasetId || Object.keys(prev.items).length > 0) return prev
+            saveLocalUserData(seed)
+            return seed
+          })
+        })
       })
       .catch((err: Error) => {
         if (err.name === 'AbortError') return
@@ -138,22 +196,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setLoading(false)
       })
     return () => controller.abort()
-  }, [])
-
-  // 首次访问时尝试读取仓库内的种子标注
-  useEffect(() => {
-    if (seedTried.current) return
-    seedTried.current = true
-    if (localStorage.getItem(STORAGE_KEY)) return
-    loadSeedUserData().then((seed) => {
-      if (!seed) return
-      const hasContent =
-        seed.tags.length > 0 || seed.collections.length > 0 || Object.keys(seed.items).length > 0
-      if (hasContent) {
-        setData(seed)
-        saveLocalUserData(seed)
-      }
-    })
   }, [])
 
   // 自动保存（防抖）
@@ -213,8 +255,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   )
 
   const allItems = useMemo(() => index?.items ?? [], [index])
-  const items = useMemo(() => allItems.filter((item) => !data.items[item.id]?.excluded), [allItems, data.items])
-  const excludedItems = useMemo(() => allItems.filter((item) => data.items[item.id]?.excluded), [allItems, data.items])
+  const items = useMemo(
+    () => allItems.filter((item) => !data.items[item.id]?.excluded && !data.items[item.id]?.deleted),
+    [allItems, data.items],
+  )
+  const excludedItems = useMemo(
+    () => allItems.filter((item) => data.items[item.id]?.excluded && !data.items[item.id]?.deleted),
+    [allItems, data.items],
+  )
+  const deletedItems = useMemo(
+    () => allItems.filter((item) => data.items[item.id]?.deleted),
+    [allItems, data.items],
+  )
+  const confirmedDiaryItems = useMemo(
+    () =>
+      allItems.filter(
+        (item) => data.items[item.id]?.reviewed && !data.items[item.id]?.excluded && !data.items[item.id]?.deleted,
+      ),
+    [allItems, data.items],
+  )
+  const pendingReviewItems = useMemo(
+    () =>
+      allItems.filter(
+        (item) => !data.items[item.id]?.reviewed && !data.items[item.id]?.excluded && !data.items[item.id]?.deleted,
+      ),
+    [allItems, data.items],
+  )
 
   const itemMap = useMemo(() => {
     const map = new Map<string, DiaryItem>()
@@ -260,9 +326,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [batchPatch],
   )
 
-  const setExcluded = useCallback(
-    (ids: string[], value: boolean) => batchPatch(ids, (a) => ({ ...a, excluded: value })),
+  const setReviewStatus = useCallback(
+    (ids: string[], status: DiaryReviewStatus) =>
+      batchPatch(ids, (a) => ({
+        ...a,
+        reviewed: status !== 'pending',
+        excluded: status === 'not_diary',
+      })),
     [batchPatch],
+  )
+
+  const setExcluded = useCallback(
+    (ids: string[], value: boolean) => setReviewStatus(ids, value ? 'not_diary' : 'diary'),
+    [setReviewStatus],
   )
 
   const toggleFavorite = useCallback(
@@ -353,6 +429,49 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [mutate],
   )
 
+  const addCharacterPresets = useCallback(() => {
+    mutate((prev) => {
+      const existing = new Set(
+        prev.tags.filter((tag) => tag.dimensionId === 'character').map((tag) => tag.name),
+      )
+      const additions = defaultCharacterTags().filter((tag) => !existing.has(tag.name))
+      return additions.length ? { ...prev, tags: [...prev.tags, ...additions] } : prev
+    })
+  }, [mutate])
+
+  const addCharacter = useCallback(
+    (name: string, color: string) => {
+      const tag: Tag = {
+        id: uid('tag_'),
+        name: name.trim() || '新角色',
+        dimensionId: 'character',
+        color,
+        createdAt: new Date().toISOString(),
+      }
+      const character: Character = { id: tag.id, createdAt: new Date().toISOString() }
+      mutate((prev) => ({ ...prev, tags: [...prev.tags, tag], characters: [...prev.characters, character] }))
+      return tag
+    },
+    [mutate],
+  )
+
+  const updateCharacter = useCallback(
+    (id: string, patch: Partial<Omit<Character, 'id' | 'createdAt'>>) => {
+      mutate((prev) => {
+        const exists = prev.characters.some((c) => c.id === id)
+        if (!exists) {
+          const character: Character = { id, createdAt: new Date().toISOString(), ...patch }
+          return { ...prev, characters: [...prev.characters, character] }
+        }
+        return {
+          ...prev,
+          characters: prev.characters.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+        }
+      })
+    },
+    [mutate],
+  )
+
   const updateTag = useCallback(
     (id: string, patch: Partial<Pick<Tag, 'name' | 'color' | 'dimensionId'>>) => {
       mutate((prev) => ({
@@ -370,10 +489,109 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         for (const [key, ann] of Object.entries(prev.items)) {
           items[key] = ann.tags.includes(id) ? { ...ann, tags: ann.tags.filter((t) => t !== id) } : ann
         }
-        return { ...prev, tags: prev.tags.filter((t) => t.id !== id), items }
+        return {
+          ...prev,
+          tags: prev.tags.filter((t) => t.id !== id),
+          characters: prev.characters.filter((c) => c.id !== id),
+          items,
+        }
       })
     },
     [mutate],
+  )
+
+  const setTranslation = useCallback(
+    (id: string, translation: Translation | null) =>
+      patchItem(id, (a) => {
+        const next = { ...a }
+        if (translation) next.translation = { ...translation, updatedAt: new Date().toISOString() }
+        else delete next.translation
+        return next
+      }),
+    [patchItem],
+  )
+
+  /** 删除：立即从所有视图隐藏，等待本地清理原图 */
+  const deleteItems = useCallback(
+    (ids: string[]) => {
+      const now = new Date().toISOString()
+      mutate((prev) => {
+        const items = { ...prev.items }
+        for (const id of ids) {
+          const current = items[id] ?? emptyAnnotation()
+          items[id] = { ...current, deleted: true, deletedAt: now, updatedAt: now }
+        }
+        return { ...prev, items }
+      })
+      setLastDeletion(ids)
+    },
+    [mutate],
+  )
+
+  const restoreDeleted = useCallback(
+    (ids: string[]) => {
+      mutate((prev) => {
+        const items = { ...prev.items }
+        for (const id of ids) {
+          const current = items[id]
+          if (!current) continue
+          const next = { ...current, deleted: false, updatedAt: new Date().toISOString() }
+          delete next.deletedAt
+          items[id] = next
+        }
+        return { ...prev, items }
+      })
+      setLastDeletion(null)
+    },
+    [mutate],
+  )
+
+  /** 原图彻底清理后，移除悬浮的标注记录，避免指向不存在文件 */
+  const clearDeletedRecords = useCallback(
+    (ids: string[]) => {
+      mutate((prev) => {
+        const items = { ...prev.items }
+        for (const id of ids) delete items[id]
+        return { ...prev, items }
+      })
+      setLastDeletion(null)
+    },
+    [mutate],
+  )
+
+  const undoDelete = useCallback(() => {
+    if (lastDeletion) restoreDeleted(lastDeletion)
+  }, [lastDeletion, restoreDeleted])
+
+  /** 批量回填翻译（CSV / JSON），只更新翻译字段，保留标签、日期等标注 */
+  const importTranslations = useCallback(
+    (rows: { id: string; source: string; sourceDraft?: string; slots: TranslationSlot[] }[]) => {
+      const valid = rows.filter((row) => itemMap.has(row.id))
+      mutate((prev) => {
+        const items = { ...prev.items }
+        const now = new Date().toISOString()
+        for (const row of valid) {
+          const slots = row.slots
+            .filter((s) => s && typeof s.lang === 'string')
+            .map((s) => ({ lang: s.lang, label: s.label || s.lang, text: s.text || '' }))
+          if (!row.source && !row.sourceDraft && !slots.some((s) => s.text.trim())) continue
+          const current = items[row.id] ?? emptyAnnotation()
+          items[row.id] = {
+            ...current,
+            translation: {
+              source: row.source || '',
+              sourceDraft: row.sourceDraft,
+              slots,
+              updatedAt: now,
+            },
+            updatedAt: now,
+          }
+        }
+        return { ...prev, items }
+      })
+      return valid.length
+    },
+    [itemMap, mutate],
   )
 
   const addTagToItems = useCallback(
@@ -506,6 +724,107 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [mutate],
   )
 
+  const addStoryline = useCallback(
+    (title = '未命名故事线', itemIds: string[] = []) => {
+      const now = new Date().toISOString()
+      const storyline: Storyline = {
+        id: uid('story_'),
+        title: title.trim() || '未命名故事线',
+        description: '',
+        blocks: itemIds.map((itemId) => ({ id: uid('block_'), type: 'image' as const, itemId })),
+        tags: [],
+        createdAt: now,
+        updatedAt: now,
+      }
+      mutate((prev) => ({ ...prev, storylines: [...prev.storylines, storyline] }))
+      return storyline
+    },
+    [mutate],
+  )
+
+  const updateStoryline = useCallback(
+    (id: string, patch: Partial<Pick<Storyline, 'title' | 'description' | 'coverItemId' | 'tags' | 'published'>>) => {
+      mutate((prev) => ({
+        ...prev,
+        storylines: prev.storylines.map((s) =>
+          s.id === id ? { ...s, ...patch, updatedAt: new Date().toISOString() } : s,
+        ),
+      }))
+    },
+    [mutate],
+  )
+
+  const deleteStoryline = useCallback(
+    (id: string) => {
+      mutate((prev) => ({ ...prev, storylines: prev.storylines.filter((s) => s.id !== id) }))
+    },
+    [mutate],
+  )
+
+  const addToStoryline = useCallback(
+    (id: string, itemIds: string[]) => {
+      mutate((prev) => ({
+        ...prev,
+        storylines: prev.storylines.map((s) => {
+          if (s.id !== id) return s
+          const existing = new Set(s.blocks.filter((b) => b.type === 'image').map((b) => b.itemId))
+          const additions = itemIds.filter((itemId) => !existing.has(itemId)).map((itemId) => ({
+            id: uid('block_'),
+            type: 'image' as const,
+            itemId,
+          }))
+          return {
+            ...s,
+            blocks: [...s.blocks, ...additions],
+            coverItemId: s.coverItemId ?? additions[0]?.itemId ?? s.blocks.find((b) => b.type === 'image')?.itemId,
+            updatedAt: new Date().toISOString(),
+          }
+        }),
+      }))
+    },
+    [mutate],
+  )
+
+  const removeStorylineBlock = useCallback(
+    (id: string, blockId: string) => {
+      mutate((prev) => ({
+        ...prev,
+        storylines: prev.storylines.map((s) =>
+          s.id === id ? { ...s, blocks: s.blocks.filter((b) => b.id !== blockId), updatedAt: new Date().toISOString() } : s,
+        ),
+      }))
+    },
+    [mutate],
+  )
+
+  const reorderStorylineBlocks = useCallback(
+    (id: string, blocks: StorylineBlock[]) => {
+      mutate((prev) => ({
+        ...prev,
+        storylines: prev.storylines.map((s) => (s.id === id ? { ...s, blocks, updatedAt: new Date().toISOString() } : s)),
+      }))
+    },
+    [mutate],
+  )
+
+  const addStorylineNote = useCallback(
+    (id: string, text: string, afterBlockId?: string) => {
+      mutate((prev) => ({
+        ...prev,
+        storylines: prev.storylines.map((s) => {
+          if (s.id !== id) return s
+          const block: StorylineBlock = { id: uid('block_'), type: 'note', text }
+          const at = afterBlockId ? s.blocks.findIndex((b) => b.id === afterBlockId) : -1
+          const blocks = [...s.blocks]
+          if (at >= 0) blocks.splice(at + 1, 0, block)
+          else blocks.push(block)
+          return { ...s, blocks, updatedAt: new Date().toISOString() }
+        }),
+      }))
+    },
+    [mutate],
+  )
+
   const importData = useCallback(
     (raw: unknown, mode: 'merge' | 'replace') => {
       const incoming = normalizeUserData(raw)
@@ -514,20 +833,55 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const importReview = useCallback(
+    (file: ReviewExportFile) => {
+      const rows = file.items.filter((row) => itemMap.has(row.id))
+      mutate((prev) => {
+        const items = { ...prev.items }
+        const now = new Date().toISOString()
+        for (const row of rows) {
+          const current = items[row.id] ?? emptyAnnotation()
+          const annotation: ItemAnnotation = {
+            ...current,
+            reviewed: row.status !== 'pending',
+            excluded: row.status === 'not_diary',
+            updatedAt: now,
+          }
+          if (row.dateConfirmed) {
+            const [year, month, day] = row.diaryDate.split('-').map(Number)
+            if (isValidYmd(year, month, day)) {
+              annotation.date = {
+                year,
+                month,
+                day,
+                confirmed: true,
+                source: row.dateSource,
+              }
+            }
+          }
+          items[row.id] = annotation
+        }
+        return { ...prev, items }
+      })
+      return rows.length
+    },
+    [itemMap, mutate],
+  )
+
   const loadSeed = useCallback(async () => {
     const seed = await loadSeedUserData()
     if (!seed) {
       notify('没有找到种子数据（public/data/userdata.seed.json）', 'error')
       return
     }
-    setData((prev) => mergeUserData(prev, seed))
+    setData((prev) => mergeUserData(prev, { ...seed, datasetId: index?.datasetId ?? prev.datasetId }))
     notify('已合并仓库种子标注', 'success')
-  }, [notify])
+  }, [index?.datasetId, notify])
 
   const resetData = useCallback(() => {
-    setData(emptyUserData())
+    setData(emptyUserData(false, index?.datasetId))
     notify('本地标注已清空', 'success')
-  }, [notify])
+  }, [index?.datasetId, notify])
 
   const value = useMemo<StoreValue>(
     () => ({
@@ -535,6 +889,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       items,
       allItems,
       excludedItems,
+      deletedItems,
+      lastDeletion,
+      confirmedDiaryItems,
+      pendingReviewItems,
       itemMap,
       loading,
       error,
@@ -545,6 +903,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       tagUsage,
       dimensions: [...data.dimensions].sort((a, b) => a.order - b.order),
       collections: data.collections,
+      characters: data.characters,
+      storylines: data.storylines,
       years,
       theme,
       toasts,
@@ -558,6 +918,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toggleFavorite,
       setFavorite,
       setExcluded,
+      setReviewStatus,
       setNote,
       setStudy,
       setCrop,
@@ -565,6 +926,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       confirmDate,
       setManualDate,
       addTag,
+      addCharacterPresets,
+      addCharacter,
+      updateCharacter,
+      setTranslation,
+      deleteItems,
+      restoreDeleted,
+      clearDeletedRecords,
+      undoDelete,
+      importTranslations,
+      addStoryline,
+      updateStoryline,
+      deleteStoryline,
+      addToStoryline,
+      removeStorylineBlock,
+      reorderStorylineBlocks,
+      addStorylineNote,
       updateTag,
       deleteTag,
       addTagToItems,
@@ -579,6 +956,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       removeFromCollection,
       reorderCollection,
       importData,
+      importReview,
       loadSeed,
       resetData,
     }),
@@ -587,6 +965,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       items,
       allItems,
       excludedItems,
+      deletedItems,
+      lastDeletion,
+      confirmedDiaryItems,
+      pendingReviewItems,
       itemMap,
       loading,
       error,
@@ -605,6 +987,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toggleFavorite,
       setFavorite,
       setExcluded,
+      setReviewStatus,
       setNote,
       setStudy,
       setCrop,
@@ -612,6 +995,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       confirmDate,
       setManualDate,
       addTag,
+      addCharacterPresets,
+      addCharacter,
+      updateCharacter,
+      setTranslation,
+      deleteItems,
+      restoreDeleted,
+      clearDeletedRecords,
+      undoDelete,
+      importTranslations,
+      addStoryline,
+      updateStoryline,
+      deleteStoryline,
+      addToStoryline,
+      removeStorylineBlock,
+      reorderStorylineBlocks,
+      addStorylineNote,
       updateTag,
       deleteTag,
       addTagToItems,
@@ -626,6 +1025,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       removeFromCollection,
       reorderCollection,
       importData,
+      importReview,
       loadSeed,
       resetData,
     ],

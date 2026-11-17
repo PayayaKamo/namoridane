@@ -1,3 +1,18 @@
+/** Windows OCR 预识别出的一个日期候选 */
+export interface OcrCandidate {
+  dateText: string
+  year: number
+  month: number
+  day: number
+  confidence: number
+  engines: string[]
+}
+
+export interface OcrInfo {
+  rawText: string
+  candidates: OcrCandidate[]
+}
+
 /** 站点索引中的单张插画（由 scripts/build-index.mjs 生成） */
 export interface DiaryItem {
   id: string
@@ -5,14 +20,20 @@ export interface DiaryItem {
   file: string
   postIndex: number
   postCount: number
-  /** 发布日期，来自文件名 */
+  /** 发布日期，来自文件名；日期未知时为空字符串 */
   publishedAt: string
-  /** 推断的日记日期（发布日前一天），只有月/日可信 */
+  /** 文件名是否带可信的发布日期 */
+  dateKnown: boolean
+  /** 推断的日记日期（OCR 候选优先，否则发布日前一天），仅作输入框默认值，需人工确认 */
   inferredMonth: number
   inferredDay: number
   inferredYear: number
   /** 跨月/跨年提示：month | year | '' */
   rollover: '' | 'month' | 'year'
+  /** Windows OCR 预识别结果，仅供参考，需人工确认 */
+  ocr: OcrInfo | null
+  /** OCR 最佳候选（年份已按发布日就近推断）；没有可用 OCR 时为 null */
+  suggestedDiaryDate: { year: number; month: number; day: number } | null
   thumb: string
   large: string
   /** 原始 JPG，供下载与查看 */
@@ -28,7 +49,11 @@ export interface DiaryItem {
 export interface LibraryIndex {
   version: number
   generatedAt: string
+  /** 数据集指纹：文件列表与大小决定，数据集变化时旧标注自动作废 */
+  datasetId?: string
   count: number
+  /** 无发布日期的图片数量 */
+  undated?: number
   years: Record<string, number>
   items: DiaryItem[]
 }
@@ -89,24 +114,106 @@ export interface CropParams {
   transparent: boolean
 }
 
+/** 角色 / 人物实体的扩展信息；名称与颜色复用 character 维度下的标签 */
+export interface Character {
+  /** 与 Tag.id 相同 */
+  id: string
+  /** 头像来源：从某张图裁切 */
+  avatarItemId?: string
+  avatarCrop?: CropParams
+  /** 或直接上传的小图（data URL） */
+  avatarDataUrl?: string
+  note?: string
+  createdAt: string
+}
+
+/** 翻译语言槽位，可增删 */
+export interface TranslationSlot {
+  /** 语言标识，如 zh / en / ja */
+  lang: string
+  /** 展示名，如「中文」「English」 */
+  label: string
+  text: string
+}
+
+/** 单张图片的翻译数据 */
+export interface Translation {
+  /** 原文（日文） */
+  source: string
+  /** 原文的待校对草稿（外部工具导入或人工录入），可合并进 source */
+  sourceDraft?: string
+  slots: TranslationSlot[]
+  updatedAt: string
+}
+
+/** 故事线里的内容块：图片或章节备注 */
+export interface StorylineBlock {
+  id: string
+  type: 'image' | 'note'
+  itemId?: string
+  text?: string
+}
+
+export interface Storyline {
+  id: string
+  title: string
+  description: string
+  coverItemId?: string
+  blocks: StorylineBlock[]
+  tags: string[]
+  /** 是否随公开数据发布；草稿故事线不会出现在公开站 */
+  published?: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export interface ItemAnnotation {
   tags: string[]
   favorite: boolean
-  /** 标记为非绘日记后，默认从各视图隐藏，可在排除区恢复 */
+  /** 是否已人工确认类型；与 excluded 组合成待确认 / 绘日记 / 非绘日记 */
+  reviewed: boolean
+  /** 确认不是绘日记后，默认从各视图隐藏；只改标注，不改原图 */
   excluded: boolean
+  /** 已删除、等待本地清理原图；各视图会立即隐藏 */
+  deleted?: boolean
+  deletedAt?: string
   note: string
+  translation?: Translation
   date?: DateOverride
   study?: StudyNotes
   crop?: CropParams
   updatedAt: string
 }
 
+export type DiaryReviewStatus = 'pending' | 'diary' | 'not_diary'
+
+export interface ReviewExportRow {
+  id: string
+  file: string
+  publishedAt: string
+  status: DiaryReviewStatus
+  diaryDate: string
+  dateConfirmed: boolean
+  dateSource: DateSource
+}
+
+export interface ReviewExportFile {
+  type: 'namori-diary-review'
+  version: 1
+  updatedAt: string
+  items: ReviewExportRow[]
+}
+
 export interface UserData {
   version: number
+  /** 写入标注时对应的数据集版本；与索引不一致时整份标注作废 */
+  datasetId?: string
   updatedAt: string
   dimensions: Dimension[]
   tags: Tag[]
+  characters: Character[]
   collections: Collection[]
+  storylines: Storyline[]
   items: Record<string, ItemAnnotation>
 }
 
@@ -131,6 +238,8 @@ export interface FilterState {
   dimensionModes: Record<string, 'any' | 'all'>
   favoriteOnly: boolean
   unconfirmedOnly: boolean
+  /** 翻译状态筛选：any 不限，none 未翻译，translated 已翻译 */
+  translation: 'any' | 'none' | 'translated'
   collectionId: string
   sort: 'publishedAsc' | 'publishedDesc' | 'diaryAsc' | 'diaryDesc' | 'updatedDesc'
 }

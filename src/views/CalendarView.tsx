@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Route } from '../lib/router'
-import { openItem } from '../lib/router'
+import { navigate } from '../lib/router'
 import { useStore } from '../state/store'
 import {
   MONTHS_CN,
@@ -12,8 +12,6 @@ import {
   todayKey,
 } from '../lib/dates'
 import { Icon } from '../components/Icon'
-import { Modal } from '../components/Modal'
-import { Empty } from '../components/Modal'
 import type { DiaryItem } from '../types'
 
 const BASE = import.meta.env.BASE_URL
@@ -27,7 +25,6 @@ export function CalendarView({ route }: { route: Route }) {
   const [year, setYear] = useState(initialYear)
   const [month, setMonth] = useState(initialMonth)
   const [filter, setFilter] = useState<CalFilter>('all')
-  const [openDay, setOpenDay] = useState<string | null>(null)
 
   const byDay = useMemo(() => {
     const map = new Map<string, DiaryItem[]>()
@@ -79,8 +76,6 @@ export function CalendarView({ route }: { route: Route }) {
     }
     return counts
   }, [items, getDate, year])
-
-  const selectedItems = openDay ? byDay.get(openDay) ?? [] : []
 
   return (
     <div className="calendar-view">
@@ -147,6 +142,17 @@ export function CalendarView({ route }: { route: Route }) {
         </div>
       </div>
 
+      {!items.length && (
+        <div className="excluded-banner">
+          <div>
+            <strong>还没有图片</strong>
+            <span>
+              运行 <code>npm run import -- "&lt;解压目录&gt;"</code> 导入图片，再执行 <code>npm run data</code> 生成索引后，日历会按确认的日期填充。
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="print-only print-head">
         <h1>Namori 绘日记 · {year} 年 {MONTHS_CN[month - 1]}</h1>
         <p>本月 {dayCount} 天有画 · 共 {total} 张</p>
@@ -210,10 +216,19 @@ export function CalendarView({ route }: { route: Route }) {
               className={`cal-cell${iso === today ? ' is-today' : ''}${dimmed ? ' dimmed' : ''}${
                 missingHighlight ? ' missing-hit' : ''
               }`}
-              onClick={() => setOpenDay(iso)}
+              onClick={() =>
+                navigate(
+                  `/datefind?md=${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}&y=${year}`,
+                )
+              }
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && setOpenDay(iso)}
+              onKeyDown={(e) =>
+                e.key === 'Enter' &&
+                navigate(
+                  `/datefind?md=${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}&y=${year}`,
+                )
+              }
             >
               <div className="cal-day">
                 <span className={`hand${day === 1 ? ' first' : ''}`}>{day}</span>
@@ -235,39 +250,6 @@ export function CalendarView({ route }: { route: Route }) {
           )
         })}
       </div>
-
-      {openDay && (
-        <Modal
-          title={`${openDay.replace(/-/g, ' / ')} · ${selectedItems.length} 张`}
-          subtitle="点击作品查看大图、标签与日期校对"
-          onClose={() => setOpenDay(null)}
-          wide
-        >
-          {selectedItems.length ? (
-            <div className="day-list">
-              {selectedItems.map((item) => {
-                const d = effectiveDate(item, annotations[item.id])
-                return (
-                  <button key={item.id} className="day-item" onClick={() => openItem(item.id)}>
-                    <img src={`${BASE}${item.thumb}`} alt="" />
-                    <div className="day-item-info">
-                      <span className="hand day-item-date">
-                        {d.month} / {d.day}
-                      </span>
-                      <span className="faint">发布 {item.publishedAt}</span>
-                      <span className={`badge ${d.confirmed ? 'badge-sage' : 'badge-warn'}`}>
-                        {d.confirmed ? '已确认' : '待校对'}
-                      </span>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          ) : (
-            <Empty icon="calendar" title="这一天还没有画" hint="切换到「缺图」可以快速找出空白的日子。" />
-          )}
-        </Modal>
-      )}
     </div>
   )
 }

@@ -11,8 +11,12 @@ export type RouteName =
   | 'characters'
   | 'collections'
   | 'collection'
+  | 'storylines'
+  | 'storyline'
+  | 'datefind'
   | 'stickers'
   | 'review'
+  | 'diary-review'
   | 'data'
   | 'item'
 
@@ -33,8 +37,12 @@ const KNOWN: RouteName[] = [
   'characters',
   'collections',
   'collection',
+  'storylines',
+  'storyline',
+  'datefind',
   'stickers',
   'review',
+  'diary-review',
   'data',
   'item',
 ]

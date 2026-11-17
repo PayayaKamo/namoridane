@@ -10,11 +10,13 @@ import { DateEditor } from '../components/DateEditor'
 import { TagPicker, TagPill } from '../components/TagPicker'
 import { StickerEditor } from '../components/StickerEditor'
 import { formatBytes, originalUrl } from '../lib/image'
-import type { StudyNotes } from '../types'
+import { IS_PUBLIC } from '../lib/appMode'
+import { moveFilesToTrash } from '../lib/trash'
+import type { DiaryItem, StudyNotes, Translation } from '../types'
 
 const BASE = import.meta.env.BASE_URL
 
-type Tab = 'info' | 'study' | 'sticker'
+type Tab = 'info' | 'translate' | 'study' | 'sticker'
 
 export function DetailView({ itemId }: { itemId: string }) {
   const {
@@ -23,15 +25,18 @@ export function DetailView({ itemId }: { itemId: string }) {
     excludedItems,
     annotations,
     tagMap,
+    characters,
     collections,
     getDate,
     toggleFavorite,
-    setExcluded,
+    setReviewStatus,
     setNote,
     setStudy,
+    setTranslation,
     setItemTags,
     toggleTagOnItem,
     addToCollection,
+    deleteItems,
     notify,
   } = useStore()
 
@@ -41,6 +46,7 @@ export function DetailView({ itemId }: { itemId: string }) {
   const [tagOpen, setTagOpen] = useState(false)
   const [collectionOpen, setCollectionOpen] = useState(false)
   const [compareOpen, setCompareOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [compareId, setCompareId] = useState<string | null>(null)
   const [grid, setGrid] = useState(false)
   const [gray, setGray] = useState(false)
@@ -50,7 +56,10 @@ export function DetailView({ itemId }: { itemId: string }) {
 
   const annotation = item ? annotations[item.id] : undefined
   const date = item ? getDate(item) : null
+  const reviewStatus = annotation?.excluded ? 'not_diary' : annotation?.reviewed ? 'diary' : 'pending'
   const itemTags = (annotation?.tags ?? []).map((id) => tagMap.get(id)).filter(Boolean)
+  const itemCharacters = itemTags.filter((tag) => tag!.dimensionId === 'character')
+  const characterMap = useMemo(() => new Map(characters.map((c) => [c.id, c])), [characters])
 
   const ordered = useMemo(
     () =>
@@ -219,25 +228,37 @@ export function DetailView({ itemId }: { itemId: string }) {
           </div>
 
           <aside className="detail-side">
-            {annotation?.excluded && (
+            {!IS_PUBLIC && annotation?.excluded && (
               <div className="excluded-notice">
-                这张已标记为「非绘日记」，默认不会出现在图库、日历和统计中。
-                <button className="btn btn-sm" onClick={() => setExcluded([item.id], false)}>恢复为绘日记</button>
+                这张已确认为「非绘日记」，默认不会出现在图库、日历和统计中；原始 JPG 仍完整保留。
               </div>
             )}
             <div className="detail-date-block">
-              <div className="detail-date-main">
-                <span className="hand detail-day">
-                  {date.month} <i>/</i> {date.day}
-                </span>
-                <span className="detail-year num">{date.year}</span>
-              </div>
-              <div className="detail-date-sub">
-                <span>{weekdayLabel(date.iso)}</span>
-                <span className={`badge ${date.confirmed ? 'badge-sage' : 'badge-warn'}`}>
-                  {date.confirmed ? '日期已确认' : '日期待校对'}
-                </span>
-              </div>
+              {IS_PUBLIC && !date.confirmed ? (
+                <div className="detail-date-main">
+                  <span className="faint">日期未标注</span>
+                </div>
+              ) : (
+                <>
+                  <div className="detail-date-main">
+                    <span className="hand detail-day">
+                      {date.month} <i>/</i> {date.day}
+                    </span>
+                    <span className="detail-year num">{date.year}</span>
+                  </div>
+                  <div className="detail-date-sub">
+                    <span>{weekdayLabel(date.iso)}</span>
+                    <span className={`badge ${date.confirmed ? 'badge-sage' : 'badge-warn'}`}>
+                      {date.confirmed ? '日期已确认' : '日期待校对'}
+                    </span>
+                    {!IS_PUBLIC && (
+                      <span className={`badge ${reviewStatus === 'diary' ? 'badge-sage' : reviewStatus === 'not_diary' ? 'badge-warn' : 'badge-accent'}`}>
+                        {reviewStatus === 'diary' ? '已确认绘日记' : reviewStatus === 'not_diary' ? '非绘日记' : '类型待确认'}
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
               <div className="detail-published faint">
                 发布于 {formatFullDate(item.publishedAt)}
                 {item.postCount > 1 && ` · 第 ${item.postIndex + 1}/${item.postCount} 张`}
@@ -245,40 +266,70 @@ export function DetailView({ itemId }: { itemId: string }) {
             </div>
 
             <div className="detail-actions">
-              <button
-                className={`btn${annotation?.favorite ? ' btn-primary' : ''}`}
-                onClick={() => toggleFavorite([item.id])}
-              >
-                <Icon name={annotation?.favorite ? 'heartFill' : 'heart'} size={15} />
-                {annotation?.favorite ? '已收藏' : '收藏'}
-              </button>
-              <button className="btn" onClick={() => setCollectionOpen(true)}>
-                <Icon name="folder" size={15} />
-                加入合集
-              </button>
+              {!IS_PUBLIC && (
+                <>
+                  <button
+                    className={`btn${annotation?.favorite ? ' btn-primary' : ''}`}
+                    onClick={() => toggleFavorite([item.id])}
+                  >
+                    <Icon name={annotation?.favorite ? 'heartFill' : 'heart'} size={15} />
+                    {annotation?.favorite ? '已收藏' : '收藏'}
+                  </button>
+                  <button className="btn" onClick={() => setCollectionOpen(true)}>
+                    <Icon name="folder" size={15} />
+                    加入合集
+                  </button>
+                  <button className="btn btn-danger-ghost" onClick={() => setDeleteOpen(true)}>
+                    <Icon name="trash" size={15} />
+                    删除
+                  </button>
+                </>
+              )}
               <button className="btn" onClick={() => setTab('sticker')}>
                 <Icon name="sticker" size={15} />
                 表情包
               </button>
-              <button
-                className={`btn${annotation?.excluded ? '' : ' btn-danger-ghost'}`}
-                onClick={() => {
-                  setExcluded([item.id], !annotation?.excluded)
-                  notify(annotation?.excluded ? '已恢复为绘日记' : '已移入非绘日记排除区', 'success')
-                }}
-              >
-                <Icon name={annotation?.excluded ? 'check' : 'trash'} size={15} />
-                {annotation?.excluded ? '恢复' : '非绘日记'}
-              </button>
+              {!IS_PUBLIC && (
+                <>
+                  <button
+                    className={`btn${reviewStatus === 'diary' ? '' : ' btn-primary'}`}
+                    disabled={reviewStatus === 'diary'}
+                    onClick={() => {
+                      setReviewStatus([item.id], 'diary')
+                      notify('已确认为绘日记，原始图片保持不变', 'success')
+                    }}
+                  >
+                    <Icon name="check" size={15} />
+                    {reviewStatus === 'diary' ? '已确认绘日记' : '是绘日记'}
+                  </button>
+                  <button
+                    className={`btn${reviewStatus === 'not_diary' ? '' : ' btn-danger-ghost'}`}
+                    onClick={() => {
+                      const nextStatus = reviewStatus === 'not_diary' ? 'pending' : 'not_diary'
+                      setReviewStatus([item.id], nextStatus)
+                      notify(nextStatus === 'pending' ? '已移回待确认，图片重新显示' : '已确认为非绘日记，原始图片仍保留', 'success')
+                    }}
+                  >
+                    <Icon name={reviewStatus === 'not_diary' ? 'right' : 'close'} size={15} />
+                    {reviewStatus === 'not_diary' ? '移回待确认' : '非绘日记'}
+                  </button>
+                </>
+              )}
             </div>
 
             <div className="detail-tabs">
               <button className={tab === 'info' ? 'active' : ''} onClick={() => setTab('info')}>
                 信息
               </button>
-              <button className={tab === 'study' ? 'active' : ''} onClick={() => setTab('study')}>
-                拆解笔记
+              <button className={tab === 'translate' ? 'active' : ''} onClick={() => setTab('translate')}>
+                翻译
+                {annotation?.translation?.slots?.some((s) => s.text.trim()) && <span className="tab-dot" />}
               </button>
+              {!IS_PUBLIC && (
+                <button className={tab === 'study' ? 'active' : ''} onClick={() => setTab('study')}>
+                  拆解笔记
+                </button>
+              )}
               <button className={tab === 'sticker' ? 'active' : ''} onClick={() => setTab('sticker')}>
                 表情包
               </button>
@@ -290,21 +341,23 @@ export function DetailView({ itemId }: { itemId: string }) {
                   <section className="detail-section">
                     <div className="section-head">
                       <h4>标签</h4>
-                      <button className="btn btn-ghost btn-sm" onClick={() => setTagOpen((v) => !v)}>
-                        {tagOpen ? '收起' : '编辑'}
-                      </button>
+                      {!IS_PUBLIC && (
+                        <button className="btn btn-ghost btn-sm" onClick={() => setTagOpen((v) => !v)}>
+                          {tagOpen ? '收起' : '编辑'}
+                        </button>
+                      )}
                     </div>
                     <div className="row row-wrap" style={{ gap: 6 }}>
                       {itemTags.map((tag) => (
                         <TagPill
                           key={tag!.id}
                           tag={tag!}
-                          onRemove={() => toggleTagOnItem(item.id, tag!.id)}
+                          onRemove={IS_PUBLIC ? undefined : () => toggleTagOnItem(item.id, tag!.id)}
                         />
                       ))}
                       {!itemTags.length && <span className="faint">还没有标签</span>}
                     </div>
-                    {tagOpen && (
+                    {!IS_PUBLIC && tagOpen && (
                       <div className="tag-picker-wrap">
                         <TagPicker
                           selected={annotation?.tags ?? []}
@@ -316,24 +369,71 @@ export function DetailView({ itemId }: { itemId: string }) {
 
                   <section className="detail-section">
                     <div className="section-head">
-                      <h4>日期校对</h4>
+                      <h4>出场角色</h4>
+                      {!IS_PUBLIC && (
+                        <button className="btn btn-ghost btn-sm" onClick={() => setTagOpen((v) => !v)}>
+                          选择人物
+                        </button>
+                      )}
                     </div>
-                    <DateEditor item={item} compact />
+                    {itemCharacters.length ? (
+                      <div className="character-strip">
+                        {itemCharacters.map((tag) => {
+                          const character = characterMap.get(tag!.id)
+                          const avatarItem = character?.avatarItemId ? itemMap.get(character.avatarItemId) : undefined
+                          const position = character?.avatarCrop
+                            ? `${Math.round(character.avatarCrop.cx * 100)}% ${Math.round(character.avatarCrop.cy * 100)}%`
+                            : '50% 50%'
+                          return (
+                            <button
+                              key={tag!.id}
+                              className="character-chip"
+                              onClick={() => navigate(`/gallery?tag=${tag!.id}`)}
+                              title={`查看 ${tag!.name} 的全部作品`}
+                            >
+                              <span className="character-avatar" style={{ background: tag!.color }}>
+                                {character?.avatarDataUrl ? (
+                                  <img src={character.avatarDataUrl} alt="" />
+                                ) : avatarItem ? (
+                                  <img src={`${BASE}${avatarItem.thumb}`} alt="" style={{ objectPosition: position }} />
+                                ) : (
+                                  tag!.name.slice(0, 1)
+                                )}
+                              </span>
+                              <span>{tag!.name}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <span className="faint">这张图还没有标注人物，可在标签里勾选人物/角色维度。</span>
+                    )}
                   </section>
 
-                  <section className="detail-section">
-                    <div className="section-head">
-                      <h4>备注</h4>
-                      <span className="faint">自动保存</span>
-                    </div>
-                    <textarea
-                      className="textarea"
-                      placeholder="记录这张画的心情、出处或临时想法…"
-                      value={noteDraft}
-                      onChange={(e) => setNoteDraft(e.target.value)}
-                      onBlur={() => setNote(item.id, noteDraft)}
-                    />
-                  </section>
+                  {!IS_PUBLIC && (
+                    <>
+                      <section className="detail-section">
+                        <div className="section-head">
+                          <h4>日期校对</h4>
+                        </div>
+                        <DateEditor item={item} compact />
+                      </section>
+
+                      <section className="detail-section">
+                        <div className="section-head">
+                          <h4>备注</h4>
+                          <span className="faint">自动保存</span>
+                        </div>
+                        <textarea
+                          className="textarea"
+                          placeholder="记录这张画的心情、出处或临时想法…"
+                          value={noteDraft}
+                          onChange={(e) => setNoteDraft(e.target.value)}
+                          onBlur={() => setNote(item.id, noteDraft)}
+                        />
+                      </section>
+                    </>
+                  )}
 
                   <section className="detail-section">
                     <div className="section-head">
@@ -449,6 +549,16 @@ export function DetailView({ itemId }: { itemId: string }) {
                 </>
               )}
 
+              {tab === 'translate' && (
+                <TranslationPanel
+                  item={item}
+                  value={annotation?.translation}
+                  onChange={(next) => setTranslation(item.id, next)}
+                  onNotify={notify}
+                  readOnly={IS_PUBLIC}
+                />
+              )}
+
               {tab === 'study' && (
                 <>
                   <div className="study-intro">
@@ -505,6 +615,39 @@ export function DetailView({ itemId }: { itemId: string }) {
           </aside>
         </div>
       </div>
+
+      {!IS_PUBLIC && deleteOpen && (
+        <Modal title="删除这张图？" onClose={() => setDeleteOpen(false)}>
+          <div className="muted" style={{ lineHeight: 1.7 }}>
+            确认后会立即从图库、索引和公开数据中移除，并把原图移入
+            <code> images/_trash/</code> 保留恢复入口。底部提示条可短时间撤销；
+            彻底清理需在本地管理端执行（<code>npm run dev</code> 的「待清理」或 <code>npm run purge</code>），
+            清理后不可恢复。
+          </div>
+          <div className="modal-foot">
+            <button className="btn" onClick={() => setDeleteOpen(false)}>
+              取消
+            </button>
+            <button
+              className="btn btn-danger-ghost"
+              onClick={async () => {
+                const moved = await moveFilesToTrash([item.file])
+                deleteItems([item.id])
+                notify(
+                  moved
+                    ? '已移入回收站，可在底部提示条撤销'
+                    : '已从所有视图移除；原图清理需在本地管理端执行（npm run dev）',
+                  'success',
+                )
+                setDeleteOpen(false)
+                closeItem()
+              }}
+            >
+              确认删除
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {collectionOpen && (
         <Modal title="加入合集" onClose={() => setCollectionOpen(false)}>
@@ -603,6 +746,135 @@ export function DetailView({ itemId }: { itemId: string }) {
             </label>
           </div>
         </Modal>
+      )}
+    </div>
+  )
+}
+
+const DEFAULT_TRANSLATION_SLOTS = [
+  { lang: 'zh', label: '中文' },
+  { lang: 'en', label: 'English' },
+]
+
+function TranslationPanel({
+  item,
+  value,
+  onChange,
+  onNotify,
+  readOnly = false,
+}: {
+  item: DiaryItem
+  value?: Translation
+  onChange: (next: Translation | null) => void
+  onNotify: (text: string, tone?: 'default' | 'success' | 'error') => void
+  readOnly?: boolean
+}) {
+  const [source, setSource] = useState(value?.source ?? '')
+  const [slots, setSlots] = useState(
+    value?.slots?.length ? value.slots : DEFAULT_TRANSLATION_SLOTS.map((s) => ({ ...s, text: '' })),
+  )
+  const [draftOpen, setDraftOpen] = useState(false)
+  const draft = value?.sourceDraft ?? ''
+
+  useEffect(() => {
+    setSource(value?.source ?? '')
+    setSlots(
+      value?.slots?.length ? value.slots : DEFAULT_TRANSLATION_SLOTS.map((s) => ({ ...s, text: '' })),
+    )
+    setDraftOpen(false)
+  }, [item.id])
+
+  const translated = slots.some((s) => s.text.trim())
+  const save = () => {
+    if (!source.trim() && !translated) {
+      onChange(null)
+      onNotify('已清空这张图的翻译', 'success')
+      return
+    }
+    onChange({ source, slots, sourceDraft: draft || undefined, updatedAt: new Date().toISOString() })
+    onNotify('翻译已保存', 'success')
+  }
+
+  const addSlot = () => {
+    const existing = new Set(slots.map((s) => s.lang))
+    const nextLang = ['zh', 'en', 'ko', 'fr', 'ja'].find((l) => !existing.has(l)) ?? `lang${slots.length + 1}`
+    const label = nextLang === 'zh' ? '中文' : nextLang === 'en' ? 'English' : nextLang === 'ko' ? '한국어' : nextLang === 'fr' ? 'Français' : '日本語'
+    setSlots((prev) => [...prev, { lang: nextLang, label, text: '' }])
+  }
+
+  return (
+    <div className="translation-panel">
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <span className={`badge ${translated ? 'badge-sage' : 'badge-accent'}`}>
+          {translated ? '已翻译' : '未翻译'}
+        </span>
+        {!readOnly && (
+          <button className="btn btn-primary btn-sm" onClick={save}>
+            保存翻译
+          </button>
+        )}
+      </div>
+
+      <label className="translation-field">
+        <span className="field-label">原文（日文）</span>
+        <textarea
+          className="textarea"
+          placeholder="录入图上的日文原文；也可以从下方草稿填入后再校对"
+          value={source}
+          readOnly={readOnly}
+          onChange={(e) => setSource(e.target.value)}
+        />
+      </label>
+
+      {!readOnly && draft && (
+        <div className="translation-draft">
+          <button className="btn btn-ghost btn-sm" onClick={() => setDraftOpen((v) => !v)}>
+            {draftOpen ? '收起' : '查看'}原文草稿
+          </button>
+          {draftOpen && (
+            <>
+              <div className="draft-text">{draft}</div>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => setSource((prev) => (prev ? `${prev}\n${draft}` : draft))}
+              >
+                填入原文
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {slots.map((slot, index) => (
+        <label key={`${slot.lang}-${index}`} className="translation-field">
+          <span className="row" style={{ justifyContent: 'space-between' }}>
+            <span className="field-label">{slot.label}</span>
+            {!readOnly && (
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => setSlots((prev) => prev.filter((_, i) => i !== index))}
+                type="button"
+              >
+                移除语言
+              </button>
+            )}
+          </span>
+          <textarea
+            className="textarea"
+            placeholder={`${slot.label}译文`}
+            value={slot.text}
+            readOnly={readOnly}
+            onChange={(e) =>
+              setSlots((prev) => prev.map((s, i) => (i === index ? { ...s, text: e.target.value } : s)))
+            }
+          />
+        </label>
+      ))}
+
+      {!readOnly && (
+        <button className="btn btn-sm" onClick={addSlot}>
+          <Icon name="plus" size={13} />添加语言
+        </button>
       )}
     </div>
   )

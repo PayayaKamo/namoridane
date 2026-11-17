@@ -156,6 +156,7 @@ const PATHS: Record<string, JSX.Element> = {
       <circle cx="15" cy="17" r="1.2" fill="currentColor" stroke="none" />
     </>
   ),
+  menu: <path d="M4 6.5h16M4 12h16M4 17.5h16" />,
   grid: (
     <>
       <path d="M4 4h16v16H4z" />

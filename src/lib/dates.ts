@@ -1,4 +1,5 @@
 import type { DateOverride, DiaryItem, EffectiveDate, ItemAnnotation } from '../types'
+import { IS_PUBLIC } from './appMode'
 
 export const WEEKDAYS_CN = ['日', '一', '二', '三', '四', '五', '六']
 export const MONTHS_CN = [
@@ -17,6 +18,7 @@ export const MONTHS_CN = [
 ]
 
 export function isoOf(year: number, month: number, day: number): string {
+  if (!year || !month || !day) return ''
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
@@ -51,6 +53,10 @@ export function effectiveDate(item: DiaryItem, annotation?: ItemAnnotation): Eff
       source: d.source,
     }
   }
+  // 公开站不展示任何推测日期，只认人工确认值
+  if (IS_PUBLIC) {
+    return { year: 0, month: 0, day: 0, iso: '', confirmed: false, source: 'inferred' }
+  }
   return {
     year: item.inferredYear,
     month: item.inferredMonth,
@@ -60,7 +66,6 @@ export function effectiveDate(item: DiaryItem, annotation?: ItemAnnotation): Eff
     source: 'inferred',
   }
 }
-
 export function publishedParts(item: DiaryItem) {
   return parseISO(item.publishedAt)
 }
@@ -85,15 +90,18 @@ export function isoFromOverride(d: DateOverride): string {
 }
 
 export function formatFullDate(iso: string): string {
+  if (!iso) return '日期待定'
   const { year, month, day } = parseISO(iso)
   return `${year} 年 ${month} 月 ${day} 日`
 }
 
 export function formatMonthDay(month: number, day: number): string {
+  if (!month || !day) return '日期待定'
   return `${month} 月 ${day} 日`
 }
 
 export function formatShortDate(iso: string): string {
+  if (!iso) return '日期待定'
   const { year, month, day } = parseISO(iso)
   return `${year}.${String(month).padStart(2, '0')}.${String(day).padStart(2, '0')}`
 }
@@ -104,6 +112,7 @@ export function todayKey(): string {
 }
 
 export function weekdayLabel(iso: string): string {
+  if (!iso) return '日期待定'
   const { year, month, day } = parseISO(iso)
   return `周${WEEKDAYS_CN[new Date(year, month - 1, day).getDay()]}`
 }
@@ -136,4 +145,46 @@ export function isValidYmd(year: number, month: number, day: number): boolean {
   if (day < 1 || day > daysInMonth(year, month)) return false
   if (year < 1900 || year > 2200) return false
   return true
+}
+
+export interface DateQuery {
+  /** 带年份时聚焦该年；只有月/日时为空 */
+  year?: number
+  month: number
+  day: number
+}
+
+/** 从搜索词里识别日期：20261117 / 2026-11-17 / 11-17 / 11/17 / 11月17日 */
+export function parseDateQuery(raw: string): DateQuery | null {
+  const text = raw.trim()
+  if (!text) return null
+
+  const check = (year: number | undefined, month: number, day: number): DateQuery | null => {
+    if (month < 1 || month > 12) return null
+    if (day < 1 || day > daysInMonth(year ?? 2024, month)) return null
+    if (year !== undefined && (year < 1900 || year > 2200)) return null
+    return { year, month, day }
+  }
+
+  const full = /^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$/.exec(text)
+  if (full) return check(Number(full[1]), Number(full[2]), Number(full[3]))
+
+  const compact = /^(\d{4})(\d{2})(\d{2})$/.exec(text)
+  if (compact) return check(Number(compact[1]), Number(compact[2]), Number(compact[3]))
+
+  const zh = /^(\d{1,2})\s*月\s*(\d{1,2})\s*日?$/.exec(text)
+  if (zh) return check(undefined, Number(zh[1]), Number(zh[2]))
+
+  const monthDay = /^(\d{1,2})[-./](\d{1,2})$/.exec(text)
+  if (monthDay) return check(undefined, Number(monthDay[1]), Number(monthDay[2]))
+
+  return null
+}
+
+export function dayQueryOf(query: DateQuery): string {
+  return `${String(query.month).padStart(2, '0')}-${String(query.day).padStart(2, '0')}`
+}
+
+export function formatMonthDayCN(month: number, day: number): string {
+  return `${month} 月 ${day} 日`
 }

@@ -1,4 +1,4 @@
-import type { Dimension, StudyNotes } from '../types'
+import type { Dimension, StudyNotes, Tag } from '../types'
 
 /** 内置标签维度，可在界面里改名或新增自定义维度 */
 export const BUILTIN_DIMENSIONS: Dimension[] = [
@@ -27,6 +27,43 @@ export const TAG_COLORS = [
   '#8a6a4f',
   '#6f6a5f',
 ]
+
+/** 预置主要角色、家属与《大室家》同学；稳定 id 便于跨设备合并 JSON。 */
+export const CHARACTER_PRESETS = [
+  { id: 'char_akaza_akari', name: '赤座灯里', color: '#b0553b', series: '摇曳百合' },
+  { id: 'char_toshinou_kyouko', name: '岁纳京子', color: '#c07a3e', series: '摇曳百合' },
+  { id: 'char_funami_yui', name: '船见结衣', color: '#5f7663', series: '摇曳百合' },
+  { id: 'char_yoshikawa_chinatsu', name: '吉川千夏', color: '#a45c76', series: '摇曳百合' },
+  { id: 'char_sugiura_ayano', name: '杉浦绫乃', color: '#8d6a92', series: '摇曳百合' },
+  { id: 'char_ikeda_chitose', name: '池田千岁', color: '#5b7f9c', series: '摇曳百合' },
+  { id: 'char_oomuro_sakurako', name: '大室樱子', color: '#b68a4b', series: '摇曳百合' },
+  { id: 'char_furutani_himawari', name: '古谷向日葵', color: '#6d6c9c', series: '摇曳百合' },
+  { id: 'char_oomuro_nadeshiko', name: '大室抚子', color: '#4f7f7a', series: '大室家' },
+  { id: 'char_oomuro_hanako', name: '大室花子', color: '#7d8a52', series: '大室家' },
+  { id: 'char_miwa_ai', name: '三轮蓝', color: '#5b7f9c', series: '大室家' },
+  { id: 'char_yaeno_miho', name: '八重野美穗', color: '#a45c76', series: '大室家' },
+  { id: 'char_sonokawa_megumi', name: '园川惠', color: '#c07a3e', series: '大室家' },
+  { id: 'char_ogawa_kokoro', name: '小川心', color: '#8d6a92', series: '大室家' },
+  { id: 'char_souma_mirai', name: '相马未来', color: '#b0553b', series: '大室家' },
+  { id: 'char_takasaki_misaki', name: '高崎美咲', color: '#5f7663', series: '大室家' },
+  { id: 'char_matsumoto_rise', name: '松本理世', color: '#8a6a4f', series: '相关角色' },
+  { id: 'char_nishigaki_nana', name: '西垣奈奈', color: '#6f6a5f', series: '相关角色' },
+  { id: 'char_furutani_kaede', name: '古谷枫', color: '#b68a4b', series: '相关角色' },
+  { id: 'char_akaza_akane', name: '赤座茜', color: '#b0553b', series: '相关角色' },
+  { id: 'char_yoshikawa_tomoko', name: '吉川友子', color: '#a45c76', series: '相关角色' },
+  { id: 'char_ikeda_chizuru', name: '池田千鹤', color: '#5b7f9c', series: '相关角色' },
+  { id: 'char_funami_mari', name: '船见真理', color: '#4f7f7a', series: '相关角色' },
+] as const
+
+export function defaultCharacterTags(): Tag[] {
+  return CHARACTER_PRESETS.map((character) => ({
+    id: character.id,
+    name: character.name,
+    dimensionId: 'character',
+    color: character.color,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  }))
+}
 
 export const STUDY_FIELDS: { key: keyof StudyNotes; label: string; hint: string }[] = [
   { key: 'composition', label: '构图', hint: '主体位置、留白、视线引导、视角' },

@@ -3,7 +3,7 @@ import type { Route } from '../lib/router'
 import { navigate } from '../lib/router'
 import { useStore } from '../state/store'
 import { applyFilters, DEFAULT_FILTER } from '../lib/filtering'
-import { MONTHS_CN } from '../lib/dates'
+import { MONTHS_CN, dayQueryOf, parseDateQuery } from '../lib/dates'
 import { Icon } from '../components/Icon'
 import { Masonry } from '../components/ItemCard'
 import { Empty } from '../components/Modal'
@@ -97,8 +97,17 @@ export function SearchView({ route }: { route: Route }) {
               <Icon name="search" size={14} />
               <input
                 value={filter.keyword}
-                placeholder="标签、备注、拆解笔记…"
+                placeholder="标签、备注、拆解笔记…（也可输入 11-17 按日期查）"
                 onChange={(e) => setFilter((f) => ({ ...f, keyword: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter') return
+                  const dateQuery = parseDateQuery(filter.keyword)
+                  if (dateQuery) {
+                    navigate(
+                      `/datefind?md=${dayQueryOf(dateQuery)}${dateQuery.year ? `&y=${dateQuery.year}` : ''}`,
+                    )
+                  }
+                }}
               />
             </div>
           </div>

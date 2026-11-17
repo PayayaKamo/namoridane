@@ -3,6 +3,7 @@ import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
 import { effectiveDate, dayOfYear, relativeTime } from '../lib/dates'
 import { navigate, openItem } from '../lib/router'
+import { IS_PUBLIC } from '../lib/appMode'
 import type { DiaryItem } from '../types'
 
 const BASE = import.meta.env.BASE_URL
@@ -128,6 +129,19 @@ export function HomeView() {
         )}
       </section>
 
+      {!items.length && (
+        <div className="excluded-banner">
+          <div>
+            <strong>还没有图片</strong>
+            <span>
+              把重新解压的 Instagram 保存页目录导入：<code>npm run import -- "&lt;解压目录&gt;"</code>，
+              再运行 <code>npm run data</code>（或 <code>npm run dev</code>）生成索引和衍生图。
+              标注会绑定当前数据集版本，换数据后旧记录自动作废。
+            </span>
+          </div>
+        </div>
+      )}
+
       <section className="stat-grid">
         <StatCard icon="gallery" label="总张数" value={String(items.length)} hint="按图内日记日期整理，已排除非绘日记" />
         <StatCard
@@ -142,25 +156,31 @@ export function HomeView() {
           value={String(stats.tagged)}
           hint={`共 ${tags.length} 个标签，${Object.values(tagUsage).reduce((a, b) => a + b, 0)} 次使用`}
         />
-        <StatCard
-          icon="check"
-          label="待校对日期"
-          value={String(stats.pending)}
-          hint={`已确认 ${stats.confirmed} 张`}
-          accent={stats.pending > 0}
-        />
-        <StatCard icon="heart" label="收藏" value={String(stats.favorites)} hint="在详情页点按爱心" />
-        <StatCard icon="folder" label="合集" value={String(collections.length)} hint="表情包 / 临摹参考分组" />
+        {!IS_PUBLIC && (
+          <>
+            <StatCard
+              icon="check"
+              label="待校对日期"
+              value={String(stats.pending)}
+              hint={`已确认 ${stats.confirmed} 张`}
+              accent={stats.pending > 0}
+            />
+            <StatCard icon="heart" label="收藏" value={String(stats.favorites)} hint="在详情页点按爱心" />
+            <StatCard icon="folder" label="合集" value={String(collections.length)} hint="表情包 / 临摹参考分组" />
+          </>
+        )}
       </section>
 
       <section className="home-grid">
         <div className="panel">
           <div className="panel-head">
             <h3>各年份收录</h3>
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate2('/stats')}>
-              查看统计
-              <Icon name="right" size={13} />
-            </button>
+            {!IS_PUBLIC && (
+              <button className="btn btn-ghost btn-sm" onClick={() => navigate2('/stats')}>
+                查看统计
+                <Icon name="right" size={13} />
+              </button>
+            )}
           </div>
           <div className="year-bars">
             {Object.entries(yearCounts)
@@ -185,9 +205,11 @@ export function HomeView() {
               <div className="divider" />
               <div className="panel-head">
                 <h3>常用标签</h3>
-                <button className="btn btn-ghost btn-sm" onClick={() => navigate2('/tags')}>
-                  管理
-                </button>
+                {!IS_PUBLIC && (
+                  <button className="btn btn-ghost btn-sm" onClick={() => navigate2('/tags')}>
+                    管理
+                  </button>
+                )}
               </div>
               <div className="row row-wrap" style={{ gap: 6 }}>
                 {topTags.map((tag) => (
@@ -215,8 +237,12 @@ export function HomeView() {
             <QuickCard icon="gallery" title="图库" desc="瀑布流浏览与批量整理" to="/gallery" />
             <QuickCard icon="sticker" title="表情包工坊" desc="框选主体、去白底、导出" to="/stickers" />
             <QuickCard icon="users" title="角色图鉴" desc="按人物聚合的所有出场" to="/characters" />
-            <QuickCard icon="check" title="日期校对" desc="核对手写日期与发布日" to="/review" />
-            <QuickCard icon="folder" title="合集" desc="把喜欢的收进同一本册子" to="/collections" />
+            {!IS_PUBLIC && (
+              <>
+                <QuickCard icon="check" title="日期校对" desc="核对手写日期与发布日" to="/review" />
+                <QuickCard icon="folder" title="合集" desc="把喜欢的收进同一本册子" to="/collections" />
+              </>
+            )}
           </div>
         </div>
       </section>

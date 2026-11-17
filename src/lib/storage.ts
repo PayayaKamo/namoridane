@@ -1,24 +1,27 @@
-import { BUILTIN_DIMENSIONS, EXTRA_DIMENSIONS } from './constants'
-import type { Dimension, ItemAnnotation, Tag, UserData } from '../types'
+import { BUILTIN_DIMENSIONS, EXTRA_DIMENSIONS, defaultCharacterTags } from './constants'
+import type { Character, Dimension, ItemAnnotation, Storyline, Tag, Translation, UserData } from '../types'
 
 export const STORAGE_KEY = 'namori.diary.userdata.v2'
 export const THEME_KEY = 'namori.theme'
 
 export function emptyAnnotation(): ItemAnnotation {
-  return { tags: [], favorite: false, excluded: false, note: '', updatedAt: new Date(0).toISOString() }
+  return { tags: [], favorite: false, reviewed: false, excluded: false, note: '', updatedAt: new Date(0).toISOString() }
 }
 
 export function defaultDimensions(): Dimension[] {
   return [...BUILTIN_DIMENSIONS, ...EXTRA_DIMENSIONS].map((d) => ({ ...d }))
 }
 
-export function emptyUserData(): UserData {
+export function emptyUserData(includeCharacters = true, datasetId?: string): UserData {
   return {
     version: 2,
     updatedAt: new Date().toISOString(),
+    datasetId,
     dimensions: defaultDimensions(),
-    tags: [],
+    tags: includeCharacters ? defaultCharacterTags() : [],
+    characters: [],
     collections: [],
+    storylines: [],
     items: {},
   }
 }
@@ -78,6 +81,58 @@ export function normalizeUserData(raw: unknown): UserData {
         }))
     : []
 
+  const characters: Character[] = []
+  if (Array.isArray(data.characters)) {
+    for (const c of data.characters) {
+      if (!c || !c.id || characters.some((x) => x.id === c.id)) continue
+      if (!tagIds.has(c.id)) continue
+      const character: Character = { id: c.id, createdAt: str(c.createdAt, new Date().toISOString()) }
+      if (typeof c.avatarItemId === 'string') character.avatarItemId = c.avatarItemId
+      if (typeof c.avatarDataUrl === 'string') character.avatarDataUrl = c.avatarDataUrl
+      if (typeof c.note === 'string') character.note = c.note
+      if (c.avatarCrop && typeof c.avatarCrop === 'object') {
+        character.avatarCrop = {
+          cx: Number(c.avatarCrop.cx ?? 0.5),
+          cy: Number(c.avatarCrop.cy ?? 0.5),
+          size: Number(c.avatarCrop.size ?? 1),
+          tolerance: Number(c.avatarCrop.tolerance ?? 18),
+          transparent: c.avatarCrop.transparent !== false,
+        }
+      }
+      characters.push(character)
+    }
+  }
+
+  const storylines: Storyline[] = []
+  if (Array.isArray(data.storylines)) {
+    for (const s of data.storylines) {
+      if (!s || !s.id || !s.title) continue
+      if (storylines.some((x) => x.id === s.id)) continue
+      const blocks = Array.isArray(s.blocks)
+        ? s.blocks
+            .filter((b) => b && b.id && (b.type === 'image' || b.type === 'note'))
+            .map((b) => ({
+              id: b.id,
+              type: b.type,
+              itemId: b.type === 'image' ? str(b.itemId) : undefined,
+              text: b.type === 'note' ? str(b.text) : undefined,
+            }))
+            .filter((b) => (b.type === 'image' ? Boolean(b.itemId) : Boolean((b.text ?? '').trim())))
+        : []
+      storylines.push({
+        id: s.id,
+        title: str(s.title, '未命名故事线'),
+        description: str(s.description),
+        coverItemId: s.coverItemId ? str(s.coverItemId) : undefined,
+        blocks,
+        tags: Array.isArray(s.tags) ? [...new Set(s.tags.filter((t) => typeof t === 'string'))] : [],
+        published: Boolean(s.published),
+        createdAt: str(s.createdAt, new Date().toISOString()),
+        updatedAt: str(s.updatedAt, new Date().toISOString()),
+      })
+    }
+  }
+
   const items: Record<string, ItemAnnotation> = {}
   if (data.items && typeof data.items === 'object') {
     for (const [id, value] of Object.entries(data.items)) {
@@ -86,10 +141,13 @@ export function normalizeUserData(raw: unknown): UserData {
       const ann: ItemAnnotation = {
         tags: Array.isArray(a.tags) ? [...new Set(a.tags.filter((t) => tagIds.has(t)))] : [],
         favorite: Boolean(a.favorite),
+        reviewed: Boolean(a.reviewed || a.excluded),
         excluded: Boolean(a.excluded),
+        deleted: Boolean(a.deleted),
         note: str(a.note),
         updatedAt: str(a.updatedAt, new Date().toISOString()),
       }
+      if (a.deletedAt) ann.deletedAt = str(a.deletedAt)
       if (a.date && typeof a.date === 'object' && a.date.year && a.date.month && a.date.day) {
         ann.date = {
           year: Number(a.date.year),
@@ -117,6 +175,8 @@ export function normalizeUserData(raw: unknown): UserData {
           transparent: a.crop.transparent !== false,
         }
       }
+      const translation = normalizeTranslation(a.translation)
+      if (translation) ann.translation = translation
       items[id] = ann
     }
   }
@@ -124,10 +184,36 @@ export function normalizeUserData(raw: unknown): UserData {
   return {
     version: 2,
     updatedAt: str(data.updatedAt, new Date().toISOString()),
+    datasetId: typeof data.datasetId === 'string' ? data.datasetId : undefined,
     dimensions,
     tags,
+    characters,
     collections,
+    storylines,
     items,
+  }
+}
+
+function normalizeTranslation(raw: unknown): Translation | null {
+  if (!raw || typeof raw !== 'object') return null
+  const value = raw as Partial<Translation>
+  const slots = Array.isArray(value.slots)
+    ? value.slots
+        .filter((s) => s && typeof s.lang === 'string')
+        .map((s) => ({
+          lang: str(s.lang),
+          label: str(s.label, s.lang),
+          text: str(s.text),
+        }))
+    : []
+  const source = str(value.source)
+  const sourceDraft = typeof value.sourceDraft === 'string' ? value.sourceDraft : undefined
+  if (!source && !slots.some((s) => s.text) && !sourceDraft) return null
+  return {
+    source,
+    sourceDraft,
+    slots,
+    updatedAt: str(value.updatedAt, new Date().toISOString()),
   }
 }
 
@@ -196,6 +282,20 @@ export function mergeUserData(current: UserData, incoming: UserData): UserData {
     }
   }
 
+  const characters = [...current.characters]
+  for (const character of incoming.characters) {
+    const existing = characters.find((c) => c.id === character.id)
+    if (!existing) characters.push(character)
+    else Object.assign(existing, character)
+  }
+
+  const storylines = [...current.storylines]
+  for (const storyline of incoming.storylines) {
+    const existing = storylines.find((s) => s.id === storyline.id)
+    if (!existing) storylines.push(storyline)
+    else Object.assign(existing, storyline, { tags: [...new Set([...existing.tags, ...storyline.tags])] })
+  }
+
   const items: Record<string, ItemAnnotation> = { ...current.items }
   for (const [id, ann] of Object.entries(incoming.items)) {
     const existing = items[id]
@@ -208,15 +308,29 @@ export function mergeUserData(current: UserData, incoming: UserData): UserData {
       ...ann,
       tags: [...new Set([...existing.tags, ...ann.tags])],
       favorite: existing.favorite || ann.favorite,
+      reviewed: existing.reviewed || ann.reviewed || existing.excluded || ann.excluded,
       excluded: existing.excluded || ann.excluded,
+      deleted: Boolean(existing.deleted || ann.deleted),
+      deletedAt: ann.deletedAt ?? existing.deletedAt,
       note: ann.note || existing.note,
+      translation: ann.translation ?? existing.translation,
       date: ann.date ?? existing.date,
       study: ann.study ?? existing.study,
       crop: ann.crop ?? existing.crop,
     }
   }
 
-  return { version: 2, updatedAt: new Date().toISOString(), dimensions, tags, collections, items }
+  return {
+    version: 2,
+    updatedAt: new Date().toISOString(),
+    datasetId: current.datasetId,
+    dimensions,
+    tags,
+    characters,
+    collections,
+    storylines,
+    items,
+  }
 }
 
 export function downloadJson(data: unknown, filename: string): void {
@@ -231,6 +345,15 @@ export function downloadJson(data: unknown, filename: string): void {
 
 export function annotationCount(data: UserData): number {
   return Object.values(data.items).filter(
-    (a) => a.tags.length > 0 || a.favorite || a.excluded || a.note || a.date || a.study || a.crop,
+    (a) =>
+      a.tags.length > 0 ||
+      a.favorite ||
+      a.reviewed ||
+      a.excluded ||
+      a.note ||
+      a.translation ||
+      a.date ||
+      a.study ||
+      a.crop,
   ).length
 }
