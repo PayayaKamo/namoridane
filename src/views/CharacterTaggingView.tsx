@@ -5,7 +5,7 @@ import { Icon } from '../components/Icon'
 import { sortCharacterTags } from '../lib/constants'
 
 const BASE = import.meta.env.BASE_URL
-type Scope = 'todo' | 'all'
+type Scope = 'todo' | 'labeled' | 'all'
 
 /**
  * 人物标注：只针对已确认的绘日记，逐张快速标记出场角色。
@@ -13,7 +13,7 @@ type Scope = 'todo' | 'all'
  * 方便连续点选多个角色；「下一张」会跳过已标注的条目。
  */
 export function CharacterTaggingView() {
-  const { confirmedDiaryItems, annotations, tags, itemMap, setItemTags, getDate, notify } = useStore()
+  const { confirmedDiaryItems, annotations, tags, itemMap, setItemTags, getDate } = useStore()
   const [scope, setScope] = useState<Scope>('todo')
   const [charFilter, setCharFilter] = useState('')
   const [queue, setQueue] = useState<string[]>([])
@@ -74,7 +74,9 @@ export function CharacterTaggingView() {
         if (charFilter) {
           return (annotations[item.id]?.tags ?? []).includes(charFilter)
         }
-        return scope === 'all' || !labeledIds.has(item.id)
+        if (scope === 'todo') return !labeledIds.has(item.id)
+        if (scope === 'labeled') return labeledIds.has(item.id)
+        return true
       })
       .map((item) => item.id)
     setQueue(next)
@@ -94,22 +96,27 @@ export function CharacterTaggingView() {
   const applyChars = (itemId: string, ids: string[]) => setItemTags(itemId, [...othersOf(itemId), ...ids])
 
   const goPrev = () => {
-    if (safeIndex <= 0) {
-      notify('已经是第一张了')
-      return
-    }
-    setIndex(safeIndex - 1)
+    if (!queue.length) return
+    // 首尾循环：第一张再往前跳到队列最后一张，与绘日记审核页一致
+    setIndex(safeIndex <= 0 ? queue.length - 1 : safeIndex - 1)
   }
 
   const goNext = () => {
     if (!queue.length) return
+    const skipped = (i: number) => scope === 'todo' && !charFilter && labeledIds.has(queue[i])
     for (let i = safeIndex + 1; i < queue.length; i += 1) {
       // 只在「未标注」里跳过已标注；「全部」按顺序逐张翻看，方便回改
-      if (scope === 'todo' && !charFilter && labeledIds.has(queue[i])) continue
+      if (skipped(i)) continue
       setIndex(i)
       return
     }
-    notify('已经是最后一张了')
+    // 最后一张之后回到开头继续找，实现首尾循环
+    for (let i = 0; i <= safeIndex; i += 1) {
+      if (skipped(i)) continue
+      setIndex(i)
+      return
+    }
+    setIndex(0)
   }
 
   const toggleAt = (slot: number) => {
@@ -151,7 +158,11 @@ export function CharacterTaggingView() {
             {labeled} / {total}
           </strong>
           <span>已标注</span>
-          <span className="tagging-todo">还差 {todoCount} 张</span>
+          {!charFilter && scope === 'todo' ? (
+            <span className="tagging-todo">还差 {todoCount} 张</span>
+          ) : (
+            <span className="tagging-todo">当前 {queue.length} 张</span>
+          )}
         </div>
         <div className="tagging-filters">
           <div className="segmented">
@@ -163,6 +174,15 @@ export function CharacterTaggingView() {
               }}
             >
               未标注
+            </button>
+            <button
+              className={!charFilter && scope === 'labeled' ? 'active' : ''}
+              onClick={() => {
+                setCharFilter('')
+                setScope('labeled')
+              }}
+            >
+              已标注
             </button>
             <button
               className={!charFilter && scope === 'all' ? 'active' : ''}
@@ -191,7 +211,9 @@ export function CharacterTaggingView() {
             ? '这个角色下还没有标注过的绘日记。'
             : scope === 'todo'
               ? '全部绘日记都标完了。'
-              : '还没有已确认的绘日记，请先到「绘日记审核」确认。'}
+              : scope === 'labeled'
+                ? '还没有已标注的绘日记。'
+                : '还没有已确认的绘日记，请先到「绘日记审核」确认。'}
         </div>
       ) : (
         current && (
@@ -212,7 +234,7 @@ export function CharacterTaggingView() {
               <CharacterPicker selected={selected} onChange={(ids) => applyChars(current.id, ids)} />
             </div>
             <div className="tagging-foot">
-              <button className="btn btn-sm" onClick={goPrev} disabled={safeIndex <= 0} title="上一张（←）">
+              <button className="btn btn-sm" onClick={goPrev} title="上一张（←，第一张时跳到末尾）">
                 <Icon name="left" size={14} />
                 上一张
               </button>
