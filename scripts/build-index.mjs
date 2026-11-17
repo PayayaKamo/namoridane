@@ -432,11 +432,12 @@ async function main() {
       process.exit(1)
     }
     publicData = JSON.parse(await fsp.readFile(PUBLIC_DATA_FILE, 'utf8'))
-    excludedIds = new Set(
-      Object.entries(publicData.items ?? {})
+    excludedIds = new Set([
+      ...(Array.isArray(publicData.excludedIds) ? publicData.excludedIds : []),
+      ...Object.entries(publicData.items ?? {})
         .filter(([, ann]) => ann?.excluded || ann?.deleted)
         .map(([id]) => id),
-    )
+    ])
     const before = entries.length
     entries = entries.filter((entry) => !excludedIds.has(idByFile.get(entry.name)))
     log(`公开模式：排除 ${before - entries.length} 张非绘日记`)

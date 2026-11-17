@@ -44,8 +44,13 @@ export function sanitizePublicData(raw) {
   validateUserData(raw)
   const now = new Date().toISOString()
   const items = {}
+  const excludedIds = []
   for (const [id, annotation] of Object.entries(raw.items)) {
-    if (!annotation || annotation.excluded || annotation.deleted) continue
+    if (!annotation || annotation.deleted) continue
+    if (annotation.excluded) {
+      excludedIds.push(id)
+      continue
+    }
     const next = {
       tags: Array.isArray(annotation.tags) ? annotation.tags.filter((t) => typeof t === 'string') : [],
       favorite: false,
@@ -95,6 +100,7 @@ export function sanitizePublicData(raw) {
     version: 2,
     updatedAt: now,
     items,
+    excludedIds,
     collections: [],
     storylines: Array.isArray(raw.storylines)
       ? raw.storylines.filter((storyline) => storyline && storyline.published)

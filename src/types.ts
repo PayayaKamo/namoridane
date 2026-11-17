@@ -231,6 +231,8 @@ export interface UserData {
   collections: Collection[]
   storylines: Storyline[]
   items: Record<string, ItemAnnotation>
+  /** 公开数据专用：确认非绘日记的条目 id，公开站据此从索引中排除；不含任何私有内容 */
+  excludedIds?: string[]
 }
 
 export interface EffectiveDate {

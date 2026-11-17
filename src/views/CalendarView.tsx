@@ -81,7 +81,7 @@ function resolveInitialMonth(
 }
 
 export function CalendarView({ route }: { route: Route }) {
-  const { items, annotations, years, getDate } = useStore()
+  const { items, annotations, years, getDate, seedReady } = useStore()
   const [initial] = useState(() => {
     const now = new Date()
     const queryYear = Number(route.query.get('y')) || Number(route.query.get('year'))
@@ -110,16 +110,16 @@ export function CalendarView({ route }: { route: Route }) {
     }
   }
 
-  // 索引异步载入：等条目可用后只自动定位一次；用户已选择过则跳过
+  // 索引与公开种子异步载入：两者都就绪后只自动定位一次；用户已选择过则跳过
   useEffect(() => {
-    if (positioned || !items.length) return
+    if (positioned || !seedReady || !items.length) return
     const target = resolveInitialMonth(items, getDate, new Date())
     setPositioned(true)
     if (target.year !== year || target.month !== month) {
       setYear(target.year)
       setMonth(target.month)
     }
-  }, [items, getDate, positioned, year, month])
+  }, [items, getDate, positioned, seedReady, year, month])
 
   const byDay = useMemo(() => {
     const map = new Map<string, DiaryItem[]>()

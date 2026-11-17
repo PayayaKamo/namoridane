@@ -62,6 +62,8 @@ interface StoreValue {
   pendingReviewItems: DiaryItem[]
   itemMap: Map<string, DiaryItem>
   loading: boolean
+  /** 索引与仓库种子均已加载完成；日历等首屏定位据此等待日期就绪 */
+  seedReady: boolean
   error: string | null
   data: UserData
   annotations: Record<string, ItemAnnotation>
@@ -151,6 +153,7 @@ function currentTheme(): Theme {
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [index, setIndex] = useState<LibraryIndex | null>(null)
   const [loading, setLoading] = useState(true)
+  const [seedReady, setSeedReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<UserData>(() => loadLocalUserData() ?? emptyUserData())
   const [lastDeletion, setLastDeletion] = useState<string[] | null>(null)
@@ -177,25 +180,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return next
         })
         setLoading(false)
-        if (!json.datasetId) return
+        if (!json.datasetId) {
+          setSeedReady(true)
+          return
+        }
         // 数据集变化或首次访问时，尝试载入仓库种子（公开站的标注来源）
-        loadSeedUserData().then((seed) => {
-          if (!seed) return
-          const hasContent =
-            seed.tags.length > 0 || seed.collections.length > 0 || Object.keys(seed.items).length > 0
-          if (!hasContent) return
-          seed.datasetId = json.datasetId
-          setData((prev) => {
-            if (prev.datasetId !== json.datasetId || Object.keys(prev.items).length > 0) return prev
-            saveLocalUserData(seed)
-            return seed
+        loadSeedUserData()
+          .then((seed) => {
+            if (!seed) return
+            const hasContent =
+              seed.tags.length > 0 || seed.collections.length > 0 || Object.keys(seed.items).length > 0
+            if (!hasContent) return
+            seed.datasetId = json.datasetId
+            setData((prev) => {
+              if (prev.datasetId !== json.datasetId || Object.keys(prev.items).length > 0) return prev
+              saveLocalUserData(seed)
+              return seed
+            })
           })
-        })
+          .catch(() => {
+            // 种子缺失时公开站按空数据处理
+          })
+          .finally(() => setSeedReady(true))
       })
       .catch((err: Error) => {
         if (err.name === 'AbortError') return
         setError(err.message)
         setLoading(false)
+        setSeedReady(true)
       })
     return () => controller.abort()
   }, [])
@@ -909,6 +921,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       pendingReviewItems,
       itemMap,
       loading,
+      seedReady,
       error,
       data,
       annotations: data.items,
@@ -986,6 +999,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       pendingReviewItems,
       itemMap,
       loading,
+      seedReady,
       error,
       data,
       tagMap,

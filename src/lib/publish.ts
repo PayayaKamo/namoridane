@@ -9,8 +9,14 @@ import type { ItemAnnotation, Storyline, UserData } from '../types'
  */
 export function buildPublicData(data: UserData): UserData {
   const items: Record<string, ItemAnnotation> = {}
+  const excludedIds: string[] = []
   for (const [id, ann] of Object.entries(data.items)) {
-    if (!ann || ann.excluded || ann.deleted) continue
+    if (!ann || ann.deleted) continue
+    // 非绘日记：只留下 id 供公开站从索引中过滤，不携带任何标注内容
+    if (ann.excluded) {
+      excludedIds.push(id)
+      continue
+    }
     const next: ItemAnnotation = {
       tags: ann.tags,
       favorite: false,
@@ -37,6 +43,7 @@ export function buildPublicData(data: UserData): UserData {
   return {
     ...rest,
     items,
+    excludedIds,
     collections: [],
     storylines,
     updatedAt: new Date().toISOString(),
