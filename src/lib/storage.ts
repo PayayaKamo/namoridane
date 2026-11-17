@@ -175,7 +175,7 @@ export function normalizeUserData(raw: unknown): UserData {
           character.coverCrop = {
             x: Math.min(100, Math.max(0, x)),
             y: Math.min(100, Math.max(0, y)),
-            zoom: Number.isFinite(zoom) ? Math.min(2, Math.max(1, zoom)) : 1,
+            zoom: Number.isFinite(zoom) ? Math.min(4, Math.max(1, zoom)) : 1,
           }
         }
       }
@@ -313,11 +313,48 @@ function normalizeTranslation(raw: unknown): Translation | null {
   }
 }
 
+/** 一次性恢复默认封面：清空所有角色的封面来源与焦点，保留头像、简介与标注 */
+const COVER_RESET_MARKER = 'namori.covers.reset.v1'
+
+function clearCoverOverridesOnce(data: UserData): UserData {
+  try {
+    if (localStorage.getItem(COVER_RESET_MARKER)) return data
+  } catch {
+    return data
+  }
+  const hasOverrides = data.characters.some((character) => character.coverItemId || character.coverCrop)
+  if (!hasOverrides) {
+    try {
+      localStorage.setItem(COVER_RESET_MARKER, '1')
+    } catch {
+      // 忽略隐私模式下的写入失败
+    }
+    return data
+  }
+  const next: UserData = {
+    ...data,
+    characters: data.characters.map((character) => {
+      const cleaned = { ...character }
+      delete cleaned.coverItemId
+      delete cleaned.coverCrop
+      return cleaned
+    }),
+  }
+  try {
+    // 同时落盘，避免 React 重复执行初始化时又读到旧的封面参数
+    localStorage.setItem(COVER_RESET_MARKER, '1')
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  } catch {
+    // 忽略隐私模式下的写入失败
+  }
+  return next
+}
+
 export function loadLocalUserData(): UserData | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
-    return normalizeUserData(JSON.parse(raw))
+    return clearCoverOverridesOnce(normalizeUserData(JSON.parse(raw)))
   } catch {
     return null
   }
