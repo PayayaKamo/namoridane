@@ -119,9 +119,30 @@
     },
     {
       "id": "char_nishigaki_nana",
-      "name": "老师们",
+      "name": "西垣奈奈",
       "dimensionId": "character",
       "color": "#6f6a5f",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_toushi_hoko",
+      "name": "东志帆子",
+      "dimensionId": "character",
+      "color": "#8d6a92",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_kitamiya_hatsumi",
+      "name": "北宫初美",
+      "dimensionId": "character",
+      "color": "#5b7f9c",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "char_minamino_tsubasa",
+      "name": "南野翼",
+      "dimensionId": "character",
+      "color": "#7d8a52",
       "createdAt": "2026-01-01T00:00:00.000Z"
     },
     {

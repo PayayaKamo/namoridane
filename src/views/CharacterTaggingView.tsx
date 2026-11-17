@@ -176,14 +176,11 @@ export function CharacterTaggingView() {
           </div>
           <select className="select" value={charFilter} onChange={(event) => setCharFilter(event.target.value)}>
             <option value="">按角色筛选…</option>
-            {characterTags
-              .slice()
-              .sort((a, b) => (charCounts.get(b.id) ?? 0) - (charCounts.get(a.id) ?? 0) || a.name.localeCompare(b.name, 'zh-Hans-CN'))
-              .map((tag) => (
-                <option key={tag.id} value={tag.id}>
-                  {tag.name}（{charCounts.get(tag.id) ?? 0}）
-                </option>
-              ))}
+            {characterTags.map((tag) => (
+              <option key={tag.id} value={tag.id}>
+                {tag.name}（{charCounts.get(tag.id) ?? 0}）
+              </option>
+            ))}
           </select>
         </div>
       </div>

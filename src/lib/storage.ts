@@ -15,14 +15,21 @@ const RETIRED_CHARACTER_IDS: ReadonlySet<string> = new Set([
 ])
 
 /** 旧的硬编码角色名 → 现行定义名：保留 id 与已有标注，载入时就地迁移 */
-const LEGACY_CHARACTER_NAMES: Readonly<Record<string, string>> = {
-  char_nishigaki_nana: '西垣奈奈',
+const LEGACY_CHARACTER_NAMES: Readonly<Record<string, readonly string[]>> = {
+  char_nishigaki_nana: ['西垣奈奈', '老师们'],
 }
+
+/** 2026-11 新增的角色：旧本地数据缺少标签时自动补齐，保证图鉴与标注页顺序一致 */
+const ADDED_PRESET_CHARACTER_IDS: ReadonlySet<string> = new Set([
+  'char_toushi_hoko',
+  'char_kitamiya_hatsumi',
+  'char_minamino_tsubasa',
+])
 
 function renameLegacyCharacters(data: UserData): UserData {
   let changed = false
   const tags = data.tags.map((tag) => {
-    if (LEGACY_CHARACTER_NAMES[tag.id] !== tag.name) return tag
+    if (!LEGACY_CHARACTER_NAMES[tag.id]?.includes(tag.name)) return tag
     const nextName = CHARACTER_PRESETS.find((preset) => preset.id === tag.id)?.name
     if (!nextName || nextName === tag.name) return tag
     changed = true
@@ -115,6 +122,18 @@ export function normalizeUserData(raw: unknown): UserData {
     }
   }
 
+  // 补上新增三位老师的标签（已存在则保持用户数据原样）
+  for (const preset of CHARACTER_PRESETS) {
+    if (!ADDED_PRESET_CHARACTER_IDS.has(preset.id) || tags.some((tag) => tag.id === preset.id)) continue
+    tags.push({
+      id: preset.id,
+      name: preset.name,
+      dimensionId: 'character',
+      color: preset.color,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    })
+  }
+
   const tagIds = new Set(tags.map((t) => t.id))
   const collections = Array.isArray(data.collections)
     ? data.collections
@@ -141,6 +160,13 @@ export function normalizeUserData(raw: unknown): UserData {
       if (typeof c.avatar === 'string') character.avatar = c.avatar
       if (typeof c.avatarSource === 'string') character.avatarSource = c.avatarSource
       if (typeof c.coverItemId === 'string') character.coverItemId = c.coverItemId
+      if (c.profile && typeof c.profile === 'object') {
+        character.profile = {
+          cv: str(c.profile.cv),
+          role: str(c.profile.role),
+          traits: str(c.profile.traits),
+        }
+      }
       if (c.coverCrop && typeof c.coverCrop === 'object') {
         const x = Number(c.coverCrop.x)
         const y = Number(c.coverCrop.y)

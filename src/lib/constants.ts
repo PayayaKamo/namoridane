@@ -1,4 +1,4 @@
-import type { Dimension, StudyNotes, Tag } from '../types'
+import type { CharacterProfile, Dimension, StudyNotes, Tag } from '../types'
 
 /** 内置标签维度，可在界面里改名或新增自定义维度 */
 export const BUILTIN_DIMENSIONS: Dimension[] = [
@@ -41,13 +41,46 @@ export const CHARACTER_PRESETS = [
   { id: 'char_oomuro_nadeshiko', name: '大室抚子', color: '#4f7f7a', series: '大室家' },
   { id: 'char_oomuro_hanako', name: '大室花子', color: '#7d8a52', series: '大室家' },
   { id: 'char_matsumoto_rise', name: '松本理世', color: '#8a6a4f', series: '相关角色' },
-  { id: 'char_nishigaki_nana', name: '老师们', color: '#6f6a5f', series: '相关角色' },
+  { id: 'char_nishigaki_nana', name: '西垣奈奈', color: '#6f6a5f', series: '相关角色' },
+  { id: 'char_toushi_hoko', name: '东志帆子', color: '#8d6a92', series: '相关角色' },
+  { id: 'char_kitamiya_hatsumi', name: '北宫初美', color: '#5b7f9c', series: '相关角色' },
+  { id: 'char_minamino_tsubasa', name: '南野翼', color: '#7d8a52', series: '相关角色' },
   { id: 'char_furutani_kaede', name: '古谷枫', color: '#b68a4b', series: '相关角色' },
   { id: 'char_akaza_akane', name: '赤座茜', color: '#b0553b', series: '相关角色' },
   { id: 'char_yoshikawa_tomoko', name: '吉川友子', color: '#a45c76', series: '相关角色' },
   { id: 'char_ikeda_chizuru', name: '池田千鹤', color: '#5b7f9c', series: '相关角色' },
   { id: 'char_funami_mari', name: '船见真理', color: '#4f7f7a', series: '相关角色' },
 ] as const
+
+/** 预置角色资料；用户在编辑面板保存后写入 characters[].profile 覆盖这里 */
+export const CHARACTER_PROFILES: Readonly<Record<string, CharacterProfile>> = {
+  char_nishigaki_nana: {
+    cv: '白石凉子',
+    role: '理科老师、科学家',
+    traits:
+      '热衷科学实验，但经常在学校里引起爆炸；和学生会长松本理世关系很好，自称其为「爆友」，也是全校唯一能听懂并正常与寡言的松本理世交流的人。',
+  },
+  char_toushi_hoko: {
+    cv: '桥本千波',
+    role: '美术老师',
+    traits: '总是笑脸迎人，非常有亲和力；与西垣奈奈是高中同学，关系十分要好，一直很想为奈奈画像。',
+  },
+  char_kitamiya_hatsumi: {
+    cv: '新井里美',
+    role: '家庭经济课老师',
+    traits: '',
+  },
+  char_minamino_tsubasa: {
+    cv: '渡部优衣',
+    role: '',
+    traits: '',
+  },
+}
+
+/** 缺省时回退到预置资料，避免旧数据没有 profile 字段时卡片空白 */
+export function presetCharacterProfile(id: string): CharacterProfile | undefined {
+  return CHARACTER_PROFILES[id]
+}
 
 export function defaultCharacterTags(): Tag[] {
   return CHARACTER_PRESETS.map((character) => ({
@@ -59,7 +92,26 @@ export function defaultCharacterTags(): Tag[] {
   }))
 }
 
-const PRESET_AVATAR_IDS: ReadonlySet<string> = new Set(CHARACTER_PRESETS.map((character) => character.id))
+/** 只有这些预置角色在 public/characters/<id>.webp 有占位头像；其余用首字占位 */
+const PRESET_AVATAR_IDS: ReadonlySet<string> = new Set([
+  'char_akaza_akari',
+  'char_toshinou_kyouko',
+  'char_funami_yui',
+  'char_yoshikawa_chinatsu',
+  'char_sugiura_ayano',
+  'char_ikeda_chitose',
+  'char_oomuro_sakurako',
+  'char_furutani_himawari',
+  'char_oomuro_nadeshiko',
+  'char_oomuro_hanako',
+  'char_matsumoto_rise',
+  'char_nishigaki_nana',
+  'char_furutani_kaede',
+  'char_akaza_akane',
+  'char_yoshikawa_tomoko',
+  'char_ikeda_chizuru',
+  'char_funami_mari',
+])
 
 const CHARACTER_PRESET_ORDER: ReadonlyMap<string, number> = new Map(
   CHARACTER_PRESETS.map((character, index) => [character.id, index]),

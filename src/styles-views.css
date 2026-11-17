@@ -2197,7 +2197,10 @@
 }
 
 .character-placeholder {
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: 1px;
 }
 
 .character-count {
@@ -2227,6 +2230,52 @@
 .character-meta {
   font-size: 10.5px;
   margin-top: 3px;
+}
+
+/* 角色简介：CV / 职务 / 特点 */
+.character-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 11.5px;
+  line-height: 1.7;
+}
+
+.character-profile-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.character-cv {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.character-role {
+  color: var(--ink-2);
+}
+
+.character-traits {
+  margin: 0;
+  color: var(--muted);
+}
+
+.character-profile-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.character-profile-fields .field:last-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+  .character-profile-fields {
+    grid-template-columns: 1fr;
+  }
 }
 
 .mini-chip {

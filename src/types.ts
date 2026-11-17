@@ -121,6 +121,13 @@ export interface CropParams {
 }
 
 /** 角色 / 人物实体的扩展信息；名称与颜色复用 character 维度下的标签 */
+/** 角色简介：CV、职务与特点，缺省时回退到预置资料 */
+export interface CharacterProfile {
+  cv: string
+  role: string
+  traits: string
+}
+
 export interface Character {
   /** 与 Tag.id 相同 */
   id: string
@@ -137,6 +144,8 @@ export interface Character {
   coverItemId?: string
   /** 图鉴封面焦点（object-position 百分比）与小范围缩放 */
   coverCrop?: { x: number; y: number; zoom: number }
+  /** 角色简介（CV / 职务 / 特点） */
+  profile?: CharacterProfile
   note?: string
   createdAt: string
 }

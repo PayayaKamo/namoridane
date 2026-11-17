@@ -11,9 +11,9 @@ import { Icon } from '../components/Icon'
 import { Empty, Modal } from '../components/Modal'
 import { effectiveDate } from '../lib/dates'
 import { navigate } from '../lib/router'
-import { CHARACTER_PRESETS, presetAvatarPath, sortCharacterTags } from '../lib/constants'
+import { CHARACTER_PRESETS, presetAvatarPath, presetCharacterProfile, sortCharacterTags } from '../lib/constants'
 import { IS_PUBLIC } from '../lib/appMode'
-import type { Character, DiaryItem, Tag } from '../types'
+import type { Character, CharacterProfile, DiaryItem, Tag } from '../types'
 import type { Route } from '../lib/router'
 
 const BASE = import.meta.env.BASE_URL
@@ -134,6 +134,7 @@ export function CharactersView({ route }: { route: Route }) {
               transformOrigin: position,
               transform: coverCrop && coverCrop.zoom !== 1 ? `scale(${coverCrop.zoom})` : undefined,
             }
+            const profile = character?.profile ?? presetCharacterProfile(tag.id)
             return (
               <div
                 key={tag.id}
@@ -154,9 +155,7 @@ export function CharactersView({ route }: { route: Route }) {
                   ) : cover ? (
                     <img src={`${BASE}${cover.thumb}`} alt={tag.name} style={coverStyle} loading="lazy" />
                   ) : (
-                    <span className="character-placeholder">
-                      <Icon name="users" size={28} />
-                    </span>
+                    <span className="character-placeholder">{tag.name.slice(0, 1)}</span>
                   )}
                   <span className="character-count num">{count} 张</span>
                 </button>
@@ -182,6 +181,17 @@ export function CharactersView({ route }: { route: Route }) {
                       '还没有作品出场'
                     )}
                   </div>
+                  {profile && (profile.cv || profile.role || profile.traits) && (
+                    <div className="character-profile">
+                      {(profile.cv || profile.role) && (
+                        <div className="character-profile-line">
+                          {profile.cv && <span className="character-cv">CV {profile.cv}</span>}
+                          {profile.role && <span className="character-role">{profile.role}</span>}
+                        </div>
+                      )}
+                      {profile.traits && <p className="character-traits">{profile.traits}</p>}
+                    </div>
+                  )}
                   {scenes.length > 0 && (
                     <div className="row row-wrap" style={{ gap: 4, marginTop: 8 }}>
                       {scenes.map(([name, n]) => (
@@ -275,6 +285,12 @@ function CharacterEditModal({
   const [note, setNote] = useState(character?.note ?? '')
   const [avatarDataUrl, setAvatarDataUrl] = useState(character?.avatarDataUrl ?? '')
   const [avatarItemId, setAvatarItemId] = useState(character?.avatarItemId ?? '')
+  const presetProfile = presetCharacterProfile(tag.id)
+  const [profile, setProfile] = useState<CharacterProfile>({
+    cv: character?.profile?.cv ?? presetProfile?.cv ?? '',
+    role: character?.profile?.role ?? presetProfile?.role ?? '',
+    traits: character?.profile?.traits ?? presetProfile?.traits ?? '',
+  })
   const [coverItemId, setCoverItemId] = useState(character?.coverItemId ?? '')
   const [crop, setCrop] = useState(() => ({
     x: character?.coverCrop?.x ?? 50,
@@ -398,6 +414,35 @@ function CharacterEditModal({
           <span className="field-label">颜色</span>
           <input type="color" className="input" style={{ height: 36 }} value={color} onChange={(e) => setColor(e.target.value)} />
         </label>
+        <div className="character-profile-fields">
+          <label className="field">
+            <span className="field-label">CV</span>
+            <input
+              className="input"
+              placeholder="例：白石凉子"
+              value={profile.cv}
+              onChange={(e) => setProfile((prev) => ({ ...prev, cv: e.target.value }))}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">职务</span>
+            <input
+              className="input"
+              placeholder="例：理科老师、科学家"
+              value={profile.role}
+              onChange={(e) => setProfile((prev) => ({ ...prev, role: e.target.value }))}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">特点</span>
+            <textarea
+              className="textarea"
+              placeholder="角色性格、人际关系等简介"
+              value={profile.traits}
+              onChange={(e) => setProfile((prev) => ({ ...prev, traits: e.target.value }))}
+            />
+          </label>
+        </div>
         <div className="field">
           <span className="field-label">封面</span>
           <div className="cover-editor">
@@ -517,6 +562,11 @@ function CharacterEditModal({
               { name: name.trim() || tag.name, color },
               {
                 note,
+                profile: {
+                  cv: profile.cv.trim(),
+                  role: profile.role.trim(),
+                  traits: profile.traits.trim(),
+                },
                 avatarDataUrl: avatarDataUrl || undefined,
                 avatarItemId: avatarItemId || undefined,
                 coverItemId: coverItemId || undefined,
