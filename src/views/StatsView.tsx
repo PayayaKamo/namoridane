@@ -84,16 +84,6 @@ export function StatsView() {
     return sets.map((s) => s.size)
   }, [items, getDate, year])
 
-  const paletteCounts = useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const item of items) {
-      for (const hex of item.palette ?? []) {
-        counts.set(hex, (counts.get(hex) ?? 0) + 1)
-      }
-    }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 24)
-  }, [items])
-
   const tagGroups = useMemo(
     () =>
       dimensions
@@ -254,32 +244,6 @@ export function StatsView() {
         ) : (
           <p className="faint">还没有使用标签。去图库多选作品批量打标签后，这里会出现分布。</p>
         )}
-      </section>
-
-      <section className="panel">
-        <div className="panel-head">
-          <h3>作品主色分布</h3>
-          <span className="faint">全部缩略图提取的 6 色色板中出现频次</span>
-        </div>
-        <div className="palette-band">
-          {paletteCounts.map(([hex, count]) => (
-            <div
-              key={hex}
-              className="palette-band-cell"
-              style={{ background: hex, flexGrow: count }}
-              title={`${hex} · ${count} 次`}
-            />
-          ))}
-        </div>
-        <div className="row row-wrap" style={{ gap: 6, marginTop: 10 }}>
-          {paletteCounts.slice(0, 10).map(([hex, count]) => (
-            <span key={hex} className="mini-chip num">
-              <span className="color-dot" style={{ background: hex }} />
-              {hex}
-              <span>{count}</span>
-            </span>
-          ))}
-        </div>
       </section>
     </div>
   )

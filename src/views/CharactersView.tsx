@@ -4,7 +4,7 @@ import { Icon } from '../components/Icon'
 import { Empty, Modal } from '../components/Modal'
 import { effectiveDate } from '../lib/dates'
 import { navigate } from '../lib/router'
-import { CHARACTER_PRESETS, presetAvatarPath } from '../lib/constants'
+import { CHARACTER_PRESETS, presetAvatarPath, sortCharacterTags } from '../lib/constants'
 import { IS_PUBLIC } from '../lib/appMode'
 import type { Character, DiaryItem, Tag } from '../types'
 
@@ -26,7 +26,7 @@ export function CharactersView() {
   } = useStore()
   const characterDim = dimensions.find((d) => d.id === 'character')
   const charTags = useMemo(
-    () => tags.filter((t) => t.dimensionId === (characterDim?.id ?? 'character')),
+    () => sortCharacterTags(tags.filter((t) => t.dimensionId === (characterDim?.id ?? 'character'))),
     [tags, characterDim],
   )
   const characterMap = useMemo(() => new Map(characters.map((c) => [c.id, c])), [characters])
@@ -35,30 +35,28 @@ export function CharactersView() {
   const [creating, setCreating] = useState(false)
 
   const data = useMemo(() => {
-    return charTags
-      .map((tag) => {
-        const members = items.filter((item) => annotations[item.id]?.tags.includes(tag.id))
-        const sorted = [...members].sort((a, b) => getDate(b).iso.localeCompare(getDate(a).iso))
-        const cover = sorted[0]
-        const scenes = new Map<string, number>()
-        for (const item of members) {
-          for (const tid of annotations[item.id]?.tags ?? []) {
-            const t = tags.find((x) => x.id === tid)
-            if (!t || t.dimensionId !== 'scene') continue
-            scenes.set(t.name, (scenes.get(t.name) ?? 0) + 1)
-          }
+    return charTags.map((tag) => {
+      const members = items.filter((item) => annotations[item.id]?.tags.includes(tag.id))
+      const sorted = [...members].sort((a, b) => getDate(b).iso.localeCompare(getDate(a).iso))
+      const cover = sorted[0]
+      const scenes = new Map<string, number>()
+      for (const item of members) {
+        for (const tid of annotations[item.id]?.tags ?? []) {
+          const t = tags.find((x) => x.id === tid)
+          if (!t || t.dimensionId !== 'scene') continue
+          scenes.set(t.name, (scenes.get(t.name) ?? 0) + 1)
         }
-        return {
-          tag,
-          character: characterMap.get(tag.id),
-          count: members.length,
-          cover,
-          first: sorted[sorted.length - 1],
-          latest: cover,
-          scenes: [...scenes.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3),
-        }
-      })
-      .sort((a, b) => b.count - a.count)
+      }
+      return {
+        tag,
+        character: characterMap.get(tag.id),
+        count: members.length,
+        cover,
+        first: sorted[sorted.length - 1],
+        latest: cover,
+        scenes: [...scenes.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3),
+      }
+    })
   }, [charTags, items, annotations, tags, getDate, characterMap])
 
   const totalTagged = data.reduce((sum, d) => sum + d.count, 0)

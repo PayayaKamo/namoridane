@@ -1,4 +1,4 @@
-import { BUILTIN_DIMENSIONS, EXTRA_DIMENSIONS, defaultCharacterTags } from './constants'
+import { BUILTIN_DIMENSIONS, CHARACTER_PRESETS, EXTRA_DIMENSIONS, defaultCharacterTags } from './constants'
 import type { Character, Dimension, ItemAnnotation, Storyline, Tag, Translation, UserData } from '../types'
 
 export const STORAGE_KEY = 'namori.diary.userdata.v2'
@@ -13,6 +13,23 @@ const RETIRED_CHARACTER_IDS: ReadonlySet<string> = new Set([
   'char_souma_mirai',
   'char_takasaki_misaki',
 ])
+
+/** 旧的硬编码角色名 → 现行定义名：保留 id 与已有标注，载入时就地迁移 */
+const LEGACY_CHARACTER_NAMES: Readonly<Record<string, string>> = {
+  char_nishigaki_nana: '西垣奈奈',
+}
+
+function renameLegacyCharacters(data: UserData): UserData {
+  let changed = false
+  const tags = data.tags.map((tag) => {
+    if (LEGACY_CHARACTER_NAMES[tag.id] !== tag.name) return tag
+    const nextName = CHARACTER_PRESETS.find((preset) => preset.id === tag.id)?.name
+    if (!nextName || nextName === tag.name) return tag
+    changed = true
+    return { ...tag, name: nextName }
+  })
+  return changed ? { ...data, tags } : data
+}
 
 function dropRetiredCharacters(data: UserData): UserData {
   if (!data.tags.some((tag) => RETIRED_CHARACTER_IDS.has(tag.id))) return data
@@ -219,17 +236,19 @@ export function normalizeUserData(raw: unknown): UserData {
     }
   }
 
-  return dropRetiredCharacters({
-    version: 2,
-    updatedAt: str(data.updatedAt, new Date().toISOString()),
-    datasetId: typeof data.datasetId === 'string' ? data.datasetId : undefined,
-    dimensions,
-    tags,
-    characters,
-    collections,
-    storylines,
-    items,
-  })
+  return renameLegacyCharacters(
+    dropRetiredCharacters({
+      version: 2,
+      updatedAt: str(data.updatedAt, new Date().toISOString()),
+      datasetId: typeof data.datasetId === 'string' ? data.datasetId : undefined,
+      dimensions,
+      tags,
+      characters,
+      collections,
+      storylines,
+      items,
+    }),
+  )
 }
 
 function normalizeTranslation(raw: unknown): Translation | null {

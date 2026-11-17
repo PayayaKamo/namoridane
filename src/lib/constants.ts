@@ -41,7 +41,7 @@ export const CHARACTER_PRESETS = [
   { id: 'char_oomuro_nadeshiko', name: '大室抚子', color: '#4f7f7a', series: '大室家' },
   { id: 'char_oomuro_hanako', name: '大室花子', color: '#7d8a52', series: '大室家' },
   { id: 'char_matsumoto_rise', name: '松本理世', color: '#8a6a4f', series: '相关角色' },
-  { id: 'char_nishigaki_nana', name: '西垣奈奈', color: '#6f6a5f', series: '相关角色' },
+  { id: 'char_nishigaki_nana', name: '老师们', color: '#6f6a5f', series: '相关角色' },
   { id: 'char_furutani_kaede', name: '古谷枫', color: '#b68a4b', series: '相关角色' },
   { id: 'char_akaza_akane', name: '赤座茜', color: '#b0553b', series: '相关角色' },
   { id: 'char_yoshikawa_tomoko', name: '吉川友子', color: '#a45c76', series: '相关角色' },
@@ -60,6 +60,26 @@ export function defaultCharacterTags(): Tag[] {
 }
 
 const PRESET_AVATAR_IDS: ReadonlySet<string> = new Set(CHARACTER_PRESETS.map((character) => character.id))
+
+const CHARACTER_PRESET_ORDER: ReadonlyMap<string, number> = new Map(
+  CHARACTER_PRESETS.map((character, index) => [character.id, index]),
+)
+
+/** 角色统一排序：预置角色按定义顺序，自定义角色排在后面按添加时间；图鉴、芯片与选择器共用 */
+export function compareCharacterTags(a: Tag, b: Tag): number {
+  const ai = CHARACTER_PRESET_ORDER.get(a.id)
+  const bi = CHARACTER_PRESET_ORDER.get(b.id)
+  if (ai !== undefined || bi !== undefined) {
+    if (ai === undefined) return 1
+    if (bi === undefined) return -1
+    return ai - bi
+  }
+  return a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)
+}
+
+export function sortCharacterTags(tags: Tag[]): Tag[] {
+  return [...tags].sort(compareCharacterTags)
+}
 
 /** 预置角色在 public/characters/<id>.webp 有占位头像；用户新增角色返回 null */
 export function presetAvatarPath(tagId: string): string | null {

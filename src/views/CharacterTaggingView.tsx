@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../state/store'
 import { CharacterPicker } from '../components/CharacterPicker'
 import { Icon } from '../components/Icon'
+import { sortCharacterTags } from '../lib/constants'
 
 const BASE = import.meta.env.BASE_URL
 type Scope = 'todo' | 'all'
@@ -12,14 +13,34 @@ type Scope = 'todo' | 'all'
  * 方便连续点选多个角色；「下一张」会跳过已标注的条目。
  */
 export function CharacterTaggingView() {
-  const { confirmedDiaryItems, annotations, tags, itemMap, tagUsage, setItemTags, getDate, notify } = useStore()
+  const { confirmedDiaryItems, annotations, tags, itemMap, setItemTags, getDate, notify } = useStore()
   const [scope, setScope] = useState<Scope>('todo')
   const [charFilter, setCharFilter] = useState('')
   const [queue, setQueue] = useState<string[]>([])
   const [index, setIndex] = useState(0)
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  // 视图高度按可视区计算，保证一屏放下、不产生页面级滚动
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = rootRef.current
+      if (!el) return
+      const parent = el.parentElement
+      const bottomPad = parent ? parseFloat(getComputedStyle(parent).paddingBottom) || 0 : 0
+      const top = el.getBoundingClientRect().top + window.scrollY
+      setViewportHeight(Math.max(0, Math.floor(window.innerHeight - top - bottomPad)))
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [])
 
   const tagMap = useMemo(() => new Map(tags.map((tag) => [tag.id, tag])), [tags])
-  const characterTags = useMemo(() => tags.filter((tag) => tag.dimensionId === 'character'), [tags])
+  const characterTags = useMemo(
+    () => sortCharacterTags(tags.filter((tag) => tag.dimensionId === 'character')),
+    [tags],
+  )
 
   const charsOf = (id: string) => (annotations[id]?.tags ?? []).filter((tagId) => tagMap.get(tagId)?.dimensionId === 'character')
   const othersOf = (id: string) => (annotations[id]?.tags ?? []).filter((tagId) => tagMap.get(tagId)?.dimensionId !== 'character')
@@ -67,13 +88,8 @@ export function CharacterTaggingView() {
   const current = currentId ? itemMap.get(currentId) : undefined
   const selected = current ? charsOf(current.id) : []
 
-  const quickTags = useMemo(() => {
-    const chosen = characterTags.filter((tag) => selected.includes(tag.id))
-    const rest = characterTags
-      .filter((tag) => !selected.includes(tag.id))
-      .sort((a, b) => (tagUsage[b.id] ?? 0) - (tagUsage[a.id] ?? 0) || a.name.localeCompare(b.name, 'zh-Hans-CN'))
-    return [...chosen, ...rest]
-  }, [characterTags, selected, tagUsage])
+  // 芯片与角色图鉴同一顺序；已选角色只做高亮，不再置前，保证数字快捷键与视觉顺序一致
+  const quickTags = characterTags
 
   const applyChars = (itemId: string, ids: string[]) => setItemTags(itemId, [...othersOf(itemId), ...ids])
 
@@ -88,8 +104,8 @@ export function CharacterTaggingView() {
   const goNext = () => {
     if (!queue.length) return
     for (let i = safeIndex + 1; i < queue.length; i += 1) {
-      // 按角色筛选时整队都已标注，不必跳过
-      if (!charFilter && labeledIds.has(queue[i])) continue
+      // 只在「未标注」里跳过已标注；「全部」按顺序逐张翻看，方便回改
+      if (scope === 'todo' && !charFilter && labeledIds.has(queue[i])) continue
       setIndex(i)
       return
     }
@@ -128,7 +144,7 @@ export function CharacterTaggingView() {
   const date = current ? getDate(current) : null
 
   return (
-    <div className="tagging-view">
+    <div className="tagging-view" ref={rootRef} style={viewportHeight ? { height: viewportHeight } : undefined}>
       <div className="tagging-bar">
         <div className="tagging-progress">
           <strong>
@@ -170,16 +186,6 @@ export function CharacterTaggingView() {
               ))}
           </select>
         </div>
-        <div className="tagging-nav">
-          <button className="btn btn-sm" onClick={goPrev} disabled={safeIndex <= 0} title="上一张（←）">
-            <Icon name="left" size={14} />
-            上一张
-          </button>
-          <button className="btn btn-sm btn-primary" onClick={goNext} title="下一张（Enter / →）">
-            下一张
-            <Icon name="right" size={14} />
-          </button>
-        </div>
       </div>
 
       {!queue.length ? (
@@ -208,9 +214,19 @@ export function CharacterTaggingView() {
             <div className="tagging-picker">
               <CharacterPicker selected={selected} onChange={(ids) => applyChars(current.id, ids)} />
             </div>
-            <p className="tagging-hint">
-              点选芯片标记或取消 · <kbd>Enter</kbd> / <kbd>→</kbd> 下一张 · <kbd>←</kbd> 上一张 · <kbd>1</kbd>–<kbd>9</kbd> 快速点选
-            </p>
+            <div className="tagging-foot">
+              <button className="btn btn-sm" onClick={goPrev} disabled={safeIndex <= 0} title="上一张（←）">
+                <Icon name="left" size={14} />
+                上一张
+              </button>
+              <p className="tagging-hint">
+                点选芯片标记或取消 · <kbd>Enter</kbd> / <kbd>→</kbd> 下一张 · <kbd>←</kbd> 上一张 · <kbd>1</kbd>–<kbd>9</kbd> 快速点选
+              </p>
+              <button className="btn btn-primary tagging-confirm" onClick={goNext} title="确认并看下一张（Enter / →）">
+                确认
+                <Icon name="right" size={14} />
+              </button>
+            </div>
           </div>
         )
       )}

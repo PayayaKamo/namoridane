@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
-import { TAG_COLORS, presetAvatarPath } from '../lib/constants'
+import { TAG_COLORS, presetAvatarPath, sortCharacterTags } from '../lib/constants'
 
 const BASE = import.meta.env.BASE_URL
 
 /**
  * 出场人物选择器：复用 character 维度标签，点选即标记、再点取消。
- * 已选角色排在最前并高亮；输入框支持 ↑/↓ 选择、Enter 标记、Esc 关闭，
- * 输入的名字不存在时 Enter 直接新建角色。
+ * 芯片与角色图鉴共用同一排序，已选角色只高亮、保持原位；
+ * 输入框支持 ↑/↓ 选择、Enter 标记、Esc 关闭，输入的名字不存在时 Enter 直接新建角色。
  */
 export function CharacterPicker({
   selected,
@@ -19,28 +19,25 @@ export function CharacterPicker({
   onChange: (ids: string[]) => void
   onClose?: () => void
 }) {
-  const { tags, characters, itemMap, tagUsage, addCharacter, notify } = useStore()
+  const { tags, characters, itemMap, addCharacter, notify } = useStore()
   const [query, setQuery] = useState('')
-  const [active, setActive] = useState(0)
+  const [active, setActive] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const characterTags = useMemo(() => tags.filter((tag) => tag.dimensionId === 'character'), [tags])
+  // 与「角色图鉴」共用同一排序；搜索结果保持该相对顺序
+  const characterTags = useMemo(
+    () => sortCharacterTags(tags.filter((tag) => tag.dimensionId === 'character')),
+    [tags],
+  )
   const characterMap = useMemo(() => new Map(characters.map((c) => [c.id, c])), [characters])
 
   const ordered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const matched = q ? characterTags.filter((tag) => tag.name.toLowerCase().includes(q)) : characterTags
-    const chosen = matched.filter((tag) => selected.includes(tag.id))
-    const rest = matched
-      .filter((tag) => !selected.includes(tag.id))
-      .sort(
-        (a, b) =>
-          (tagUsage[b.id] ?? 0) - (tagUsage[a.id] ?? 0) || a.name.localeCompare(b.name, 'zh-Hans-CN'),
-      )
-    return [...chosen, ...rest]
-  }, [characterTags, query, selected, tagUsage])
+    return q ? characterTags.filter((tag) => tag.name.toLowerCase().includes(q)) : characterTags
+  }, [characterTags, query])
 
-  useEffect(() => setActive(0), [query])
+  // 焦点指示只在键盘上下键导航时出现，进入页面或点击后不留下焦点环
+  useEffect(() => setActive(-1), [query])
 
   const toggle = (id: string) =>
     onChange(selected.includes(id) ? selected.filter((t) => t !== id) : [...selected, id])
@@ -63,15 +60,21 @@ export function CharacterPicker({
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'ArrowDown') {
       event.preventDefault()
-      setActive((index) => (ordered.length ? (index + 1) % ordered.length : 0))
+      setActive((index) => (ordered.length ? (index < 0 ? 0 : (index + 1) % ordered.length) : -1))
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
-      setActive((index) => (ordered.length ? (index - 1 + ordered.length) % ordered.length : 0))
+      setActive((index) =>
+        ordered.length ? (index < 0 ? ordered.length - 1 : (index - 1 + ordered.length) % ordered.length) : -1,
+      )
     } else if (event.key === 'Enter') {
       event.preventDefault()
-      const target = ordered[active]
-      if (target && !query.trim()) toggle(target.id)
-      else create()
+      const target = active >= 0 ? ordered[active] : undefined
+      if (target && !query.trim()) {
+        toggle(target.id)
+        setActive(-1)
+      } else {
+        create()
+      }
     } else if (event.key === 'Escape') {
       event.preventDefault()
       onClose?.()
@@ -111,7 +114,12 @@ export function CharacterPicker({
             <button
               key={tag.id}
               className={`character-chip${isSelected ? ' active' : ''}${index === active ? ' focused' : ''}`}
-              onClick={() => toggle(tag.id)}
+              onClick={(event) => {
+                // 鼠标点选后不保留 DOM 焦点，避免后续按键出现类似选中的焦点环
+                event.currentTarget.blur()
+                setActive(-1)
+                toggle(tag.id)
+              }}
               title={isSelected ? `取消标记 ${tag.name}` : `标记 ${tag.name}`}
             >
               <span className="character-avatar" style={{ background: tag.color }}>

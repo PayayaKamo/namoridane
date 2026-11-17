@@ -2369,18 +2369,6 @@
   font-size: 10px;
 }
 
-.palette-band {
-  display: flex;
-  height: 40px;
-  border-radius: 9px;
-  overflow: hidden;
-  gap: 1px;
-}
-
-.palette-band-cell {
-  min-width: 6px;
-}
-
 .stats-view .panel,
 .characters-view .panel {
   margin-bottom: 16px;
@@ -3108,15 +3096,35 @@
   scrollbar-width: thin;
 }
 
+/* 选中：实心填充 + 勾选；与键盘焦点环明确区分 */
 .character-chip.active {
   border-color: var(--accent);
-  background: var(--accent-soft, var(--surface-3));
-  color: var(--text);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
 }
 
-.character-chip.focused {
-  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  outline-offset: 1px;
+.character-chip.active svg {
+  color: #fff;
+}
+
+.character-chip.active .character-avatar {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+
+/* 焦点：只在键盘导航时以虚线环提示，不覆盖选中填充 */
+.character-chip:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.character-chip.focused,
+.character-chip:focus-visible {
+  outline: 2px dashed color-mix(in srgb, var(--ink) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.character-chip.active:focus-visible {
+  outline-color: color-mix(in srgb, var(--ink) 55%, transparent);
 }
 
 .character-chip svg {
@@ -3131,10 +3139,15 @@
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
+  /* 实际高度由脚本按可视区测量写入内联样式，这里只是首帧兜底 */
+  height: calc(100dvh - 157px);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .tagging-bar {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -3172,19 +3185,19 @@
   flex-wrap: wrap;
 }
 
-.tagging-nav {
-  display: flex;
-  gap: 8px;
-}
-
 .tagging-card {
-  padding: 16px;
+  flex: 1;
+  min-height: 0;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  overflow: hidden;
 }
 
 .tagging-figure {
+  flex: 1;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3196,11 +3209,12 @@
 .tagging-figure img {
   width: auto;
   max-width: 100%;
-  max-height: 62vh;
+  max-height: 100%;
   object-fit: contain;
 }
 
 .tagging-meta {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -3222,7 +3236,12 @@
 }
 
 .tagging-picker {
-  padding-top: 12px;
+  flex: none;
+  min-height: 0;
+  max-height: 168px;
+  display: flex;
+  flex-direction: column;
+  padding-top: 10px;
   border-top: 1px solid var(--line);
 }
 
@@ -3231,7 +3250,9 @@
 }
 
 .tagging-view .character-chips {
-  max-height: none;
+  max-height: 118px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .tagging-view .character-chip {
@@ -3239,7 +3260,20 @@
   padding: 3px 12px 3px 4px;
 }
 
+.tagging-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tagging-confirm {
+  margin-left: auto;
+}
+
 .tagging-hint {
+  flex: 1;
+  min-width: 0;
   font-size: 11.5px;
   color: var(--faint);
 }
@@ -3256,6 +3290,9 @@
 }
 
 .tagging-empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
   padding: 48px 20px;
   text-align: center;
   color: var(--muted);
@@ -3273,18 +3310,22 @@
     flex: 1;
     min-width: 0;
   }
-  .tagging-nav {
-    width: 100%;
+  .tagging-card {
+    padding: 10px 12px;
+    gap: 8px;
   }
-  .tagging-nav .btn {
-    flex: 1;
+  .tagging-picker {
+    max-height: 150px;
+  }
+  .tagging-view .character-chips {
+    max-height: 100px;
+  }
+  .tagging-foot .btn {
     min-height: 44px;
   }
-  .tagging-card {
-    padding: 12px;
-  }
-  .tagging-figure img {
-    max-height: 46vh;
+  .tagging-confirm {
+    flex: 1;
+    justify-content: center;
   }
 }
 
