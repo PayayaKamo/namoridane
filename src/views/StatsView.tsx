@@ -22,6 +22,14 @@ export function StatsView() {
     getDate,
   } = useStore()
   const [openDims, setOpenDims] = useState<Record<string, boolean>>({ character: true })
+  const [castTab, setCastTab] = useState<'single' | 'double' | 'multi'>(() => {
+    const saved = localStorage.getItem('namori.stats.castTab')
+    return saved === 'double' || saved === 'multi' ? saved : 'single'
+  })
+  const changeCastTab = (tab: 'single' | 'double' | 'multi') => {
+    setCastTab(tab)
+    localStorage.setItem('namori.stats.castTab', tab)
+  }
   const [year, setYear] = useState(() => {
     const years = [...new Set(items.map((i) => getDate(i).year))].sort()
     return years[years.length - 1] ?? new Date().getFullYear()
@@ -118,7 +126,6 @@ export function StatsView() {
   const cast = useMemo(() => {
     const charTagIds = new Set(tags.filter((tag) => tag.dimensionId === 'character').map((tag) => tag.id))
     const pairCounts = new Map<string, number>()
-    const doublePairCounts = new Map<string, number>()
     const groupCounts = new Map<string, number>()
     const singleCounts = new Map<string, number>()
     let single = 0
@@ -134,8 +141,6 @@ export function StatsView() {
       }
       if (ids.length === 2) {
         double++
-        const key = ids.join('|')
-        doublePairCounts.set(key, (doublePairCounts.get(key) ?? 0) + 1)
       } else {
         multi++
         const groupKey = ids.join('|')
@@ -159,9 +164,8 @@ export function StatsView() {
       total: single + double + multi,
       pairImages: double + multi,
       pairs: toRanking(pairCounts),
+      singles: toRanking(singleCounts),
       groups: toRanking(groupCounts),
-      topSingle: toRanking(singleCounts)[0],
-      topDoublePair: toRanking(doublePairCounts)[0],
     }
   }, [confirmedDiaryItems, annotations, tags])
 
@@ -194,9 +198,6 @@ export function StatsView() {
       </span>
     )
   }
-
-  const topDoublePair = cast.topDoublePair
-  const topGroup = cast.groups[0]
 
   return (
     <div className="stats-view">
@@ -339,24 +340,23 @@ export function StatsView() {
                     </span>
                   </button>
                   {open && (
-                    <div className="tag-bars-scroll">
-                      <div className="tag-bars">
-                        {groupTags.map((tag) => {
-                          const count = tagUsage[tag.id] ?? 0
-                          return (
-                            <div key={tag.id} className="tag-bar" title={`${tag.name} · ${count} 次`}>
-                              <span className="num tag-bar-value">{count}</span>
-                              <div className="tag-bar-track">
-                                <div
-                                  className="tag-bar-fill"
-                                  style={{ height: `${(count / groupMax) * 100}%`, background: tag.color }}
-                                />
-                              </div>
-                              <span className="tag-bar-name">{tag.name}</span>
+                    <div className="tag-bars">
+                      {groupTags.map((tag) => {
+                        const count = tagUsage[tag.id] ?? 0
+                        return (
+                          <div key={tag.id} className="tag-bar" title={`${tag.name} · ${count} 次`}>
+                            <div className="tag-bar-track">
+                              <div
+                                className="tag-bar-fill"
+                                style={{ height: `${(count / groupMax) * 100}%`, background: tag.color }}
+                              />
                             </div>
-                          )
-                        })}
-                      </div>
+                            <span className="num tag-bar-value">{count}</span>
+                            <span className="tag-bar-name">{tag.name}</span>
+                            <span className="tag-bar-avatar">{castAvatar(tag.id)}</span>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
                 </div>
@@ -371,71 +371,126 @@ export function StatsView() {
       <section className="panel">
         <div className="panel-head">
           <h3>人物组合</h3>
-          <span className="faint">仅统计已确认的绘日记 · 同图内角色两两配对</span>
+          <span className="faint">仅统计已确认的绘日记 · 共 {cast.total} 张有人物标注</span>
         </div>
-        <div className="cast-buckets">
-          <div className="cast-card">
-            <div className="cast-card-head">
-              <span>单人</span>
-              <span className="num">{cast.single} 张</span>
-            </div>
-            <div className="cast-share num">{pct(cast.single, cast.total)}</div>
-            <div className="cast-top">
-              出场最多：{cast.topSingle ? `${castNames(cast.topSingle.ids)} · ${cast.topSingle.count} 张` : '暂无'}
-            </div>
-          </div>
-          <div className="cast-card">
-            <div className="cast-card-head">
-              <span>双人</span>
-              <span className="num">{cast.double} 张</span>
-            </div>
-            <div className="cast-share num">{pct(cast.double, cast.total)}</div>
-            <div className="cast-top">
-              最常见搭档：{topDoublePair ? `${castNames(topDoublePair.ids)} · ${topDoublePair.count} 张` : '暂无'}
-            </div>
-          </div>
-          <div className="cast-card">
-            <div className="cast-card-head">
-              <span>多人（3 人及以上）</span>
-              <span className="num">{cast.multi} 张</span>
-            </div>
-            <div className="cast-share num">{pct(cast.multi, cast.total)}</div>
-            <div className="cast-top">
-              最常见群像：{topGroup ? `${castNames(topGroup.ids)} · ${topGroup.count} 张` : '暂无'}
-            </div>
-          </div>
+        <div className="cast-tabs" role="tablist" aria-label="人物组合">
+          {(
+            [
+              { key: 'single', label: '单人', count: cast.single, hint: '仅一人出镜' },
+              { key: 'double', label: '双人', count: cast.double, hint: 'CP 两两配对' },
+              { key: 'multi', label: '多人', count: cast.multi, hint: '3 人及以上' },
+            ] as const
+          ).map((tabItem) => (
+            <button
+              key={tabItem.key}
+              role="tab"
+              aria-selected={castTab === tabItem.key}
+              className={`cast-tab${castTab === tabItem.key ? ' active' : ''}`}
+              onClick={() => changeCastTab(tabItem.key)}
+            >
+              <span className="cast-tab-label">
+                {tabItem.label} <span className="faint">{tabItem.hint}</span>
+              </span>
+              <span className="num cast-tab-count">
+                {tabItem.count} 张 · {pct(tabItem.count, cast.total)}
+              </span>
+            </button>
+          ))}
         </div>
-        <p className="cast-note">
-          口径：同一张图内的角色两两配对，3 人及以上会拆成多组（如 3 人 = 3 组），所以下方占比以「有 2
-          人及以上标注的图」为分母，合计可能超过 100%。另有 {cast.multi} 张 3 人及以上群像单独计数，避免被误读为
-          CP。
-        </p>
-        {cast.pairs.length ? (
-          <div className="cast-pairs">
-            {cast.pairs.map((pair) => (
-              <div key={pair.ids.join('|')} className="cast-pair-row">
-                <span className="cast-pair-who">
-                  {castAvatar(pair.ids[0])}
-                  {castAvatar(pair.ids[1])}
-                </span>
-                <span className="cast-pair-name">{castNames(pair.ids)}</span>
-                <span className="cast-pair-track">
-                  <span
-                    className="cast-pair-fill"
-                    style={{ width: `${(pair.count / Math.max(1, cast.pairs[0].count)) * 100}%` }}
-                  />
-                </span>
-                <span className="num cast-pair-count">
-                  {pair.count} 张 · {pct(pair.count, cast.pairImages)}
-                </span>
+
+        {castTab === 'single' &&
+          (cast.singles.length ? (
+            <>
+              <p className="cast-note">
+                口径：按角色统计「该图仅此一人出镜」的张数，每张图只计一次；与双人、多人合计等于 {cast.total}{' '}
+                张有人物标注的绘日记。
+              </p>
+              <div className="cast-pairs">
+                {cast.singles.map((row) => (
+                  <div key={row.ids[0]} className="cast-pair-row">
+                    <span className="cast-pair-who">{castAvatar(row.ids[0])}</span>
+                    <span className="cast-pair-name">{castNames(row.ids)}</span>
+                    <span className="cast-pair-track">
+                      <span
+                        className="cast-pair-fill"
+                        style={{ width: `${(row.count / Math.max(1, cast.singles[0].count)) * 100}%` }}
+                      />
+                    </span>
+                    <span className="num cast-pair-count">
+                      {row.count} 张 · {pct(row.count, cast.single)}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="faint">
-            暂时没有可配对的出场标注。至少需要一张已确认绘日记标注了 2 位及以上角色，组合才会出现在这里。
-          </p>
-        )}
+            </>
+          ) : (
+            <p className="faint">还没有「单人出镜」的标注。给只有一位角色的绘日记标上人物后，这里会按角色排名。</p>
+          ))}
+
+        {castTab === 'double' &&
+          (cast.pairs.length ? (
+            <>
+              <p className="cast-note">
+                口径：同一张图内的角色两两配对，3 人及以上会拆成多组（如 3 人 = 3
+                组），所以占比以「有 2 人及以上标注的 {cast.pairImages} 张」为分母，合计可能超过 100%。完整群像请切到「多人」。
+              </p>
+              <div className="cast-pairs">
+                {cast.pairs.map((pair) => (
+                  <div key={pair.ids.join('|')} className="cast-pair-row">
+                    <span className="cast-pair-who">
+                      {castAvatar(pair.ids[0])}
+                      {castAvatar(pair.ids[1])}
+                    </span>
+                    <span className="cast-pair-name">{castNames(pair.ids)}</span>
+                    <span className="cast-pair-track">
+                      <span
+                        className="cast-pair-fill"
+                        style={{ width: `${(pair.count / Math.max(1, cast.pairs[0].count)) * 100}%` }}
+                      />
+                    </span>
+                    <span className="num cast-pair-count">
+                      {pair.count} 张 · {pct(pair.count, cast.pairImages)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="faint">
+              暂时没有可配对的出场标注。至少需要一张已确认绘日记标注了 2 位及以上角色，组合才会出现在这里。
+            </p>
+          ))}
+
+        {castTab === 'multi' &&
+          (cast.groups.length ? (
+            <>
+              <p className="cast-note">
+                口径：按整组统计（如 A × B × C 记为一组，一张图只计一次），与「双人」页签里把 3
+                人拆成 3 组的两两配对不同。
+              </p>
+              <div className="cast-pairs">
+                {cast.groups.map((group) => (
+                  <div key={group.ids.join('|')} className="cast-pair-row is-group">
+                    <span className="cast-pair-who">
+                      {group.ids.slice(0, 3).map((id) => castAvatar(id))}
+                    </span>
+                    <span className="cast-pair-name">{castNames(group.ids)}</span>
+                    <span className="cast-pair-track">
+                      <span
+                        className="cast-pair-fill"
+                        style={{ width: `${(group.count / Math.max(1, cast.groups[0].count)) * 100}%` }}
+                      />
+                    </span>
+                    <span className="num cast-pair-count">
+                      {group.count} 张 · {pct(group.count, cast.multi)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="faint">还没有 3 人及以上的群像标注。标注多位角色后，完整组合会按张数排在这里。</p>
+          ))}
       </section>
     </div>
   )

@@ -2362,31 +2362,20 @@
   font-size: 10px;
 }
 
-/* 标签竖柱：全量横排，超出时区块内横向滚动 */
-.tag-bars-scroll {
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 10px 2px 2px;
-  scrollbar-width: thin;
-}
-
+/* 标签竖柱：铺满容器宽度并自动换行，柱子等宽 */
 .tag-bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 188px;
-  width: max-content;
-  min-width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 12px 6px;
+  padding-top: 10px;
 }
 
 .tag-bar {
-  flex: 0 0 42px;
-  width: 42px;
-  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
+  min-width: 0;
 }
 
 .tag-bar-value {
@@ -2397,7 +2386,7 @@
 }
 
 .tag-bar-track {
-  flex: 1;
+  height: 104px;
   width: 22px;
   display: flex;
   align-items: flex-end;
@@ -2427,41 +2416,68 @@
   -webkit-box-orient: vertical;
 }
 
-/* 人物组合与构图分布 */
-.cast-buckets {
+.tag-bar-avatar {
+  display: grid;
+  place-items: center;
+}
+
+.tag-bar .cast-avatar {
+  width: 20px;
+  height: 20px;
+  font-size: 9px;
+}
+
+/* 人物组合：单人 / 双人 / 多人 三页签 */
+.cast-tabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.cast-card {
-  padding: 12px 14px;
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-}
-
-.cast-card-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   gap: 8px;
-  font-size: 12px;
-  color: var(--muted);
+  margin-bottom: 12px;
 }
 
-.cast-share {
-  font-family: var(--font-serif);
-  font-size: 26px;
-  line-height: 1.2;
-  margin-top: 4px;
-}
-
-.cast-top {
-  margin-top: 4px;
-  font-size: 11.5px;
-  line-height: 1.6;
+.cast-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
   color: var(--ink-2);
+  text-align: left;
+  cursor: pointer;
+  transition: 0.18s var(--ease);
+}
+
+.cast-tab:hover {
+  border-color: var(--line-strong);
+}
+
+.cast-tab.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.cast-tab-label {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.cast-tab-label .faint {
+  margin-left: 4px;
+  font-size: 10.5px;
+  font-weight: 400;
+}
+
+.cast-tab-count {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.cast-tab.active .cast-tab-count {
+  color: var(--accent-deep);
 }
 
 .cast-note {
@@ -2491,9 +2507,22 @@
   font-size: 11px;
 }
 
+.cast-pair-row.is-group {
+  grid-template-columns: 64px minmax(0, 1.2fr) minmax(50px, 0.9fr) 82px;
+}
+
 .cast-pair-who {
   display: flex;
   gap: 2px;
+}
+
+.cast-pair-row.is-group .cast-pair-who {
+  gap: 0;
+}
+
+.cast-pair-row.is-group .cast-avatar + .cast-avatar {
+  margin-left: -8px;
+  box-shadow: 0 0 0 1px var(--surface);
 }
 
 .cast-avatar {
@@ -2543,12 +2572,38 @@
 }
 
 @media (max-width: 760px) {
-  .cast-buckets {
-    grid-template-columns: 1fr;
+  .cast-tab {
+    padding: 8px 10px;
   }
-  .cast-pair-row {
+  .cast-tab-label .faint {
+    display: none;
+  }
+  .cast-tab-count {
+    font-size: 13px;
+  }
+  .cast-pair-row,
+  .cast-pair-row.is-group {
     grid-template-columns: 44px minmax(0, 1fr) 52px 74px;
     gap: 6px;
+  }
+  .cast-pair-row.is-group {
+    grid-template-columns: 56px minmax(0, 1fr) 74px;
+  }
+  .cast-pair-row.is-group .cast-pair-track {
+    display: none;
+  }
+  .cast-pair-row.is-group .cast-pair-name {
+    white-space: normal;
+    overflow: visible;
+    line-height: 1.35;
+  }
+  .cast-pair-row.is-group .cast-avatar {
+    width: 20px;
+    height: 20px;
+    font-size: 9px;
+  }
+  .cast-pair-row.is-group .cast-avatar + .cast-avatar {
+    margin-left: -10px;
   }
   .cast-pair-name {
     font-size: 11px;
