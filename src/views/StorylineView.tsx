@@ -139,12 +139,18 @@ function StorylineList() {
       ) : (
         <Empty
           icon="book"
-          title="还没有故事线"
-          hint="在图库多选图片，点「加入故事线」即可开始；也可以先建一条空故事线，再往里加图和章节备注。"
+          title={IS_PUBLIC ? '故事线正在整理中' : '还没有故事线'}
+          hint={
+            IS_PUBLIC
+              ? '敬请期待，之后会按主题整理成可以连续翻阅的小故事。'
+              : '在图库多选图片，点「加入故事线」即可开始；也可以先建一条空故事线，再往里加图和章节备注。'
+          }
           action={
-            <button className="btn btn-primary btn-sm" style={{ marginTop: 16 }} onClick={() => navigate('/gallery')}>
-              去图库选图
-            </button>
+            IS_PUBLIC ? undefined : (
+              <button className="btn btn-primary btn-sm" style={{ marginTop: 16 }} onClick={() => navigate('/gallery')}>
+                去图库选图
+              </button>
+            )
           }
         />
       )}

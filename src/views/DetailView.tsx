@@ -8,6 +8,7 @@ import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
 import { DateEditor } from '../components/DateEditor'
 import { TagPicker, TagPill } from '../components/TagPicker'
+import { CharacterPicker } from '../components/CharacterPicker'
 import { StickerEditor } from '../components/StickerEditor'
 import { formatBytes, originalUrl } from '../lib/image'
 import { extractShareUrl } from '../lib/utils'
@@ -65,6 +66,8 @@ export function DetailView({ itemId }: { itemId: string }) {
   const reviewStatus = annotation?.excluded ? 'not_diary' : annotation?.reviewed ? 'diary' : 'pending'
   const itemTags = (annotation?.tags ?? []).map((id) => tagMap.get(id)).filter(Boolean)
   const itemCharacters = itemTags.filter((tag) => tag!.dimensionId === 'character')
+  const characterIds = (annotation?.tags ?? []).filter((id) => tagMap.get(id)?.dimensionId === 'character')
+  const otherTagIds = (annotation?.tags ?? []).filter((id) => tagMap.get(id)?.dimensionId !== 'character')
   const characterMap = useMemo(() => new Map(characters.map((c) => [c.id, c])), [characters])
 
   const ordered = useMemo(
@@ -452,12 +455,8 @@ export function DetailView({ itemId }: { itemId: string }) {
 
                   <section className="detail-section">
                     <div className="section-head">
-                      <h4>出场角色</h4>
-                      {!IS_PUBLIC && (
-                        <button className="btn btn-ghost btn-sm" onClick={() => setTagOpen((v) => !v)}>
-                          选择人物
-                        </button>
-                      )}
+                      <h4>出场人物</h4>
+                      {itemCharacters.length > 0 && <span className="faint">{itemCharacters.length} 位</span>}
                     </div>
                     {itemCharacters.length ? (
                       <div className="character-strip">
@@ -493,7 +492,17 @@ export function DetailView({ itemId }: { itemId: string }) {
                         })}
                       </div>
                     ) : (
-                      <span className="faint">这张图还没有标注人物，可在标签里勾选人物/角色维度。</span>
+                      <span className="faint">
+                        {IS_PUBLIC ? '这张图还没有标注出场人物。' : '还没有标注人物，在下方点选角色即可。'}
+                      </span>
+                    )}
+                    {!IS_PUBLIC && (
+                      <div className="character-picker-wrap">
+                        <CharacterPicker
+                          selected={characterIds}
+                          onChange={(ids) => setItemTags(item.id, [...otherTagIds, ...ids])}
+                        />
+                      </div>
                     )}
                   </section>
 

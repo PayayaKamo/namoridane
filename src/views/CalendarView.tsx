@@ -12,6 +12,7 @@ import {
   todayKey,
 } from '../lib/dates'
 import { Icon } from '../components/Icon'
+import { IS_PUBLIC } from '../lib/appMode'
 import type { DiaryItem, EffectiveDate } from '../types'
 
 const BASE = import.meta.env.BASE_URL
@@ -268,12 +269,19 @@ export function CalendarView({ route }: { route: Route }) {
 
       {!items.length && (
         <div className="excluded-banner">
-          <div>
-            <strong>还没有图片</strong>
-            <span>
-              运行 <code>npm run import -- "&lt;解压目录&gt;"</code> 导入图片，再执行 <code>npm run data</code> 生成索引后，日历会按确认的日期填充。
-            </span>
-          </div>
+          {IS_PUBLIC ? (
+            <div>
+              <strong>内容正在整理</strong>
+              <span>绘日记还在整理中，稍后再来看看。</span>
+            </div>
+          ) : (
+            <div>
+              <strong>还没有图片</strong>
+              <span>
+                运行 <code>npm run import -- "&lt;解压目录&gt;"</code> 导入图片，再执行 <code>npm run data</code> 生成索引后，日历会按确认的日期填充。
+              </span>
+            </div>
+          )}
         </div>
       )}
 

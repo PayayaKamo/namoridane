@@ -9,6 +9,7 @@ import { Masonry } from '../components/ItemCard'
 import { Empty } from '../components/Modal'
 import type { FilterState } from '../types'
 import { readableInk } from '../lib/colors'
+import { IS_PUBLIC } from '../lib/appMode'
 
 export function SearchView({ route }: { route: Route }) {
   const { items, annotations, tags, dimensions, collections, tagUsage } = useStore()
@@ -97,7 +98,11 @@ export function SearchView({ route }: { route: Route }) {
               <Icon name="search" size={14} />
               <input
                 value={filter.keyword}
-                placeholder="标签、备注、拆解笔记…（也可输入 11-17 按日期查）"
+                placeholder={
+                  IS_PUBLIC
+                    ? '标签、日期…（也可输入 11-17 按日期查）'
+                    : '标签、备注、拆解笔记…（也可输入 11-17 按日期查）'
+                }
                 onChange={(e) => setFilter((f) => ({ ...f, keyword: e.target.value }))}
                 onKeyDown={(e) => {
                   if (e.key !== 'Enter') return
@@ -190,13 +195,15 @@ export function SearchView({ route }: { route: Route }) {
               <Icon name="heart" size={11} />
               只看收藏
             </button>
-            <button
-              className={`chip${filter.unconfirmedOnly ? ' active' : ''}`}
-              onClick={() => setFilter((f) => ({ ...f, unconfirmedOnly: !f.unconfirmedOnly }))}
-            >
-              <Icon name="check" size={11} />
-              只看未校对
-            </button>
+            {!IS_PUBLIC && (
+              <button
+                className={`chip${filter.unconfirmedOnly ? ' active' : ''}`}
+                onClick={() => setFilter((f) => ({ ...f, unconfirmedOnly: !f.unconfirmedOnly }))}
+              >
+                <Icon name="check" size={11} />
+                只看未校对
+              </button>
+            )}
           </div>
 
           <div className="divider" />
@@ -255,7 +262,11 @@ export function SearchView({ route }: { route: Route }) {
                 </div>
               )
             })}
-            {!tags.length && <span className="muted">还没有标签，先到标签页建立自己的维度标签。</span>}
+            {!tags.length && (
+              <span className="muted">
+                {IS_PUBLIC ? '还没有可筛选的标签。' : '还没有标签，先到标签页建立自己的维度标签。'}
+              </span>
+            )}
           </div>
 
           <div className="divider" />

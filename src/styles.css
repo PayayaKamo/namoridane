@@ -63,10 +63,37 @@
   box-sizing: border-box;
 }
 
+html {
+  /* 移动端点击不再出现蓝色高亮块 */
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  outline-offset: 2px;
+}
+
+/* 触摸设备用轻微缩放替代系统高亮；桌面端不受影响 */
+@media (hover: none) {
+  button,
+  a {
+    transition: transform 0.1s var(--ease);
+  }
+
+  button:active:not(.mobile-nav-backdrop):not(:disabled),
+  a:active {
+    transform: scale(0.98);
+  }
+}
+
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100%;
 }
 
 body {
@@ -78,6 +105,7 @@ body {
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  overflow-x: clip;
 }
 
 body::before {
@@ -161,12 +189,14 @@ hr {
   display: grid;
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .sidebar {
   position: sticky;
   top: 0;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -174,8 +204,21 @@ hr {
   border-right: 1px solid var(--line);
   background: color-mix(in srgb, var(--surface) 72%, var(--bg));
   backdrop-filter: blur(8px);
+  overflow: hidden;
+}
+
+/* 品牌区与底部信息固定，只有中间导航可滚动（滚动条隐藏但保留滚动能力） */
+.sidebar > nav {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  scrollbar-width: thin;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar > nav::-webkit-scrollbar {
+  display: none;
 }
 
 .brand {
@@ -876,6 +919,43 @@ hr {
   border: 1px solid var(--line);
   border-radius: 5px;
   padding: 1px 5px;
+}
+
+/* 移动端展开式搜索：覆盖顶栏，避免常驻占位 */
+.mobile-search-bar {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  background: var(--surface);
+}
+
+.mobile-search-bar > svg {
+  flex: none;
+  color: var(--faint);
+}
+
+.mobile-search-bar input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  border: 0;
+  background: transparent;
+  font-size: 16px;
+  outline: none;
+}
+
+.mobile-search-bar .icon-btn {
+  flex: none;
+}
+
+@media (max-width: 760px) {
+  .mobile-search-bar {
+    display: flex;
+  }
 }
 
 /* 空状态 / 加载 */

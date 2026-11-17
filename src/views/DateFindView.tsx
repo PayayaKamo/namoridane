@@ -2,13 +2,14 @@ import { useMemo, useState } from 'react'
 import type { Route } from '../lib/router'
 import { navigate } from '../lib/router'
 import { useStore } from '../state/store'
-import { effectiveDate, formatMonthDayCN } from '../lib/dates'
+import { effectiveDate, formatMonthDayCN, isoOf, weekdayLabel } from '../lib/dates'
 import { Icon } from '../components/Icon'
-import { Masonry } from '../components/ItemCard'
 import { Empty, Modal } from '../components/Modal'
 import { TagPicker } from '../components/TagPicker'
 import { IS_PUBLIC } from '../lib/appMode'
 import type { DiaryItem } from '../types'
+
+const BASE = import.meta.env.BASE_URL
 
 export function DateFindView({ route }: { route: Route }) {
   const {
@@ -36,6 +37,7 @@ export function DateFindView({ route }: { route: Route }) {
   const [manualOpen, setManualOpen] = useState<Record<number, boolean>>({})
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [openCaptions, setOpenCaptions] = useState<Set<string>>(new Set())
   const [storylineModal, setStorylineModal] = useState(false)
   const [newStoryline, setNewStoryline] = useState('')
   const [tagModal, setTagModal] = useState(false)
@@ -170,6 +172,32 @@ export function DateFindView({ route }: { route: Route }) {
   const resetSelection = () => {
     setSelected(new Set())
     setSelectMode(false)
+  }
+
+  const toggleCaption = (id: string) => {
+    setOpenCaptions((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const copyShortcode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code)
+      notify(`已复制 shortcode：${code}`, 'success')
+    } catch {
+      notify(code, 'default')
+    }
+  }
+
+  const openItem = (item: DiaryItem) => {
+    if (selectMode) {
+      toggleSelect(item.id)
+      return
+    }
+    navigate(`/item/${item.id}`)
   }
 
   const applySelectionTags = () => {
@@ -311,12 +339,95 @@ export function DateFindView({ route }: { route: Route }) {
                 <Icon name={openYears(year) ? 'up' : 'down'} size={14} />
               </button>
               {openYears(year) && (
-                <Masonry
-                  items={list}
-                  selectable={selectMode}
-                  selected={selected}
-                  onToggleSelect={toggleSelect}
-                />
+                <div className="datefind-cards">
+                  {list.map((item) => {
+                    const d = dateOf(item)
+                    if (!d) return null
+                    const ann = annotations[item.id]
+                    const weekday = weekdayLabel(isoOf(d.year, d.month, d.day))
+                    const captionOpen = openCaptions.has(item.id)
+                    const isSelected = selected.has(item.id)
+                    return (
+                      <article
+                        key={item.id}
+                        className={`date-card${selectMode ? ' selectable' : ''}${isSelected ? ' selected' : ''}`}
+                        onClick={() => openItem(item)}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            openItem(item)
+                          }
+                        }}
+                      >
+                        <div className="date-card-media">
+                          <img src={`${BASE}${item.thumb}`} alt={item.caption?.slice(0, 40) || item.shortcode} loading="lazy" />
+                          {selectMode && (
+                            <span className={`date-card-check${isSelected ? ' on' : ''}`}>
+                              {isSelected && <Icon name="check" size={13} />}
+                            </span>
+                          )}
+                        </div>
+                        <div className="date-card-body">
+                          <div className="date-card-head">
+                            <span className="date-card-date">
+                              {d.month} 月 {d.day} 日 · {weekday}
+                            </span>
+                            <span className="date-card-year num">{d.year}</span>
+                            {!d.confirmed && <span className="badge">推测</span>}
+                          </div>
+                          <div className="date-card-meta">
+                            <span>发布于 {item.publishedAt || '未知日期'}</span>
+                            {item.postCount > 1 && (
+                              <span className="faint">
+                                · 第 {item.postIndex + 1}/{item.postCount} 张
+                              </span>
+                            )}
+                          </div>
+                          <div className="date-card-actions" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              className="date-card-code"
+                              onClick={() => copyShortcode(item.shortcode)}
+                              title="复制 shortcode"
+                            >
+                              <code>{item.shortcode}</code>
+                              <Icon name="copy" size={12} />
+                            </button>
+                            {item.permalink && (
+                              <a className="date-card-link" href={item.permalink} target="_blank" rel="noreferrer">
+                                <Icon name="share" size={12} />原帖
+                              </a>
+                            )}
+                            {ann?.xiaohongshu && (
+                              <a className="date-card-link" href={ann.xiaohongshu} target="_blank" rel="noreferrer">
+                                小红书
+                              </a>
+                            )}
+                            {ann?.wechat && (
+                              <a className="date-card-link" href={ann.wechat} target="_blank" rel="noreferrer">
+                                公众号
+                              </a>
+                            )}
+                          </div>
+                          {item.caption && (
+                            <div className={`date-card-caption${captionOpen ? ' open' : ''}`}>
+                              <p>{item.caption}</p>
+                              <button
+                                className="date-card-caption-toggle"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toggleCaption(item.id)
+                                }}
+                              >
+                                {captionOpen ? '收起原文案' : '展开原文案'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
               )}
             </section>
           ))}

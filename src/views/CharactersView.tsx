@@ -165,15 +165,21 @@ export function CharactersView() {
       ) : (
         <Empty
           icon="users"
-          title="还没有人物/角色标签"
-          hint="可以一键加入《摇曳百合》《大室家》及相关角色，再到作品详情或图库批量整理中人工选择出场人物。"
+          title={IS_PUBLIC ? '角色资料正在整理中' : '还没有人物/角色标签'}
+          hint={
+            IS_PUBLIC
+              ? '敬请期待，之后会补上角色介绍与出场作品。'
+              : '可以一键加入《摇曳百合》《大室家》及相关角色，再到作品详情或图库批量整理中人工选择出场人物。'
+          }
           action={
-            <div className="row row-wrap" style={{ justifyContent: 'center', gap: 8, marginTop: 16 }}>
-              <button className="btn btn-primary btn-sm" onClick={addPresets}>
-                <Icon name="plus" size={14} />加入 {CHARACTER_PRESETS.length} 位预置角色
-              </button>
-              <button className="btn btn-sm" onClick={() => navigate('/tags')}>手动管理角色</button>
-            </div>
+            IS_PUBLIC ? undefined : (
+              <div className="row row-wrap" style={{ justifyContent: 'center', gap: 8, marginTop: 16 }}>
+                <button className="btn btn-primary btn-sm" onClick={addPresets}>
+                  <Icon name="plus" size={14} />加入 {CHARACTER_PRESETS.length} 位预置角色
+                </button>
+                <button className="btn btn-sm" onClick={() => navigate('/tags')}>手动管理角色</button>
+              </div>
+            )
           }
         />
       )}

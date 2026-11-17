@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
-import { effectiveDate, dayOfYear, relativeTime } from '../lib/dates'
+import { effectiveDate, relativeTime } from '../lib/dates'
 import { navigate, openItem } from '../lib/router'
 import { IS_PUBLIC } from '../lib/appMode'
 import type { DiaryItem } from '../types'
@@ -9,18 +9,46 @@ import type { DiaryItem } from '../types'
 const BASE = import.meta.env.BASE_URL
 
 export function HomeView() {
-  const { items, annotations, tagUsage, tags, collections } = useStore()
+  const { items, annotations, tagUsage, tags, collections, confirmedDiaryItems } = useStore()
   const [dailyId, setDailyId] = useState<string | null>(null)
+
+  /** 与今天同月同日的全部作品（年份不限），按日记日期排序 */
+  const sameDayItems = useMemo(() => {
+    const today = new Date()
+    const month = today.getMonth() + 1
+    const day = today.getDate()
+    return items
+      .filter((item) => {
+        const d = effectiveDate(item, annotations[item.id])
+        return d.month === month && d.day === day
+      })
+      .sort(
+        (a, b) =>
+          effectiveDate(a, annotations[a.id]).iso.localeCompare(effectiveDate(b, annotations[b.id]).iso) ||
+          a.postIndex - b.postIndex,
+      )
+  }, [items, annotations])
 
   const dailyPick = useMemo(() => {
     if (!items.length) return undefined
-    const today = new Date()
-    const seed = today.getFullYear() * 1000 + dayOfYear(today.getFullYear(), today.getMonth() + 1, today.getDate())
-    return items[seed % items.length]
-  }, [items])
+    if (sameDayItems.length) {
+      // 同年月同日有多张时，用本地日期作为种子轮转，保证当天多次打开结果一致
+      const today = new Date()
+      const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate()
+      return sameDayItems[seed % sameDayItems.length]
+    }
+    // 没有同月同日：回退到最近一张已确认绘日记
+    const confirmed = [...confirmedDiaryItems].sort(
+      (a, b) =>
+        effectiveDate(a, annotations[a.id]).iso.localeCompare(effectiveDate(b, annotations[b.id]).iso) ||
+        a.postIndex - b.postIndex,
+    )
+    return confirmed[confirmed.length - 1] ?? items[items.length - 1]
+  }, [items, sameDayItems, confirmedDiaryItems, annotations])
 
   const daily = (dailyId && items.find((i) => i.id === dailyId)) || dailyPick
   const dailyDate = daily ? effectiveDate(daily, annotations[daily.id]) : null
+  const todayYear = new Date().getFullYear()
 
   const stats = useMemo(() => {
     let tagged = 0
@@ -107,17 +135,25 @@ export function HomeView() {
           <div className="daily">
             <div className="daily-label">
               <span>每日一图</span>
-              <span className="hand">{dailyDate.month} 月 {dailyDate.day} 日</span>
+              <span className="hand">
+                {dailyDate.year} 年 {dailyDate.month} 月 {dailyDate.day} 日
+              </span>
             </div>
             <button className="daily-image" onClick={() => openItem(daily.id)}>
               <img src={`${BASE}${daily.thumb}`} alt={`每日一图 ${dailyDate.iso}`} />
             </button>
             <div className="daily-foot">
-              <span className="faint">{daily.publishedAt} 发布</span>
+              <span className="faint">
+                {dailyDate.year !== todayYear
+                  ? `往年今日 · ${daily.publishedAt} 发布`
+                  : `${daily.publishedAt} 发布`}
+                {!IS_PUBLIC && ` · ${daily.shortcode}`}
+              </span>
               <button
                 className="btn btn-ghost btn-sm"
                 onClick={() => {
-                  const pool = items.filter((i) => i.id !== daily.id)
+                  const pool = (sameDayItems.length > 1 ? sameDayItems : items).filter((i) => i.id !== daily.id)
+                  if (!pool.length) return
                   setDailyId(pool[Math.floor(Math.random() * pool.length)]?.id ?? daily.id)
                 }}
               >
@@ -131,14 +167,21 @@ export function HomeView() {
 
       {!items.length && (
         <div className="excluded-banner">
-          <div>
-            <strong>还没有图片</strong>
-            <span>
-              把重新解压的 Instagram 保存页目录导入：<code>npm run import -- "&lt;解压目录&gt;"</code>，
-              再运行 <code>npm run data</code>（或 <code>npm run dev</code>）生成索引和衍生图。
-              标注会绑定当前数据集版本，换数据后旧记录自动作废。
-            </span>
-          </div>
+          {IS_PUBLIC ? (
+            <div>
+              <strong>内容正在整理</strong>
+              <span>绘日记还在整理中，稍后再来看看。</span>
+            </div>
+          ) : (
+            <div>
+              <strong>还没有图片</strong>
+              <span>
+                把重新解压的 Instagram 保存页目录导入：<code>npm run import -- "&lt;解压目录&gt;"</code>，
+                再运行 <code>npm run data</code>（或 <code>npm run dev</code>）生成索引和衍生图。
+                标注会绑定当前数据集版本，换数据后旧记录自动作废。
+              </span>
+            </div>
+          )}
         </div>
       )}
 

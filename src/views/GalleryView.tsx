@@ -8,6 +8,7 @@ import { Icon } from '../components/Icon'
 import { Masonry } from '../components/ItemCard'
 import { Empty, Modal } from '../components/Modal'
 import { TagPicker } from '../components/TagPicker'
+import { CharacterPicker } from '../components/CharacterPicker'
 import { downloadBlob, downloadOriginalsZip } from '../lib/image'
 import { IS_PUBLIC } from '../lib/appMode'
 import { moveFilesToTrash } from '../lib/trash'
@@ -58,6 +59,8 @@ export function GalleryView({ route }: { route: Route }) {
   const [zipProgress, setZipProgress] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [tagModal, setTagModal] = useState(false)
+  const [characterModal, setCharacterModal] = useState(false)
+  const [pickCharacters, setPickCharacters] = useState<string[]>([])
   const [pickTags, setPickTags] = useState<string[]>([])
   const [collectionModal, setCollectionModal] = useState(false)
   const [newCollection, setNewCollection] = useState('')
@@ -409,6 +412,16 @@ export function GalleryView({ route }: { route: Route }) {
             <Icon name="tag" size={13} />
             打标签
           </button>
+          <button
+            className="btn btn-sm btn-soft"
+            onClick={() => {
+              setPickCharacters([])
+              setCharacterModal(true)
+            }}
+          >
+            <Icon name="users" size={13} />
+            出场人物
+          </button>
           <button className="btn btn-sm btn-soft" onClick={() => { setFavorite(selectedIds, true); notify(`已收藏 ${selectedIds.length} 张`, 'success') }}>
             <Icon name="heart" size={13} />
             收藏
@@ -540,6 +553,44 @@ export function GalleryView({ route }: { route: Route }) {
           }
         >
           <TagPicker selected={pickTags} onChange={setPickTags} counts={undefined} />
+        </Modal>
+      )}
+
+      {characterModal && (
+        <Modal
+          title={`批量标注出场人物 · ${selected.size} 张`}
+          onClose={() => setCharacterModal(false)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setCharacterModal(false)}>
+                取消
+              </button>
+              <button
+                className="btn btn-danger"
+                disabled={!pickCharacters.length}
+                onClick={() => {
+                  pickCharacters.forEach((tagId) => removeTagFromItems(selectedIds, tagId))
+                  notify(`已从 ${selected.size} 张移除所选角色`, 'success')
+                  setCharacterModal(false)
+                }}
+              >
+                移除所选角色
+              </button>
+              <button
+                className="btn btn-primary"
+                disabled={!pickCharacters.length}
+                onClick={() => {
+                  pickCharacters.forEach((tagId) => addTagToItems(selectedIds, tagId))
+                  notify(`已为 ${selected.size} 张添加 ${pickCharacters.length} 个角色`, 'success')
+                  setCharacterModal(false)
+                }}
+              >
+                添加所选角色
+              </button>
+            </>
+          }
+        >
+          <CharacterPicker selected={pickCharacters} onChange={setPickCharacters} />
         </Modal>
       )}
 

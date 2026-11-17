@@ -7,6 +7,7 @@ import { Icon } from '../components/Icon'
 import { Empty } from '../components/Modal'
 import { STICKER_SIZES } from '../lib/constants'
 import { canvasToBlob, defaultCrop, downloadBlob, loadImage, renderSticker } from '../lib/image'
+import { IS_PUBLIC } from '../lib/appMode'
 import type { DiaryItem } from '../types'
 
 const BASE = import.meta.env.BASE_URL
@@ -272,10 +273,12 @@ export function StickersView({ route }: { route: Route }) {
               裁切参数会按作品保存，批量导出时自动复用。之后在合集里建一个「表情包素材」，就能随时找回这些图。
             </p>
             <div className="row" style={{ gap: 8, marginTop: 10 }}>
-              <button className="btn btn-sm" onClick={() => navigate('/collections')}>
-                <Icon name="folder" size={13} />
-                管理合集
-              </button>
+              {!IS_PUBLIC && (
+                <button className="btn btn-sm" onClick={() => navigate('/collections')}>
+                  <Icon name="folder" size={13} />
+                  管理合集
+                </button>
+              )}
               <button className="btn btn-sm btn-ghost" onClick={() => navigate('/gallery')}>
                 去图库多选
               </button>

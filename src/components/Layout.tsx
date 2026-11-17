@@ -55,6 +55,8 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
   const searchRef = useRef<HTMLInputElement>(null)
   const [term, setTerm] = useState(route.query.get('q') ?? '')
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const mobileSearchRef = useRef<HTMLDivElement>(null)
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === '1')
   const [undoVisible, setUndoVisible] = useState(false)
 
@@ -84,6 +86,28 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
   }
 
   useEffect(() => setMobileOpen(false), [route])
+  useEffect(() => setSearchOpen(false), [route])
+
+  // 移动端搜索展开时：点空白、Esc 或向下滚动都收起
+  useEffect(() => {
+    if (!searchOpen) return
+    const onPointerDown = (event: PointerEvent) => {
+      if (mobileSearchRef.current?.contains(event.target as Node)) return
+      setSearchOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSearchOpen(false)
+    }
+    const onScroll = () => setSearchOpen(false)
+    window.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('scroll', onScroll)
+    }
+  }, [searchOpen])
   useEffect(() => {
     if (!mobileOpen) return
     const onKey = (event: KeyboardEvent) => {
@@ -264,9 +288,34 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
             />
             <kbd>/</kbd>
           </div>
-          <button className="icon-btn mobile-search" onClick={() => navigate('/search')} aria-label="搜索与筛选">
+          <button
+            className="icon-btn mobile-search"
+            onClick={() => setSearchOpen(true)}
+            aria-label="展开搜索"
+            aria-expanded={searchOpen}
+          >
             <Icon name="search" />
           </button>
+          {searchOpen && (
+            <div className="mobile-search-bar" ref={mobileSearchRef} role="search">
+              <Icon name="search" size={16} />
+              <input
+                autoFocus
+                value={term}
+                placeholder="搜索标签、备注、日期…"
+                onChange={(e) => setTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    submitSearch()
+                    setSearchOpen(false)
+                  }
+                }}
+              />
+              <button className="icon-btn" onClick={() => setSearchOpen(false)} aria-label="关闭搜索">
+                <Icon name="close" size={16} />
+              </button>
+            </div>
+          )}
           <button className="icon-btn" onClick={openRandom} title="随机抽一张" aria-label="随机抽一张">
             <Icon name="dice" />
           </button>

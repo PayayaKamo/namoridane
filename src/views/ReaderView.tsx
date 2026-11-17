@@ -4,6 +4,7 @@ import { navigate } from '../lib/router'
 import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
 import { formatFullDate, weekdayLabel } from '../lib/dates'
+import { IS_PUBLIC } from '../lib/appMode'
 
 const BASE = import.meta.env.BASE_URL
 const SCOPE_KEY = 'namori.reader.scope'
@@ -92,9 +93,9 @@ export function ReaderView({ route }: { route: Route }) {
   if (!item || !date) {
     return (
       <div className="reader-empty">
-        <p>还没有可以翻阅的作品。</p>
-        <button className="btn" onClick={() => navigate('/gallery')}>
-          去图库
+        <p>{IS_PUBLIC ? '绘日记正在整理中，敬请期待。' : '还没有可以翻阅的作品。'}</p>
+        <button className="btn" onClick={() => navigate(IS_PUBLIC ? '/' : '/gallery')}>
+          {IS_PUBLIC ? '回到首页' : '去图库'}
         </button>
       </div>
     )
