@@ -340,6 +340,32 @@ export function DetailView({ itemId }: { itemId: string }) {
                 <>
                   <section className="detail-section">
                     <div className="section-head">
+                      <h4>原文案</h4>
+                      <span className="faint">Instagram</span>
+                    </div>
+                    {item.caption ? (
+                      <p className="caption-text">{item.caption}</p>
+                    ) : (
+                      <span className="faint">
+                        {item.caption === ''
+                          ? '这条帖子没有文案。'
+                          : '未找到这条帖子的原文案（导入时可能缺少元数据）。'}
+                      </span>
+                    )}
+                    {item.permalink && (
+                      <a
+                        className="btn btn-sm btn-ghost caption-link"
+                        href={item.permalink}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        在 Instagram 查看原帖<Icon name="right" size={12} />
+                      </a>
+                    )}
+                  </section>
+
+                  <section className="detail-section">
+                    <div className="section-head">
                       <h4>标签</h4>
                       {!IS_PUBLIC && (
                         <button className="btn btn-ghost btn-sm" onClick={() => setTagOpen((v) => !v)}>
@@ -496,14 +522,11 @@ export function DetailView({ itemId }: { itemId: string }) {
                       <a className="btn btn-sm" href={originalUrl(item)} target="_blank" rel="noreferrer">
                         <Icon name="expand" size={14} />查看原图
                       </a>
-                      <a
-                        className="btn btn-sm btn-ghost"
-                        href={`https://www.instagram.com/p/${item.shortcode}/`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Instagram 原帖<Icon name="right" size={12} />
-                      </a>
+                      {item.permalink && (
+                        <a className="btn btn-sm btn-ghost" href={item.permalink} target="_blank" rel="noreferrer">
+                          Instagram 原帖<Icon name="right" size={12} />
+                        </a>
+                      )}
                     </div>
                   </section>
 

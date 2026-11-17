@@ -20,6 +20,10 @@ export interface DiaryItem {
   file: string
   /** 导入时的原始文件名（Instagram CDN 名，含 _n 后缀）；旧索引可能为 null */
   sourceFile: string | null
+  /** Instagram 原文案；元数据缺失时为 null */
+  caption: string | null
+  /** Instagram 原帖永久链接；无法确定时为 null */
+  permalink: string | null
   postIndex: number
   postCount: number
   /** 发布日期，来自文件名；日期未知时为空字符串 */

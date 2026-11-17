@@ -47,6 +47,7 @@ const CACHE_DIR = path.join(ROOT, '.cache')
 const CACHE_FILE = path.join(CACHE_DIR, 'images.json')
 const OCR_FILE = path.join(ROOT, 'data', 'ocr.json')
 const SOURCE_NAMES_FILE = path.join(ROOT, 'data', 'source-names.json')
+const POST_META_FILE = path.join(ROOT, 'data', 'post-meta.json')
 const PUBLIC_DATA_FILE = path.join(ROOT, 'data', 'public.json')
 
 const MODE =
@@ -59,7 +60,7 @@ const MODE =
 const THUMB_WIDTH = 480
 const LARGE_WIDTH = 1400
 const CACHE_VERSION = 4
-const INDEX_VERSION = 7
+const INDEX_VERSION = 8
 const CONCURRENCY = 6
 
 const NAME_RE = /^(\d{4})-(\d{2})-(\d{2})-([A-Za-z0-9_-]{11})(?:-(\d+))?\.jpe?g$/i
@@ -308,6 +309,19 @@ async function loadSourceNames() {
   }
 }
 
+/** 导入时保留的帖子元数据：目标文件名 -> { shortcode, caption, permalink } */
+async function loadPostMeta() {
+  try {
+    const parsed = JSON.parse(await fsp.readFile(POST_META_FILE, 'utf8'))
+    const files = parsed?.files ?? {}
+    log(`帖子文案：${Object.values(files).filter((m) => m?.caption).length} 条`)
+    return files
+  } catch {
+    log('未找到 data/post-meta.json，索引不含原文案')
+    return {}
+  }
+}
+
 /** 公开站种子：去掉非绘日记、私密备注、未确认推测日期与草稿故事线 */
 function prunePublicData(data) {
   const items = {}
@@ -352,6 +366,7 @@ async function main() {
   await fsp.mkdir(SRC_DIR, { recursive: true })
   const ocrFiles = await loadOcrResults()
   const sourceNames = await loadSourceNames()
+  const postMeta = await loadPostMeta()
   await Promise.all([
     fsp.mkdir(OUT_THUMB, { recursive: true }),
     fsp.mkdir(OUT_LARGE, { recursive: true }),
@@ -470,11 +485,20 @@ async function main() {
         ? shiftDay(e.parsed, -1)
         : { year: 0, month: 0, day: 0 }
     const isPublic = MODE === 'public'
+    const meta = postMeta[e.name] ?? null
+    // 文案与永久链接只来自公开的帖子元数据；缺失时降级为空，不影响索引生成
+    const permalink =
+      meta?.permalink ??
+      (/^[A-Za-z0-9_-]{11}$/.test(e.parsed.shortcode)
+        ? `https://www.instagram.com/p/${e.parsed.shortcode}/`
+        : null)
     items.push({
       id,
       shortcode: e.parsed.shortcode,
       file: e.name,
       sourceFile: sourceNames[e.name] ?? null,
+      caption: meta?.caption ?? null,
+      permalink,
       postIndex,
       postCount: list.length,
       publishedAt: e.parsed.publishedAt,
