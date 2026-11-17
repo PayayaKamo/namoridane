@@ -4,6 +4,38 @@ import type { Character, Dimension, ItemAnnotation, Storyline, Tag, Translation,
 export const STORAGE_KEY = 'namori.diary.userdata.v2'
 export const THEME_KEY = 'namori.theme'
 
+/** 2026-11 按需求下线的角色（无任何作品出场），加载本地数据时一并清掉旧记录 */
+const RETIRED_CHARACTER_IDS: ReadonlySet<string> = new Set([
+  'char_miwa_ai',
+  'char_yaeno_miho',
+  'char_sonokawa_megumi',
+  'char_ogawa_kokoro',
+  'char_souma_mirai',
+  'char_takasaki_misaki',
+])
+
+function dropRetiredCharacters(data: UserData): UserData {
+  if (!data.tags.some((tag) => RETIRED_CHARACTER_IDS.has(tag.id))) return data
+  const keep = (tagId: string) => !RETIRED_CHARACTER_IDS.has(tagId)
+  return {
+    ...data,
+    tags: data.tags.filter((tag) => keep(tag.id)),
+    characters: data.characters.filter((character) => keep(character.id)),
+    storylines: data.storylines.map((storyline) =>
+      storyline.tags.some((tagId) => RETIRED_CHARACTER_IDS.has(tagId))
+        ? { ...storyline, tags: storyline.tags.filter(keep) }
+        : storyline,
+    ),
+    items: Object.fromEntries(
+      Object.entries(data.items).map(([id, annotation]) =>
+        annotation.tags.some((tagId) => RETIRED_CHARACTER_IDS.has(tagId))
+          ? [id, { ...annotation, tags: annotation.tags.filter(keep) }]
+          : [id, annotation],
+      ),
+    ),
+  }
+}
+
 export function emptyAnnotation(): ItemAnnotation {
   return { tags: [], favorite: false, reviewed: false, excluded: false, note: '', updatedAt: new Date(0).toISOString() }
 }
@@ -187,7 +219,7 @@ export function normalizeUserData(raw: unknown): UserData {
     }
   }
 
-  return {
+  return dropRetiredCharacters({
     version: 2,
     updatedAt: str(data.updatedAt, new Date().toISOString()),
     datasetId: typeof data.datasetId === 'string' ? data.datasetId : undefined,
@@ -197,7 +229,7 @@ export function normalizeUserData(raw: unknown): UserData {
     collections,
     storylines,
     items,
-  }
+  })
 }
 
 function normalizeTranslation(raw: unknown): Translation | null {
