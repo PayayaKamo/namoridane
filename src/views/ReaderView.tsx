@@ -17,17 +17,31 @@ const dateValue = (iso: string) => {
 
 export function ReaderView({ route }: { route: Route }) {
   const { items, confirmedDiaryItems, getDate, annotations, toggleFavorite, notify } = useStore()
-  const [scope, setScope] = useState<Scope>(() => (localStorage.getItem(SCOPE_KEY) === 'diary' ? 'diary' : 'all'))
+  const [scope, setScope] = useState<Scope>(() => (localStorage.getItem(SCOPE_KEY) === 'all' ? 'all' : 'diary'))
   const ordered = useMemo(() => {
     const pool = scope === 'diary' ? confirmedDiaryItems : items
     return [...pool].sort((a, b) => getDate(a).iso.localeCompare(getDate(b).iso) || a.postIndex - b.postIndex)
   }, [scope, items, confirmedDiaryItems, getDate])
   const startId = route.query.get('start')
   const [index, setIndex] = useState(() => {
-    const found = startId ? ordered.findIndex((i) => i.id === startId) : -1
-    return found >= 0 ? found : 0
+    const startItem = startId ? items.find((i) => i.id === startId) : undefined
+    if (!startItem) return 0
+    const found = ordered.findIndex((i) => i.id === startId)
+    if (found >= 0) return found
+    // 指定条目不在当前范围（例如默认只看绘日记）时，定位到日期最近的一条
+    const target = dateValue(getDate(startItem).iso)
+    let best = 0
+    let bestDistance = Infinity
+    ordered.forEach((entry, position) => {
+      const distance = Math.abs(dateValue(getDate(entry).iso) - target)
+      if (distance < bestDistance) {
+        bestDistance = distance
+        best = position
+      }
+    })
+    return best
   })
-  const [loaded, setLoaded] = useState(false)
+  const [loadedId, setLoadedId] = useState<string | null>(null)
   const [chrome, setChrome] = useState(true)
   const shellRef = useRef<HTMLDivElement>(null)
 
@@ -36,7 +50,6 @@ export function ReaderView({ route }: { route: Route }) {
   const ann = item ? annotations[item.id] : undefined
 
   useEffect(() => {
-    setLoaded(false)
     if (ordered[index + 1]) {
       const img = new Image()
       img.src = `${BASE}${ordered[index + 1].large}`
@@ -126,6 +139,8 @@ export function ReaderView({ route }: { route: Route }) {
     setScope(next)
   }
 
+  const loaded = loadedId === item.id
+
   return (
     <div className={`reader${chrome ? '' : ' chrome-hidden'}`} ref={shellRef}>
       <div className="reader-chrome reader-top">
@@ -181,7 +196,7 @@ export function ReaderView({ route }: { route: Route }) {
             key={item.id}
             src={`${BASE}${item.large}`}
             alt={`绘日记 ${date.iso}`}
-            onLoad={() => setLoaded(true)}
+            onLoad={() => setLoadedId(item.id)}
             style={{ opacity: loaded ? 1 : 0 }}
             loading="eager"
           />

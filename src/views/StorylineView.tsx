@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Icon } from '../components/Icon'
-import { Empty } from '../components/Modal'
+import { Empty, Modal } from '../components/Modal'
 import { effectiveDate, formatShortDate } from '../lib/dates'
 import { downloadBlob } from '../lib/image'
 import { IS_PUBLIC } from '../lib/appMode'
@@ -10,6 +10,34 @@ import { useStore } from '../state/store'
 import type { DiaryItem, Storyline, StorylineBlock } from '../types'
 
 const BASE = import.meta.env.BASE_URL
+const SHORTCODE_RE = /^[A-Za-z0-9_-]{5,}$/
+const POST_LINK_RE = /(?:instagram\.com|instagr\.am)\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/gi
+
+/** 宽容解析：接受 shortcode 列表、完整帖子链接或整段分享文本；返回按输入顺序的唯一条目 */
+function parseShortcodes(text: string): { codes: string[]; duplicates: string[] } {
+  const seen = new Set<string>()
+  const codes: string[] = []
+  const duplicates: string[] = []
+  const push = (raw: string) => {
+    const code = raw.trim().replace(/[),.;:!?，。；：、）】」』]+$/g, '')
+    if (!SHORTCODE_RE.test(code)) return
+    if (seen.has(code)) {
+      if (!duplicates.includes(code)) duplicates.push(code)
+      return
+    }
+    seen.add(code)
+    codes.push(code)
+  }
+  const rest = text.replace(POST_LINK_RE, (_match, code: string) => {
+    push(code)
+    return ' '
+  })
+  for (const token of rest.split(/[\s,，、;；|/]+/)) {
+    if (!token || /instagram\.com|instagr\.am/i.test(token)) continue
+    push(token)
+  }
+  return { codes, duplicates }
+}
 
 export function StorylineView() {
   const route = useRoute()
@@ -20,6 +48,7 @@ function StorylineList() {
   const { storylines, allItems, addStoryline, notify } = useStore()
   const itemMap = useMemo(() => new Map(allItems.map((item) => [item.id, item])), [allItems])
   const [title, setTitle] = useState('')
+  const [builderOpen, setBuilderOpen] = useState(false)
 
   const cards = useMemo(() => {
     return [...storylines]
@@ -64,6 +93,9 @@ function StorylineList() {
               />
               <button className="btn btn-primary" onClick={() => create()}>
                 <Icon name="plus" size={14} />新建空故事线
+              </button>
+              <button className="btn" onClick={() => setBuilderOpen(true)}>
+                <Icon name="book" size={14} />按 shortcode 建线
               </button>
             </>
           )}
@@ -116,7 +148,157 @@ function StorylineList() {
           }
         />
       )}
+
+      {builderOpen && (
+        <ShortcodeBuilder
+          onClose={() => setBuilderOpen(false)}
+          onCreate={(storyTitle, itemIds, skipped) => {
+            const story = addStoryline(storyTitle, itemIds)
+            setBuilderOpen(false)
+            notify(
+              skipped
+                ? `已创建故事线，共 ${itemIds.length} 张；跳过 ${skipped} 个未匹配 shortcode`
+                : `已创建故事线，共 ${itemIds.length} 张`,
+              'success',
+            )
+            navigate(`/storyline/${story.id}`)
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+function ShortcodeBuilder({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void
+  onCreate: (title: string, itemIds: string[], skipped: number) => void
+}) {
+  const { items, annotations } = useStore()
+  const [title, setTitle] = useState('')
+  const [input, setInput] = useState('')
+
+  const parsed = useMemo(() => parseShortcodes(input), [input])
+  const rows = useMemo(
+    () =>
+      parsed.codes.map((code) => {
+        const matched = items
+          .filter((item) => item.shortcode === code)
+          .sort((a, b) => a.postIndex - b.postIndex)
+        return { code, matched }
+      }),
+    [parsed.codes, items],
+  )
+  const matchedRows = rows.filter((row) => row.matched.length > 0)
+  const missing = rows.filter((row) => row.matched.length === 0).map((row) => row.code)
+  const ordered = matchedRows.flatMap((row) => row.matched)
+
+  /** 把未匹配的 shortcode 从输入框里就地删掉（链接与裸 shortcode 都处理） */
+  const removeCode = (code: string) => {
+    const escaped = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    setInput((text) =>
+      text
+        .replace(new RegExp(`https?://\\S*?/(?:p|reel|tv)/${escaped}\\S*`, 'gi'), ' ')
+        .replace(new RegExp(`(^|[\\s,，、;；|/])${escaped}(?=[\\s,，、;；|/]|$)`, 'g'), '$1'),
+    )
+  }
+
+  return (
+    <Modal
+      title="按 shortcode 建线"
+      subtitle="按粘贴顺序排列；支持每行一个、空格 / 逗号 / 顿号分隔，也可直接粘贴 instagram.com/p/<shortcode>/ 链接或分享文本。"
+      wide
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn" onClick={onClose}>
+            取消
+          </button>
+          <button
+            className="btn btn-primary"
+            disabled={!ordered.length}
+            onClick={() => onCreate(title.trim() || '未命名故事线', ordered.map((item) => item.id), missing.length)}
+          >
+            创建故事线（{ordered.length} 张）
+          </button>
+        </>
+      }
+    >
+      <div className="shortcode-builder">
+        <label className="field">
+          <span className="field-label">故事线标题</span>
+          <input
+            className="input"
+            placeholder="例如：樱花季节的一周"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </label>
+        <label className="field">
+          <span className="field-label">Shortcode / 帖子链接</span>
+          <textarea
+            className="textarea"
+            rows={5}
+            placeholder={'C5puFXYy0jP\nC6abcdEFGhI\nhttps://www.instagram.com/p/C7xyz12345/'}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+        </label>
+
+        <div className="shortcode-summary">
+          可匹配 <strong>{matchedRows.length}</strong> 个 shortcode · 共 <strong>{ordered.length}</strong> 张图
+          {missing.length > 0 && (
+            <>
+              {' '}
+              · <span className="shortcode-danger">未匹配 {missing.length} 个</span>
+            </>
+          )}
+        </div>
+
+        {parsed.duplicates.length > 0 && (
+          <div className="shortcode-warning">重复的 shortcode 已忽略：{parsed.duplicates.join('、')}</div>
+        )}
+
+        {missing.length > 0 && (
+          <div className="shortcode-missing">
+            <span>以下 shortcode 在图库中找不到，可点 × 删除后再创建：</span>
+            <div className="row row-wrap" style={{ gap: 6 }}>
+              {missing.map((code) => (
+                <span key={code} className="shortcode-missing-chip">
+                  {code}
+                  <button onClick={() => removeCode(code)} aria-label={`删除 ${code}`} title="从输入中删除">
+                    <Icon name="close" size={11} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {ordered.length > 0 && (
+          <div className="shortcode-preview">
+            {matchedRows.map((row) =>
+              row.matched.map((item) => {
+                const date = effectiveDate(item, annotations[item.id])
+                const order = ordered.indexOf(item) + 1
+                return (
+                  <div key={`${row.code}-${item.id}`} className="shortcode-preview-item">
+                    <span className="shortcode-order num">{order}</span>
+                    <img src={`${BASE}${item.thumb}`} alt="" loading="lazy" />
+                    <div className="shortcode-preview-meta">
+                      <span className="num">{date.iso || '日期待定'}</span>
+                      <span className="faint">{row.code}</span>
+                    </div>
+                  </div>
+                )
+              }),
+            )}
+          </div>
+        )}
+      </div>
+    </Modal>
   )
 }
 
