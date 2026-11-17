@@ -3,7 +3,8 @@ import { useStore } from '../state/store'
 import { navigate, closeItem } from '../lib/router'
 import { formatFullDate, formatMonthDay, weekdayLabel } from '../lib/dates'
 import { similarItems } from '../lib/filtering'
-import { STUDY_FIELDS, EMPTY_STUDY, presetAvatarPath } from '../lib/constants'
+import { STUDY_FIELDS, EMPTY_STUDY } from '../lib/constants'
+import { CharacterAvatar } from '../components/CharacterAvatar'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
 import { DateEditor } from '../components/DateEditor'
@@ -26,7 +27,6 @@ export function DetailView({ itemId }: { itemId: string }) {
     excludedItems,
     annotations,
     tagMap,
-    characters,
     collections,
     getDate,
     toggleFavorite,
@@ -67,7 +67,7 @@ export function DetailView({ itemId }: { itemId: string }) {
   const itemCharacters = itemTags.filter((tag) => tag!.dimensionId === 'character')
   const characterIds = (annotation?.tags ?? []).filter((id) => tagMap.get(id)?.dimensionId === 'character')
   const otherTagIds = (annotation?.tags ?? []).filter((id) => tagMap.get(id)?.dimensionId !== 'character')
-  const characterMap = useMemo(() => new Map(characters.map((c) => [c.id, c])), [characters])
+
 
   const ordered = useMemo(
     () =>
@@ -450,36 +450,17 @@ export function DetailView({ itemId }: { itemId: string }) {
                     </div>
                     {itemCharacters.length ? (
                       <div className="character-strip">
-                        {itemCharacters.map((tag) => {
-                          const character = characterMap.get(tag!.id)
-                          const avatarItem = character?.avatarItemId ? itemMap.get(character.avatarItemId) : undefined
-                          const position = character?.avatarCrop
-                            ? `${Math.round(character.avatarCrop.cx * 100)}% ${Math.round(character.avatarCrop.cy * 100)}%`
-                            : '50% 50%'
-                          return (
-                            <button
-                              key={tag!.id}
-                              className="character-chip"
-                              onClick={() => navigate(`/gallery?tag=${tag!.id}`)}
-                              title={`查看 ${tag!.name} 的全部作品`}
-                            >
-                              <span className="character-avatar" style={{ background: tag!.color }}>
-                                {character?.avatarDataUrl ? (
-                                  <img src={character.avatarDataUrl} alt="" />
-                                ) : avatarItem ? (
-                                  <img src={`${BASE}${avatarItem.thumb}`} alt="" style={{ objectPosition: position }} />
-                                ) : character?.avatar ? (
-                                  <img src={`${BASE}${character.avatar}`} alt="" loading="lazy" />
-                                ) : presetAvatarPath(tag!.id) ? (
-                                  <img src={`${BASE}${presetAvatarPath(tag!.id)}`} alt="" loading="lazy" />
-                                ) : (
-                                  tag!.name.slice(0, 1)
-                                )}
-                              </span>
-                              <span>{tag!.name}</span>
-                            </button>
-                          )
-                        })}
+                        {itemCharacters.map((tag) => (
+                          <button
+                            key={tag!.id}
+                            className="character-chip"
+                            onClick={() => navigate(`/gallery?tag=${tag!.id}`)}
+                            title={`查看 ${tag!.name} 的全部作品`}
+                          >
+                            <CharacterAvatar tagId={tag!.id} />
+                            <span>{tag!.name}</span>
+                          </button>
+                        ))}
                       </div>
                     ) : (
                       <span className="faint">

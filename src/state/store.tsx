@@ -51,6 +51,14 @@ interface Toast {
   tone: Tone
 }
 
+/** 角色缩略图统一取值：只来自图鉴封面（coverItemId + coverCrop），各处共用同一张图与同一构图 */
+export interface CharacterCoverView {
+  src: string
+  objectPosition: string
+  transformOrigin: string
+  transform?: string
+}
+
 interface StoreValue {
   index: LibraryIndex | null
   items: DiaryItem[]
@@ -73,6 +81,7 @@ interface StoreValue {
   dimensions: Dimension[]
   collections: Collection[]
   characters: Character[]
+  characterCovers: Map<string, CharacterCoverView>
   storylines: Storyline[]
   years: string[]
   theme: Theme
@@ -301,6 +310,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     for (const item of allItems) map.set(item.id, item)
     return map
   }, [allItems])
+
+  // 统一角色缩略图：只认图鉴封面与裁切；没有设置封面时由调用方显示占位，不回落到头像或其他图片
+  const characterCovers = useMemo(() => {
+    const covers = new Map<string, CharacterCoverView>()
+    for (const character of data.characters) {
+      if (!character.coverItemId) continue
+      // 允许使用排除区或已删除记录里的作品作封面，避免封面因审核状态变化而悄悄失效
+      const coverItem = itemMap.get(character.coverItemId)
+      if (!coverItem) continue
+      const crop = character.coverCrop
+      const x = Math.min(100, Math.max(0, crop?.x ?? 50))
+      const y = Math.min(100, Math.max(0, crop?.y ?? 50))
+      const zoom = Math.min(4, Math.max(1, crop?.zoom ?? 1))
+      covers.set(character.id, {
+        src: `${import.meta.env.BASE_URL}${coverItem.thumb}`,
+        objectPosition: `${x}% ${y}%`,
+        transformOrigin: `${x}% ${y}%`,
+        transform: zoom !== 1 ? `scale(${zoom})` : undefined,
+      })
+    }
+    return covers
+  }, [data.characters, itemMap])
 
   const years = useMemo(() => {
     if (!index) return []
@@ -931,6 +962,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       dimensions: [...data.dimensions].sort((a, b) => a.order - b.order),
       collections: data.collections,
       characters: data.characters,
+      characterCovers,
       storylines: data.storylines,
       years,
       theme,
@@ -998,6 +1030,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       confirmedDiaryItems,
       pendingReviewItems,
       itemMap,
+      characterCovers,
       loading,
       seedReady,
       error,

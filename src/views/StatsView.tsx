@@ -1,12 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
+import { CharacterAvatar } from '../components/CharacterAvatar'
 import { MONTHS_CN, effectiveDate } from '../lib/dates'
-import { presetAvatarPath } from '../lib/constants'
 import { IS_PUBLIC } from '../lib/appMode'
 import { navigate } from '../lib/router'
-
-const BASE = import.meta.env.BASE_URL
 
 export function StatsView() {
   const {
@@ -17,8 +15,6 @@ export function StatsView() {
     tagMap,
     dimensions,
     tagUsage,
-    characters,
-    itemMap,
     collections,
     data,
     getDate,
@@ -186,8 +182,6 @@ export function StatsView() {
   }, [tags, tagUsage])
   const characterTotal = characterRank.reduce((sum, row) => sum + row.count, 0)
 
-  const characterMap = useMemo(() => new Map(characters.map((c) => [c.id, c])), [characters])
-
   const pct = (count: number, total: number) => (total ? `${Math.round((count / total) * 100)}%` : '0%')
 
   const openCharacter = (id: string) => navigate(`/characters?char=${encodeURIComponent(id)}`)
@@ -214,29 +208,7 @@ export function StatsView() {
       </span>
     ))
 
-  const castAvatar = (id: string) => {
-    const tag = tagMap.get(id)
-    const character = characterMap.get(id)
-    const avatarItem = character?.avatarItemId ? itemMap.get(character.avatarItemId) : undefined
-    const position = character?.avatarCrop
-      ? `${Math.round(character.avatarCrop.cx * 100)}% ${Math.round(character.avatarCrop.cy * 100)}%`
-      : '50% 50%'
-    return (
-      <span key={id} className="cast-avatar" style={{ background: tag?.color }} title={tag?.name}>
-        {character?.avatarDataUrl ? (
-          <img src={character.avatarDataUrl} alt="" />
-        ) : avatarItem ? (
-          <img src={`${BASE}${avatarItem.thumb}`} alt="" style={{ objectPosition: position }} />
-        ) : character?.avatar ? (
-          <img src={`${BASE}${character.avatar}`} alt="" loading="lazy" />
-        ) : presetAvatarPath(id) ? (
-          <img src={`${BASE}${presetAvatarPath(id)}`} alt="" loading="lazy" />
-        ) : (
-          (tag?.name ?? '?').slice(0, 1)
-        )}
-      </span>
-    )
-  }
+  const castAvatar = (id: string) => <CharacterAvatar tagId={id} className="cast-avatar" />
 
   return (
     <div className="stats-view">

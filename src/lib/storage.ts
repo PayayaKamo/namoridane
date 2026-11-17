@@ -1,5 +1,6 @@
 import { BUILTIN_DIMENSIONS, CHARACTER_PRESETS, EXTRA_DIMENSIONS, defaultCharacterTags } from './constants'
 import type { Character, Dimension, ItemAnnotation, Storyline, Tag, Translation, UserData } from '../types'
+import { IS_PUBLIC } from './appMode'
 
 export const STORAGE_KEY = 'namori.diary.userdata.v2'
 export const THEME_KEY = 'namori.theme'
@@ -351,6 +352,8 @@ function clearCoverOverridesOnce(data: UserData): UserData {
 }
 
 export function loadLocalUserData(): UserData | null {
+  // 公开端始终使用构建时的发布数据，避免旧 localStorage 缓存盖住新发布的封面与标注
+  if (IS_PUBLIC) return null
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
@@ -361,6 +364,8 @@ export function loadLocalUserData(): UserData | null {
 }
 
 export function saveLocalUserData(data: UserData): void {
+  // 公开端只读：发布数据由构建产物提供，不写入浏览器缓存
+  if (IS_PUBLIC) return
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   } catch (err) {

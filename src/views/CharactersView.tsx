@@ -25,6 +25,7 @@ export function CharactersView({ route }: { route: Route }) {
     annotations,
     items,
     characters,
+    characterCovers,
     getDate,
     addCharacterPresets,
     addCharacter,
@@ -123,28 +124,15 @@ export function CharactersView({ route }: { route: Route }) {
       {data.length ? (
         <div className="character-grid">
           {data.map(({ tag, character, count, cover }) => {
+            const characterCover = characterCovers.get(tag.id)
             const avatarItem = character?.avatarItemId
               ? items.find((item) => item.id === character.avatarItemId)
               : undefined
-            const coverItem = character?.coverItemId
-              ? items.find((item) => item.id === character.coverItemId)
-              : undefined
-            // 指定的封面作品已不存在时忽略旧焦点，避免默认头像出现缩放残留或错位
-            const coverMissing = Boolean(character?.coverItemId) && !coverItem
-            const coverCrop = coverMissing ? undefined : character?.coverCrop
-            const cropX = Math.min(100, Math.max(0, coverCrop?.x ?? 50))
-            const cropY = Math.min(100, Math.max(0, coverCrop?.y ?? 50))
-            const cropZoom = Math.min(4, Math.max(1, coverCrop?.zoom ?? 1))
-            const position = coverCrop
-              ? `${cropX}% ${cropY}%`
-              : character?.avatarCrop
-                ? `${Math.round(character.avatarCrop.cx * 100)}% ${Math.round(character.avatarCrop.cy * 100)}%`
-                : '50% 50%'
-            const coverStyle = {
-              objectPosition: position,
-              transformOrigin: position,
-              transform: coverCrop && cropZoom !== 1 ? `scale(${cropZoom})` : undefined,
-            }
+            // 旧头像裁切只用于图鉴内部的兜底显示，其他页面只认封面参数
+            const legacyPosition = character?.avatarCrop
+              ? `${Math.round(character.avatarCrop.cx * 100)}% ${Math.round(character.avatarCrop.cy * 100)}%`
+              : '50% 50%'
+            const coverStyle = { objectPosition: legacyPosition, transformOrigin: legacyPosition }
             return (
               <div
                 key={tag.id}
@@ -152,18 +140,27 @@ export function CharactersView({ route }: { route: Route }) {
                 className={`character-card${tag.id === highlightId ? ' is-highlight' : ''}`}
               >
                 <button className="character-cover" style={{ background: tag.color }} onClick={() => navigate(`/gallery?tag=${tag.id}`)}>
-                  {coverItem ? (
-                    <img src={`${BASE}${coverItem.thumb}`} alt={tag.name} style={coverStyle} loading="lazy" />
+                  {characterCover ? (
+                    <img
+                      src={characterCover.src}
+                      alt={tag.name}
+                      loading="lazy"
+                      style={{
+                        objectPosition: characterCover.objectPosition,
+                        transformOrigin: characterCover.transformOrigin,
+                        transform: characterCover.transform,
+                      }}
+                    />
                   ) : character?.avatarDataUrl ? (
                     <img src={character.avatarDataUrl} alt={tag.name} style={coverStyle} />
                   ) : avatarItem ? (
                     <img src={`${BASE}${avatarItem.thumb}`} alt={tag.name} style={coverStyle} />
                   ) : character?.avatar ? (
-                    <img src={`${BASE}${character.avatar}`} alt={tag.name} style={coverStyle} loading="lazy" />
+                    <img src={`${BASE}${character.avatar}`} alt={tag.name} loading="lazy" />
                   ) : presetAvatarPath(tag.id) ? (
-                    <img src={`${BASE}${presetAvatarPath(tag.id)}`} alt={tag.name} style={coverStyle} loading="lazy" />
+                    <img src={`${BASE}${presetAvatarPath(tag.id)}`} alt={tag.name} loading="lazy" />
                   ) : cover ? (
-                    <img src={`${BASE}${cover.thumb}`} alt={tag.name} style={coverStyle} loading="lazy" />
+                    <img src={`${BASE}${cover.thumb}`} alt={tag.name} loading="lazy" />
                   ) : (
                     <span className="character-placeholder">{tag.name.slice(0, 1)}</span>
                   )}

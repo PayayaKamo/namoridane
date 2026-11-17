@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
-import { TAG_COLORS, presetAvatarPath, sortCharacterTags } from '../lib/constants'
-
-const BASE = import.meta.env.BASE_URL
+import { CharacterAvatar } from './CharacterAvatar'
+import { TAG_COLORS, sortCharacterTags } from '../lib/constants'
 
 /**
  * 出场人物选择器：复用 character 维度标签，点选即标记、再点取消。
@@ -19,7 +18,7 @@ export function CharacterPicker({
   onChange: (ids: string[]) => void
   onClose?: () => void
 }) {
-  const { tags, characters, itemMap, addCharacter, notify } = useStore()
+  const { tags, addCharacter, notify } = useStore()
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -29,7 +28,6 @@ export function CharacterPicker({
     () => sortCharacterTags(tags.filter((tag) => tag.dimensionId === 'character')),
     [tags],
   )
-  const characterMap = useMemo(() => new Map(characters.map((c) => [c.id, c])), [characters])
 
   const ordered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -105,11 +103,6 @@ export function CharacterPicker({
       <div className="character-chips">
         {ordered.map((tag, index) => {
           const isSelected = selected.includes(tag.id)
-          const character = characterMap.get(tag.id)
-          const avatarItem = character?.avatarItemId ? itemMap.get(character.avatarItemId) : undefined
-          const position = character?.avatarCrop
-            ? `${Math.round(character.avatarCrop.cx * 100)}% ${Math.round(character.avatarCrop.cy * 100)}%`
-            : '50% 50%'
           return (
             <button
               key={tag.id}
@@ -122,19 +115,7 @@ export function CharacterPicker({
               }}
               title={isSelected ? `取消标记 ${tag.name}` : `标记 ${tag.name}`}
             >
-              <span className="character-avatar" style={{ background: tag.color }}>
-                {character?.avatarDataUrl ? (
-                  <img src={character.avatarDataUrl} alt="" />
-                ) : avatarItem ? (
-                  <img src={`${BASE}${avatarItem.thumb}`} alt="" style={{ objectPosition: position }} />
-                ) : character?.avatar ? (
-                  <img src={`${BASE}${character.avatar}`} alt="" loading="lazy" />
-                ) : presetAvatarPath(tag.id) ? (
-                  <img src={`${BASE}${presetAvatarPath(tag.id)}`} alt="" loading="lazy" />
-                ) : (
-                  tag.name.slice(0, 1)
-                )}
-              </span>
+              <CharacterAvatar tagId={tag.id} />
               <span>{tag.name}</span>
               {isSelected && <Icon name="check" size={12} />}
             </button>
