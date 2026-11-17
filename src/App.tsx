@@ -117,7 +117,7 @@ export default function App() {
     return (
       <div className="loading-screen">
         <div className="spinner" />
-        正在载入绘日记…
+        正在载入水母绘日记…
       </div>
     )
   }

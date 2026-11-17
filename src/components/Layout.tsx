@@ -173,9 +173,11 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
       <aside id="site-navigation" className={`sidebar${mobileOpen ? ' open' : ''}`}>
         <div className="brand">
           <a className="brand-home" href="#/">
-            <div className="brand-mark">绘</div>
+            <div className="brand-mark">
+              <img src={`${import.meta.env.BASE_URL}namori_icon.webp`} alt="" />
+            </div>
             <div className="brand-text">
-              <div className="brand-title">绘日记</div>
+              <div className="brand-title">水母绘日记</div>
               <div className="brand-sub">Namori Diary</div>
             </div>
           </a>
@@ -245,7 +247,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
             <Icon name="menu" />
           </button>
           <div className="crumb">
-            <span>绘日记</span>
+            <span>水母绘日记</span>
             <Icon name="right" size={12} />
             <b>{meta.title}</b>
           </div>

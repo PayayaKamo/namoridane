@@ -652,34 +652,36 @@
   flex-wrap: wrap;
 }
 
-.cal-legend {
+/* 月份标题与统计行吸顶：与顶部栏同高，滚动长月份列表时保持可见 */
+.cal-sticky {
+  position: sticky;
+  top: 59px;
+  z-index: 20;
+  padding: 2px 0 10px;
+  margin-bottom: 6px;
+  background: var(--bg);
+}
+
+.cal-title-row {
   display: flex;
-  gap: 14px;
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.cal-legend span {
-  display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
 }
 
-.legend-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 3px;
-  background: var(--accent);
+.cal-title-row .page-title {
+  min-width: 0;
 }
 
-.legend-dot.empty {
-  background: transparent;
-  border: 1px dashed var(--line-strong);
+.cal-title-row .icon-btn {
+  margin-top: 2px;
 }
 
-.legend-dot.pending {
-  background: var(--gold);
-  border-radius: 50%;
+.cal-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
 }
 
 .cal-grid {
@@ -2910,6 +2912,9 @@
   .gallery-toolbar {
     top: 55px;
   }
+  .cal-sticky {
+    top: 55px;
+  }
   .year-strip {
     gap: 2px;
   }
@@ -2984,6 +2989,10 @@
     top: 56px;
     gap: 7px;
     padding: 8px 0 12px;
+  }
+  .cal-sticky {
+    top: 56px;
+    padding-top: 0;
   }
   .gallery-toolbar > .top-search {
     display: block;
@@ -3140,7 +3149,8 @@
   .page-actions,
   .cal-toolbar,
   .year-strip,
-  .cal-legend,
+  .cal-sticky,
+  .cal-controls,
   .toast-stack {
     display: none !important;
   }

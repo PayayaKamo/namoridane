@@ -161,6 +161,41 @@ export function CalendarView({ route }: { route: Route }) {
     }
   }
 
+  // 日历页快捷键：← → 翻月；输入框/下拉聚焦时不拦截
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+      const target = event.target as HTMLElement | null
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'SELECT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return
+      }
+      event.preventDefault()
+      const delta = event.key === 'ArrowLeft' ? -1 : 1
+      const next = month + delta
+      if (next < 1) selectMonth(year - 1, 12)
+      else if (next > 12) selectMonth(year + 1, 1)
+      else selectMonth(year, next)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [year, month])
+
+  // 年份下拉保持连续区间：最早有数据的年份 → 当前年份（含无数据年份），并纳入未来数据
+  const yearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear()
+    const candidates = years.map(Number).filter((value) => Number.isInteger(value) && value > 0)
+    if (!candidates.length) candidates.push(currentYear)
+    const min = Math.min(currentYear, ...candidates)
+    const max = Math.max(currentYear, ...candidates)
+    return Array.from({ length: max - min + 1 }, (_, index) => min + index)
+  }, [years])
+
   const monthCounts = useMemo(() => {
     const counts = Array.from({ length: 12 }, () => 0)
     for (const item of items) {
@@ -172,65 +207,63 @@ export function CalendarView({ route }: { route: Route }) {
 
   return (
     <div className="calendar-view">
-      <div className="page-head">
-        <div>
-          <div className="page-eyebrow">Calendar</div>
+      <div className="cal-sticky">
+        <div className="page-eyebrow">Calendar</div>
+        <div className="cal-title-row">
+          <button className="icon-btn" onClick={() => step(-1)} aria-label="上个月" title="上个月（←）">
+            <Icon name="left" />
+          </button>
           <h2 className="page-title">
             {year} 年 {MONTHS_CN[month - 1]}
           </h2>
-          <div className="page-sub">
-            本月 {dayCount} 天有画 · 共 {total} 张 · 缺 {days - dayCount} 天
-          </div>
-        </div>
-        <div className="page-actions">
-          <div className="cal-nav">
-            <button className="icon-btn" onClick={() => step(-1)} aria-label="上个月">
-              <Icon name="left" />
-            </button>
-            <button
-              className="btn btn-sm"
-              onClick={() => {
-                const now = new Date()
-                selectMonth(now.getFullYear(), now.getMonth() + 1)
-              }}
-            >
-              今天
-            </button>
-            <button className="icon-btn" onClick={() => step(1)} aria-label="下个月">
-              <Icon name="right" />
-            </button>
-          </div>
-          <select className="select" style={{ width: 104 }} value={year} onChange={(e) => selectMonth(Number(e.target.value), month)}>
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y} 年
-              </option>
-            ))}
-          </select>
-          <select className="select" style={{ width: 96 }} value={month} onChange={(e) => selectMonth(year, Number(e.target.value))}>
-            {MONTHS_CN.map((name, idx) => (
-              <option key={name} value={idx + 1}>
-                {name}
-              </option>
-            ))}
-          </select>
-          <input
-            type="month"
-            className="input"
-            style={{ width: 148 }}
-            value={`${year}-${String(month).padStart(2, '0')}`}
-            onChange={(e) => {
-              const [y, m] = e.target.value.split('-').map(Number)
-              if (y && m) {
-                selectMonth(y, m)
-              }
-            }}
-          />
-          <button className="btn btn-sm" onClick={() => window.print()} title="打印当前月历">
-            <Icon name="download" />
-            打印月历
+          <button className="icon-btn" onClick={() => step(1)} aria-label="下个月" title="下个月（→）">
+            <Icon name="right" />
           </button>
         </div>
+        <div className="page-sub">
+          本月 {dayCount} 天有画 · 共 {total} 张 · 缺 {days - dayCount} 天
+        </div>
+      </div>
+      <div className="cal-controls">
+        <select className="select" style={{ width: 104 }} value={year} onChange={(e) => selectMonth(Number(e.target.value), month)}>
+          {yearOptions.map((y) => (
+            <option key={y} value={y}>
+              {y} 年
+            </option>
+          ))}
+        </select>
+        <select className="select" style={{ width: 96 }} value={month} onChange={(e) => selectMonth(year, Number(e.target.value))}>
+          {MONTHS_CN.map((name, idx) => (
+            <option key={name} value={idx + 1}>
+              {name}
+            </option>
+          ))}
+        </select>
+        <input
+          type="month"
+          className="input"
+          style={{ width: 148 }}
+          value={`${year}-${String(month).padStart(2, '0')}`}
+          onChange={(e) => {
+            const [y, m] = e.target.value.split('-').map(Number)
+            if (y && m) {
+              selectMonth(y, m)
+            }
+          }}
+        />
+        <button
+          className="btn btn-sm"
+          onClick={() => {
+            const now = new Date()
+            selectMonth(now.getFullYear(), now.getMonth() + 1)
+          }}
+        >
+          今天
+        </button>
+        <button className="btn btn-sm" onClick={() => window.print()} title="打印当前月历">
+          <Icon name="download" />
+          打印月历
+        </button>
       </div>
 
       {!items.length && (
@@ -245,7 +278,7 @@ export function CalendarView({ route }: { route: Route }) {
       )}
 
       <div className="print-only print-head">
-        <h1>Namori 绘日记 · {year} 年 {MONTHS_CN[month - 1]}</h1>
+        <h1>Namori 水母绘日记 · {year} 年 {MONTHS_CN[month - 1]}</h1>
         <p>本月 {dayCount} 天有画 · 共 {total} 张</p>
       </div>
 

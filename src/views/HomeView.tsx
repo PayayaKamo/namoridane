@@ -82,7 +82,7 @@ export function HomeView() {
     <div className="home">
       <section className="hero">
         <div className="hero-main">
-          <div className="page-eyebrow">Namori · 绘日记 2021 — 2025</div>
+          <div className="page-eyebrow">Namori · 水母绘日记 2021 — 2025</div>
           <h1 className="hero-title">把每一天，画成一页。</h1>
           <p className="hero-lead">
             收录 Namori 老师发布在 Instagram 的 {items.length} 张手绘日记。
