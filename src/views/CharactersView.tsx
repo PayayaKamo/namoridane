@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
 import { Empty, Modal } from '../components/Modal'
@@ -54,6 +61,7 @@ export function CharactersView({ route }: { route: Route }) {
         character: characterMap.get(tag.id),
         count: members.length,
         cover,
+        members: sorted,
         first: sorted[sorted.length - 1],
         latest: cover,
         scenes: [...scenes.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3),
@@ -67,6 +75,7 @@ export function CharactersView({ route }: { route: Route }) {
   }, [highlightId, data.length])
 
   const totalTagged = data.reduce((sum, d) => sum + d.count, 0)
+  const editingEntry = editing ? data.find((d) => d.tag.id === editing.id) : undefined
   const existingNames = new Set(charTags.map((tag) => tag.name))
   const missingCount = CHARACTER_PRESETS.filter((character) => !existingNames.has(character.name)).length
   const addPresets = () => {
@@ -111,9 +120,20 @@ export function CharactersView({ route }: { route: Route }) {
             const avatarItem = character?.avatarItemId
               ? items.find((item) => item.id === character.avatarItemId)
               : undefined
-            const position = character?.avatarCrop
-              ? `${Math.round(character.avatarCrop.cx * 100)}% ${Math.round(character.avatarCrop.cy * 100)}%`
-              : '50% 50%'
+            const coverItem = character?.coverItemId
+              ? items.find((item) => item.id === character.coverItemId)
+              : undefined
+            const coverCrop = character?.coverCrop
+            const position = coverCrop
+              ? `${coverCrop.x}% ${coverCrop.y}%`
+              : character?.avatarCrop
+                ? `${Math.round(character.avatarCrop.cx * 100)}% ${Math.round(character.avatarCrop.cy * 100)}%`
+                : '50% 50%'
+            const coverStyle = {
+              objectPosition: position,
+              transformOrigin: position,
+              transform: coverCrop && coverCrop.zoom !== 1 ? `scale(${coverCrop.zoom})` : undefined,
+            }
             return (
               <div
                 key={tag.id}
@@ -121,16 +141,18 @@ export function CharactersView({ route }: { route: Route }) {
                 className={`character-card${tag.id === highlightId ? ' is-highlight' : ''}`}
               >
                 <button className="character-cover" style={{ background: tag.color }} onClick={() => navigate(`/gallery?tag=${tag.id}`)}>
-                  {character?.avatarDataUrl ? (
-                    <img src={character.avatarDataUrl} alt={tag.name} />
+                  {coverItem ? (
+                    <img src={`${BASE}${coverItem.thumb}`} alt={tag.name} style={coverStyle} loading="lazy" />
+                  ) : character?.avatarDataUrl ? (
+                    <img src={character.avatarDataUrl} alt={tag.name} style={coverStyle} />
                   ) : avatarItem ? (
-                    <img src={`${BASE}${avatarItem.thumb}`} alt={tag.name} style={{ objectPosition: position }} />
+                    <img src={`${BASE}${avatarItem.thumb}`} alt={tag.name} style={coverStyle} />
                   ) : character?.avatar ? (
-                    <img src={`${BASE}${character.avatar}`} alt={tag.name} loading="lazy" />
+                    <img src={`${BASE}${character.avatar}`} alt={tag.name} style={coverStyle} loading="lazy" />
                   ) : presetAvatarPath(tag.id) ? (
-                    <img src={`${BASE}${presetAvatarPath(tag.id)}`} alt={tag.name} loading="lazy" />
+                    <img src={`${BASE}${presetAvatarPath(tag.id)}`} alt={tag.name} style={coverStyle} loading="lazy" />
                   ) : cover ? (
-                    <img src={`${BASE}${cover.thumb}`} alt={tag.name} loading="lazy" />
+                    <img src={`${BASE}${cover.thumb}`} alt={tag.name} style={coverStyle} loading="lazy" />
                   ) : (
                     <span className="character-placeholder">
                       <Icon name="users" size={28} />
@@ -201,7 +223,12 @@ export function CharactersView({ route }: { route: Route }) {
         <CharacterEditModal
           tag={editing}
           character={characterMap.get(editing.id)}
-          latest={data.find((d) => d.tag.id === editing.id)?.latest}
+          latest={editingEntry?.latest}
+          coverOptions={(editingEntry?.members ?? []).map((item) => ({
+            id: item.id,
+            thumb: `${BASE}${item.thumb}`,
+            label: `${effectiveDate(item, annotations[item.id]).iso || '日期待定'} · ${item.file}`,
+          }))}
           onClose={() => setEditing(null)}
           onSave={(patch, avatar) => {
             updateTag(editing.id, patch)
@@ -226,16 +253,20 @@ export function CharactersView({ route }: { route: Route }) {
   )
 }
 
+type CoverOption = { id: string; label: string; thumb: string }
+
 function CharacterEditModal({
   tag,
   character,
   latest,
+  coverOptions,
   onClose,
   onSave,
 }: {
   tag: Tag
   character?: Character
   latest?: DiaryItem
+  coverOptions: CoverOption[]
   onClose: () => void
   onSave: (patch: Partial<Pick<Tag, 'name' | 'color'>>, avatar?: Partial<Character>) => void
 }) {
@@ -244,6 +275,16 @@ function CharacterEditModal({
   const [note, setNote] = useState(character?.note ?? '')
   const [avatarDataUrl, setAvatarDataUrl] = useState(character?.avatarDataUrl ?? '')
   const [avatarItemId, setAvatarItemId] = useState(character?.avatarItemId ?? '')
+  const [coverItemId, setCoverItemId] = useState(character?.coverItemId ?? '')
+  const [crop, setCrop] = useState(() => ({
+    x: character?.coverCrop?.x ?? 50,
+    y: character?.coverCrop?.y ?? 50,
+    zoom: character?.coverCrop?.zoom ?? 1,
+  }))
+  const dragRef = useRef<{ px: number; py: number; x: number; y: number; w: number; h: number } | null>(null)
+
+  const clamp = (value: number) => Math.min(100, Math.max(0, value))
+  const patchCrop = (next: Partial<typeof crop>) => setCrop((prev) => ({ ...prev, ...next }))
 
   const upload = (file: File) => {
     const reader = new FileReader()
@@ -265,6 +306,63 @@ function CharacterEditModal({
     reader.readAsDataURL(file)
   }
 
+  const coverOption = coverOptions.find((option) => option.id === coverItemId)
+  const avatarOption = coverOptions.find((option) => option.id === avatarItemId)
+  const preset = presetAvatarPath(tag.id)
+  const avatarFallback = avatarDataUrl
+    ? avatarDataUrl
+    : avatarOption
+      ? avatarOption.thumb
+      : character?.avatar
+        ? `${BASE}${character.avatar}`
+        : preset
+          ? `${BASE}${preset}`
+          : latest
+            ? `${BASE}${latest.thumb}`
+            : ''
+  const previewSrc = coverOption ? coverOption.thumb : avatarFallback
+  const previewStyle = {
+    objectPosition: `${crop.x}% ${crop.y}%`,
+    transformOrigin: `${crop.x}% ${crop.y}%`,
+    transform: crop.zoom !== 1 ? `scale(${crop.zoom})` : undefined,
+  }
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    dragRef.current = {
+      px: event.clientX,
+      py: event.clientY,
+      x: crop.x,
+      y: crop.y,
+      w: rect.width,
+      h: rect.height,
+    }
+  }
+  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (!drag) return
+    patchCrop({
+      x: clamp(drag.x - ((event.clientX - drag.px) / Math.max(1, drag.w)) * 100),
+      y: clamp(drag.y - ((event.clientY - drag.py) / Math.max(1, drag.h)) * 100),
+    })
+  }
+  const stopDrag = () => {
+    dragRef.current = null
+  }
+  const onPreviewKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'ArrowLeft') patchCrop({ x: clamp(crop.x - 1) })
+    else if (event.key === 'ArrowRight') patchCrop({ x: clamp(crop.x + 1) })
+    else if (event.key === 'ArrowUp') patchCrop({ y: clamp(crop.y - 1) })
+    else if (event.key === 'ArrowDown') patchCrop({ y: clamp(crop.y + 1) })
+    else return
+    event.preventDefault()
+  }
+  const resetCover = () => {
+    setCoverItemId('')
+    setCrop({ x: 50, y: 50, zoom: 1 })
+  }
+
   return (
     <Modal title="编辑角色" onClose={onClose}>
       <div className="character-edit">
@@ -274,8 +372,8 @@ function CharacterEditModal({
               <img src={avatarDataUrl} alt="" />
             ) : character?.avatar ? (
               <img src={`${BASE}${character.avatar}`} alt="" />
-            ) : presetAvatarPath(tag.id) ? (
-              <img src={`${BASE}${presetAvatarPath(tag.id)}`} alt="" />
+            ) : preset ? (
+              <img src={`${BASE}${preset}`} alt="" />
             ) : latest ? (
               <img src={`${BASE}${latest.thumb}`} alt="" />
             ) : (
@@ -300,6 +398,87 @@ function CharacterEditModal({
           <span className="field-label">颜色</span>
           <input type="color" className="input" style={{ height: 36 }} value={color} onChange={(e) => setColor(e.target.value)} />
         </label>
+        <div className="field">
+          <span className="field-label">封面</span>
+          <div className="cover-editor">
+            <div
+              className="cover-editor-preview"
+              style={{ background: color }}
+              role="group"
+              aria-label="角色封面预览，可拖动或用方向键调整焦点"
+              tabIndex={0}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={stopDrag}
+              onPointerCancel={stopDrag}
+              onKeyDown={onPreviewKeyDown}
+            >
+              {previewSrc ? (
+                <img src={previewSrc} alt="" style={previewStyle} draggable={false} />
+              ) : (
+                <span className="cover-editor-empty">{name.slice(0, 1)}</span>
+              )}
+              <span className="cover-editor-hint">拖动调整焦点 · 方向键微调</span>
+            </div>
+            <div className="cover-editor-controls">
+              <label className="field">
+                <span className="field-label">封面来源</span>
+                <select className="select" value={coverItemId} onChange={(e) => setCoverItemId(e.target.value)}>
+                  <option value="">默认（预置头像 / 最近作品）</option>
+                  {coverOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="cover-editor-row">
+                <span>水平</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={crop.x}
+                  onChange={(e) => patchCrop({ x: Number(e.target.value) })}
+                />
+                <span className="num">{Math.round(crop.x)}%</span>
+              </label>
+              <label className="cover-editor-row">
+                <span>垂直</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={crop.y}
+                  onChange={(e) => patchCrop({ y: Number(e.target.value) })}
+                />
+                <span className="num">{Math.round(crop.y)}%</span>
+              </label>
+              <label className="cover-editor-row">
+                <span>缩放</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={1.6}
+                  step={0.01}
+                  value={crop.zoom}
+                  onChange={(e) => patchCrop({ zoom: Number(e.target.value) })}
+                />
+                <span className="num">{crop.zoom.toFixed(2)}×</span>
+              </label>
+              <div className="row row-wrap" style={{ gap: 8, alignItems: 'center' }}>
+                <button className="btn btn-sm btn-ghost" onClick={resetCover}>
+                  恢复默认
+                </button>
+                <span className="faint" style={{ fontSize: 11 }}>
+                  只调整显示位置，不修改图片文件
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
         <label className="field">
           <span className="field-label">备注</span>
           <textarea className="textarea" value={note} onChange={(e) => setNote(e.target.value)} />
@@ -340,6 +519,11 @@ function CharacterEditModal({
                 note,
                 avatarDataUrl: avatarDataUrl || undefined,
                 avatarItemId: avatarItemId || undefined,
+                coverItemId: coverItemId || undefined,
+                coverCrop:
+                  crop.x === 50 && crop.y === 50 && crop.zoom === 1
+                    ? undefined
+                    : { x: crop.x, y: crop.y, zoom: crop.zoom },
               },
             )
           }

@@ -133,6 +133,10 @@ export interface Character {
   avatar?: string
   /** 占位头像来源（URL 或站点名），便于替换时追溯 */
   avatarSource?: string
+  /** 图鉴封面指定作品；缺省沿用头像 / 预置 / 最近一张作品 */
+  coverItemId?: string
+  /** 图鉴封面焦点（object-position 百分比）与小范围缩放 */
+  coverCrop?: { x: number; y: number; zoom: number }
   note?: string
   createdAt: string
 }

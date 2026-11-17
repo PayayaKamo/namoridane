@@ -140,6 +140,19 @@ export function normalizeUserData(raw: unknown): UserData {
       if (typeof c.avatarDataUrl === 'string') character.avatarDataUrl = c.avatarDataUrl
       if (typeof c.avatar === 'string') character.avatar = c.avatar
       if (typeof c.avatarSource === 'string') character.avatarSource = c.avatarSource
+      if (typeof c.coverItemId === 'string') character.coverItemId = c.coverItemId
+      if (c.coverCrop && typeof c.coverCrop === 'object') {
+        const x = Number(c.coverCrop.x)
+        const y = Number(c.coverCrop.y)
+        const zoom = Number(c.coverCrop.zoom)
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          character.coverCrop = {
+            x: Math.min(100, Math.max(0, x)),
+            y: Math.min(100, Math.max(0, y)),
+            zoom: Number.isFinite(zoom) ? Math.min(2, Math.max(1, zoom)) : 1,
+          }
+        }
+      }
       if (typeof c.note === 'string') character.note = c.note
       if (c.avatarCrop && typeof c.avatarCrop === 'object') {
         character.avatarCrop = {
