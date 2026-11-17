@@ -11,6 +11,13 @@ Namori さん（Instagram [@namoridane](https://www.instagram.com/namoridane)）
 - **PC 優先**。ホーム・カレンダー・ギャラリー・閲覧・詳細はスマートフォン向けレイアウトも用意
 - UI は中国語、ブランド行は英語。プリセットキャラクター 17 体のプレースホルダーアバター付き
 
+## リンク
+
+- GitHub プロフィール — <https://github.com/payayakamo>
+- サイトのリポジトリ — <https://github.com/PayayaKamo/namoridane>
+- 小紅書（Xiaohongshu）· PayaYa — <https://xhslink.cn/o/AmThiRAG07o>
+- 小紅書（Xiaohongshu）· @PayayaKamo — <https://xhslink.cn/o/22fet2ONRIv>
+
 ---
 
 ## スクリーンショット

@@ -11,6 +11,13 @@
 - **桌面优先**，首页、日历、图库、翻阅和详情页都做了手机布局
 - 中文界面 + 英文品牌行；内置 17 个《摇曳百合》角色头像占位
 
+## 相关链接
+
+- GitHub 主页 — <https://github.com/payayakamo>
+- 站点仓库 — <https://github.com/PayayaKamo/namoridane>
+- 小红书 · PayaYa — <https://xhslink.cn/o/AmThiRAG07o>
+- 小红书 · @PayayaKamo — <https://xhslink.cn/o/22fet2ONRIv>
+
 ---
 
 ## 界面截图

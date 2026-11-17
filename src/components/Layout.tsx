@@ -347,6 +347,14 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
               站点仓库
               <Icon name="share" size={12} />
             </a>
+            <a className="site-footer-link" href="https://xhslink.cn/o/AmThiRAG07o" target="_blank" rel="noopener noreferrer">
+              小红书 · PayaYa
+              <Icon name="share" size={12} />
+            </a>
+            <a className="site-footer-link" href="https://xhslink.cn/o/22fet2ONRIv" target="_blank" rel="noopener noreferrer">
+              小红书 · @PayayaKamo
+              <Icon name="share" size={12} />
+            </a>
           </footer>
         </div>
       </div>

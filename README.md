@@ -11,6 +11,13 @@ A fully static, front-end-only site for browsing, curating and re-reading the da
 - **PC-first**, with phone layouts for home, calendar, gallery, reading and detail pages
 - Chinese UI with an English brand line; 17 placeholder character avatars from the *Yuru Yuri* cast
 
+## Links
+
+- GitHub profile — <https://github.com/payayakamo>
+- Site repository — <https://github.com/PayayaKamo/namoridane>
+- Xiaohongshu · PayaYa — <https://xhslink.cn/o/AmThiRAG07o>
+- Xiaohongshu · @PayayaKamo — <https://xhslink.cn/o/22fet2ONRIv>
+
 ---
 
 ## Screenshots
