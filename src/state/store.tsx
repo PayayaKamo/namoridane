@@ -15,6 +15,7 @@ import type {
   DiaryReviewStatus,
   Dimension,
   EffectiveDate,
+  ExternalLinkKind,
   ItemAnnotation,
   LibraryIndex,
   ReviewExportFile,
@@ -86,6 +87,7 @@ interface StoreValue {
   setExcluded: (ids: string[], value: boolean) => void
   setReviewStatus: (ids: string[], status: DiaryReviewStatus) => void
   setNote: (id: string, note: string) => void
+  setItemLink: (id: string, kind: ExternalLinkKind, url: string) => void
   setStudy: (id: string, patch: Partial<StudyNotes>) => void
   setCrop: (id: string, crop: CropParams) => void
   setDateOverride: (id: string, date: DateOverride | null) => void
@@ -349,6 +351,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const setNote = useCallback(
     (id: string, note: string) => patchItem(id, (a) => ({ ...a, note })),
+    [patchItem],
+  )
+
+  const setItemLink = useCallback(
+    (id: string, kind: ExternalLinkKind, url: string) =>
+      patchItem(id, (a) => {
+        const next = { ...a }
+        const value = url.trim()
+        if (value) next[kind] = value
+        else delete next[kind]
+        return next
+      }),
     [patchItem],
   )
 
@@ -920,6 +934,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setExcluded,
       setReviewStatus,
       setNote,
+      setItemLink,
       setStudy,
       setCrop,
       setDateOverride,
@@ -989,6 +1004,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setExcluded,
       setReviewStatus,
       setNote,
+      setItemLink,
       setStudy,
       setCrop,
       setDateOverride,

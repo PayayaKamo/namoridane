@@ -336,6 +336,8 @@ function prunePublicData(data) {
       updatedAt: ann.updatedAt || new Date().toISOString(),
     }
     if (ann.date?.confirmed) next.date = ann.date
+    if (ann.xiaohongshu) next.xiaohongshu = ann.xiaohongshu
+    if (ann.wechat) next.wechat = ann.wechat
     if (ann.translation) {
       next.translation = {
         source: ann.translation.source ?? '',

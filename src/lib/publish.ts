@@ -20,6 +20,8 @@ export function buildPublicData(data: UserData): UserData {
       updatedAt: ann.updatedAt,
     }
     if (ann.date?.confirmed) next.date = ann.date
+    if (ann.xiaohongshu) next.xiaohongshu = ann.xiaohongshu
+    if (ann.wechat) next.wechat = ann.wechat
     if (ann.translation) {
       next.translation = {
         source: ann.translation.source,

@@ -177,6 +177,10 @@ export function normalizeUserData(raw: unknown): UserData {
           transparent: a.crop.transparent !== false,
         }
       }
+      const xiaohongshu = str(a.xiaohongshu).trim()
+      if (xiaohongshu) ann.xiaohongshu = xiaohongshu
+      const wechat = str(a.wechat).trim()
+      if (wechat) ann.wechat = wechat
       const translation = normalizeTranslation(a.translation)
       if (translation) ann.translation = translation
       items[id] = ann
@@ -319,6 +323,8 @@ export function mergeUserData(current: UserData, incoming: UserData): UserData {
       date: ann.date ?? existing.date,
       study: ann.study ?? existing.study,
       crop: ann.crop ?? existing.crop,
+      xiaohongshu: ann.xiaohongshu || existing.xiaohongshu,
+      wechat: ann.wechat || existing.wechat,
     }
   }
 
@@ -356,6 +362,8 @@ export function annotationCount(data: UserData): number {
       a.translation ||
       a.date ||
       a.study ||
-      a.crop,
+      a.crop ||
+      a.xiaohongshu ||
+      a.wechat,
   ).length
 }

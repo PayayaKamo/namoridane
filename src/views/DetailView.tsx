@@ -10,9 +10,10 @@ import { DateEditor } from '../components/DateEditor'
 import { TagPicker, TagPill } from '../components/TagPicker'
 import { StickerEditor } from '../components/StickerEditor'
 import { formatBytes, originalUrl } from '../lib/image'
+import { extractShareUrl } from '../lib/utils'
 import { IS_PUBLIC } from '../lib/appMode'
 import { moveFilesToTrash } from '../lib/trash'
-import type { DiaryItem, StudyNotes, Translation } from '../types'
+import type { DiaryItem, ExternalLinkKind, StudyNotes, Translation } from '../types'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -31,6 +32,7 @@ export function DetailView({ itemId }: { itemId: string }) {
     toggleFavorite,
     setReviewStatus,
     setNote,
+    setItemLink,
     setStudy,
     setTranslation,
     setItemTags,
@@ -52,6 +54,10 @@ export function DetailView({ itemId }: { itemId: string }) {
   const [gray, setGray] = useState(false)
   const [mirror, setMirror] = useState(false)
   const [noteDraft, setNoteDraft] = useState('')
+  const [linkDrafts, setLinkDrafts] = useState<Record<ExternalLinkKind, string>>({
+    xiaohongshu: '',
+    wechat: '',
+  })
   const [studyDraft, setStudyDraft] = useState<StudyNotes>(EMPTY_STUDY)
 
   const annotation = item ? annotations[item.id] : undefined
@@ -87,6 +93,10 @@ export function DetailView({ itemId }: { itemId: string }) {
 
   useEffect(() => {
     setNoteDraft(annotation?.note ?? '')
+    setLinkDrafts({
+      xiaohongshu: annotation?.xiaohongshu ?? '',
+      wechat: annotation?.wechat ?? '',
+    })
     setStudyDraft(annotation?.study ? { ...EMPTY_STUDY, ...annotation.study } : EMPTY_STUDY)
     // 仅在切换作品时重置草稿
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,6 +109,23 @@ export function DetailView({ itemId }: { itemId: string }) {
     const timer = setTimeout(() => setNote(item.id, noteDraft), 500)
     return () => clearTimeout(timer)
   }, [noteDraft, item, annotation?.note, setNote])
+
+  const saveLink = (kind: ExternalLinkKind, raw: string) => {
+    if (!item) return
+    const value = raw.trim()
+    if (!value) {
+      setItemLink(item.id, kind, '')
+      setLinkDrafts((drafts) => ({ ...drafts, [kind]: '' }))
+      return
+    }
+    const url = extractShareUrl(value, kind)
+    if (!url) {
+      notify(kind === 'xiaohongshu' ? '未识别到小红书链接，请粘贴分享链接' : '未识别到公众号链接，请粘贴文章链接', 'error')
+      return
+    }
+    setItemLink(item.id, kind, url)
+    setLinkDrafts((drafts) => ({ ...drafts, [kind]: url }))
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -364,6 +391,36 @@ export function DetailView({ itemId }: { itemId: string }) {
                     )}
                   </section>
 
+                  {(annotation?.xiaohongshu || annotation?.wechat) && (
+                    <section className="detail-section">
+                      <div className="section-head">
+                        <h4>其他平台</h4>
+                      </div>
+                      <div className="row row-wrap" style={{ gap: 6 }}>
+                        {annotation?.xiaohongshu && (
+                          <a
+                            className="btn btn-sm btn-ghost"
+                            href={annotation.xiaohongshu}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            小红书<Icon name="right" size={12} />
+                          </a>
+                        )}
+                        {annotation?.wechat && (
+                          <a
+                            className="btn btn-sm btn-ghost"
+                            href={annotation.wechat}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            微信公众号<Icon name="right" size={12} />
+                          </a>
+                        )}
+                      </div>
+                    </section>
+                  )}
+
                   <section className="detail-section">
                     <div className="section-head">
                       <h4>标签</h4>
@@ -461,6 +518,63 @@ export function DetailView({ itemId }: { itemId: string }) {
                           onChange={(e) => setNoteDraft(e.target.value)}
                           onBlur={() => setNote(item.id, noteDraft)}
                         />
+                      </section>
+
+                      <section className="detail-section">
+                        <div className="section-head">
+                          <h4>同步链接</h4>
+                          <span className="faint">粘贴分享文案即可自动提取</span>
+                        </div>
+                        <div className="link-field">
+                          <span className="field-label">小红书链接</span>
+                          <div className="link-input-row">
+                            <input
+                              className="input"
+                              value={linkDrafts.xiaohongshu}
+                              placeholder="粘贴小红书分享文案或链接"
+                              onChange={(e) =>
+                                setLinkDrafts((drafts) => ({ ...drafts, xiaohongshu: e.target.value }))
+                              }
+                              onPaste={(e) => {
+                                const text = e.clipboardData.getData('text')
+                                if (!extractShareUrl(text, 'xiaohongshu')) return
+                                e.preventDefault()
+                                saveLink('xiaohongshu', text)
+                              }}
+                              onBlur={(e) => saveLink('xiaohongshu', e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                            />
+                            {linkDrafts.xiaohongshu && (
+                              <button className="btn btn-ghost btn-sm" onClick={() => saveLink('xiaohongshu', '')}>
+                                清空
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="link-field">
+                          <span className="field-label">公众号链接</span>
+                          <div className="link-input-row">
+                            <input
+                              className="input"
+                              value={linkDrafts.wechat}
+                              placeholder="粘贴公众号文章链接"
+                              onChange={(e) => setLinkDrafts((drafts) => ({ ...drafts, wechat: e.target.value }))}
+                              onPaste={(e) => {
+                                const text = e.clipboardData.getData('text')
+                                if (!extractShareUrl(text, 'wechat')) return
+                                e.preventDefault()
+                                saveLink('wechat', text)
+                              }}
+                              onBlur={(e) => saveLink('wechat', e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                            />
+                            {linkDrafts.wechat && (
+                              <button className="btn btn-ghost btn-sm" onClick={() => saveLink('wechat', '')}>
+                                清空
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </section>
                     </>
                   )}

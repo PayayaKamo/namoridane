@@ -177,6 +177,8 @@ export interface Storyline {
   updatedAt: string
 }
 
+export type ExternalLinkKind = 'xiaohongshu' | 'wechat'
+
 export interface ItemAnnotation {
   tags: string[]
   favorite: boolean
@@ -192,6 +194,10 @@ export interface ItemAnnotation {
   date?: DateOverride
   study?: StudyNotes
   crop?: CropParams
+  /** 小红书跳转链接；只存 URL，没有发布时为空 */
+  xiaohongshu?: string
+  /** 微信公众号跳转链接；只存 URL，没有发布时为空 */
+  wechat?: string
   updatedAt: string
 }
 

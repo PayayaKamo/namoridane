@@ -1126,6 +1126,21 @@
   margin-top: 10px;
 }
 
+.link-field + .link-field {
+  margin-top: 12px;
+}
+
+.link-input-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.link-input-row .input {
+  flex: 1;
+  min-width: 0;
+}
+
 .tag-picker-wrap {
   margin-top: 10px;
   padding: 10px;
