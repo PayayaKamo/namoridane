@@ -2,14 +2,20 @@
 
 [English](README.md) · [中文](README.zh-CN.md) · [日本語](README.ja.md)
 
+> 界面提供中文、日文、英文三种语言，文中引用的是中文界面文案。中文界面站名为「水母绘日记」，日文与英文界面统一使用 **Namori Diary**。
+
 一个纯静态、无后端的前端站点，用来浏览、整理和重读 Namori（[@namoridane](https://www.instagram.com/namoridane)）在 Instagram 发布的每日手绘「绘日记」。
 
-- **收录 1,123 张图**（2021-03 → 2025）：其中 1,037 张确认为绘日记，86 张确认为非绘日记
+- **收录 1,123 张图**（2021-03 → 2025）：其中 1,037 张确认为绘日记，86 张确认为非绘日记；公开端只收录那 1,037 张
 - **一套代码两种构建**：完整的本地 **管理端** 和只读的 **公开端**
+- **三语界面**（中 / 日 / 英）：跟随浏览器语言，可随时手动切换并按浏览器记住
+- **每张作品独立地址**：History 路由、预渲染静态页与 `404.html` 回退，深链在 GitHub Pages 上也能直接打开
 - **本地优先**：标注数据保存在 `localStorage`，可导出 / 导入 JSON；没有后端、数据库和账号
+- **纯前端搜索**：多字段、多关键词、错字容错，命中片段高亮，支持键盘操作与最近搜索
+- **流式批量下载**：选中的原图自动分卷打包为 ZIP，带进度与取消
 - **默认暗色主题**，切到亮色后按浏览器记住选择
 - **桌面优先**，首页、日历、图库、翻阅和详情页都做了手机布局
-- 中文界面 + 英文品牌行；内置 17 个《摇曳百合》角色头像占位
+- 内置 17 个《摇曳百合》角色头像占位
 
 ## 相关链接
 
@@ -60,6 +66,9 @@ start.cmd
 ```bash
 npm install
 npm run dev          # 增量生成索引后启动 http://localhost:5173/
+npm run lint         # ESLint 检查 src/、scripts/ 与 tests/
+npm run typecheck    # tsc -b
+npm test             # Vitest 运行
 npm run build:admin  # 本地管理端 -> dist/
 npm run build:public # 只读公开端 -> dist/
 npm run preview      # 预览上一次构建
@@ -79,8 +88,11 @@ npm run preview      # 预览上一次构建
 | `npm run import:data -- <file.json> --target=public\|review` | 把导出的 JSON 反向写入 `data/public.json` 或 `data/userdata.json`（校验 + 备份） |
 | `npm run ocr` | 可选的 Windows 专用 OCR，为审核页预填日期线索（`data/ocr.json`） |
 | `npm run dev` | 先跑 `data`，再启动 Vite 开发服务器（管理端） |
+| `npm run lint` | 用 ESLint 检查 `src/`、`scripts/` 与 `tests/` |
+| `npm run typecheck` | TypeScript 项目检查（`tsc -b`，不产出文件） |
+| `npm test` / `npm run test:watch` | Vitest：筛选、用户数据、索引日期与公开数据裁剪 |
 | `npm run build:admin` | 管理端构建：`data` + 类型检查 + `vite build --mode admin` |
-| `npm run build:public` | 公开端构建：`data --mode=public` + 类型检查 + `vite build --mode public` |
+| `npm run build:public` | 公开端构建：`data --mode=public` + 类型检查 + `vite build --mode public` + 预渲染页面、sitemap 与 `404.html` |
 | `npm run purge` | 永久删除 `images/_trash/` 里等待清理的原图 |
 | `npm run preview` | 预览 `dist/` |
 | `npm run deploy` | `build:public` 后把 `dist/` 推到 `gh-pages` 分支 |
@@ -99,11 +111,32 @@ npm run preview      # 预览上一次构建
 | 故事线搭建（含 shortcode 建线） | 有 | 只读阅读 |
 | 合集、导入导出、排除区、批量操作 | 有 | 无 |
 | 本地 JSON 写回 | 仅 dev server | 不参与编译 |
+| 收录条目 | 全部 1,123 条 | 仅 1,037 条已确认绘日记 |
+| 界面语言 | 中文 / 日文 / 英文 | 中文 / 日文 / 英文 |
+| 深链 | dev server 回退 | 每个栏目与作品都有预渲染 HTML，另有 `404.html` |
 | 未确认日期 | 作为推测供审核 | 只展示已确认日期 |
 
 管理端专属视图通过编译期守卫懒加载，公开包中不存在管理路由、表单、删除接口或本地写回代码；隐藏发生在组件层面，而不是 CSS。
 
 公开端的空状态一律使用访客文案（「正在整理中，敬请期待」），不出现面向管理员的指引。
+
+---
+
+## 界面语言
+
+所有界面文案都来自 `src/i18n/messages/` 下的中文、日文、英文词条。语言按以下顺序确定：已保存的 `namori.locale`，其次 `navigator.languages`，最后回退到中文。切换语言会立即更新 `<html lang>` 与页面标题，并写入 `localStorage`；侧栏底部是完整切换器，顶栏提供一个紧凑的循环切换。
+
+中文界面站名为「水母绘日记」，日文与英文界面统一显示 **Namori Diary**。数字与日期按当前语言用 `Intl` 格式化，管理端与公开端共用同一套语言选择。
+
+---
+
+## 网址、静态页面与 SEO
+
+导航使用 History API 而不是 hash。每张作品都有独立地址 `/item/<id>/`，主要栏目为 `/`、`/calendar`、`/gallery`、`/reader`、`/search`、`/characters`、`/stats`、`/storylines` 与 `/about`；管理端另有 `/tags`、`/collections`、`/diary-review`、`/review` 和 `/data`。
+
+旧的 `#/item/<id>`、`#/gallery` 等链接在打开时会用 `history.replaceState` 原地改写成新地址（不新增历史记录），页面内的 `href="#/…"` 也会被接管，因此旧分享链接继续可用。
+
+`npm run build:public` 会为每个栏目和每张作品生成独立目录（共 1,037 个作品页），并把对应栏目的 `title`、`description`、canonical、Open Graph 与 JSON-LD 写进 HTML。构建还会输出 `sitemap.xml`（首页、主要栏目、全部作品，含图片条目），并把同一份模板复制为 `404.html`，作为 GitHub Pages 上未知路径在客户端路由接管前的回退。
 
 ---
 
@@ -129,7 +162,7 @@ npm run import:data -- "C:\Users\me\Downloads\namori-diary-review.json" --target
 
 非法或不匹配的数据会直接报错，不会覆盖现有文件；写入前同样会备份。
 
-`data/public.json` 只保留公开字段：备注、拆解笔记、翻译草稿都会被裁剪，日期也只导出已确认项。本地数据比上次导出新时，管理端会显示 **有未发布的修改**。
+`data/public.json` 只保留公开字段：备注、拆解笔记、翻译草稿都会被裁剪，日期也只导出已确认项。86 张确认为非绘日记的图片会记入 `excludedIds`，因此公开构建只索引 1,037 条而不是 1,123 条，另外 86 张不会进入公开端。本地数据比上次导出新时，管理端会显示 **有未发布的修改**。
 
 ---
 
@@ -149,26 +182,34 @@ namoridane/
 ├─ public/
 │  ├─ namori_icon.webp      # 站点图标（另有 PNG 32/48/180/192 与 ICO 回退）
 │  ├─ characters/           # 预置角色的 512×512 头像占位
+│  ├─ wechat-qr.webp        # 微信公众号二维码（关于页）
+│  ├─ og-cover.jpg          # Open Graph 封面图
+│  ├─ robots.txt            # 爬虫规则
+│  ├─ sitemap.xml           # 基础 sitemap，build:public 时重写
 │  ├─ images/thumb/         # 480px WebP 缩略图（生成，gitignored）
 │  ├─ images/large/         # 1400px WebP 大图（生成，gitignored）
 │  ├─ images/original/      # 供下载的原图副本（生成，gitignored）
 │  └─ data/index.json       # 条目索引（生成，gitignored）
 ├─ scripts/
 │  ├─ build-index.mjs       # 原图 → 派生图 → 索引 → 种子
+│  ├─ build-static-pages.mjs # 栏目/作品 HTML、元信息、sitemap 与 404.html
 │  ├─ import-images.mjs     # 新图片批次的增量导入
 │  ├─ import-data.mjs       # 导出 JSON → data/*.json（校验 + 备份）
 │  ├─ ocr-dates.mjs         # 可选日期 OCR（仅 Windows）
 │  └─ purge-trash.mjs       # 永久清空 images/_trash
 ├─ src/
-│  ├─ components/           # Layout / ItemCard / TagPicker / CharacterPicker / 各种编辑器
-│  ├─ lib/                  # router、dates、filtering、storage、publish、trash、canvas
+│  ├─ components/           # Layout / LocaleSwitch / SearchBar / ItemCard / 各种选择器
+│  ├─ i18n/                 # 语言检测与中 / 日 / 英文词条
+│  ├─ lib/                  # router、dates、filtering、storage、publish、trash、canvas、
+│  │                        # search、流式 ZIP、SEO
 │  ├─ state/store.tsx       # 全局状态 + localStorage 持久化
 │  ├─ views/                # home、calendar、gallery、detail、review、date-find、characters、
-│  │                        # storylines、translations、stats、data
+│  │                        # storylines、translations、stats、data、search、about
 │  ├─ styles.css
 │  └─ styles-views.css
+├─ tests/                   # Vitest：筛选、用户数据、索引日期、公开数据
 ├─ vite.config.ts           # 本地写回用的 dev 专用中间件
-└─ .github/workflows/deploy.yml
+└─ .github/workflows/       # ci.yml（质量闸门）与 deploy.yml（Pages）
 ```
 
 ---
@@ -178,24 +219,27 @@ namoridane/
 | 模块 | 说明 |
 | --- | --- |
 | 品牌与主题 | 站点图标 `namori_icon.webp`（WebP 主图标，PNG/ICO 回退）；站名「水母绘日记 / Namori Diary」；默认暗色且首屏不闪白，切过亮色后按浏览器记住 |
+| 界面语言 | 完整的中 / 日 / 英文词条；语言取自保存的选择或浏览器偏好，可在侧栏切换、也可用顶栏的紧凑循环切换，按浏览器记住；`<html lang>`、页面标题与 `Intl` 格式随之变化 |
+| 网址与分享 | History 路由，每张作品独立地址 `/item/<id>/`；旧 `#/…` 链接原地改写；预渲染页面带 canonical、Open Graph 与 JSON-LD，另有 `sitemap.xml` 与 `404.html` 回退 |
 | 首页 | 作品总数与覆盖年份；**每日一图取同月同日、年份不限**（同一天内确定性选中），卡片标出「某年某月某日」，没有同月同日时回退最近一张已确认绘日记；年度与标签概览 |
 | 画历 | 带缩略图的月网格；标题两侧上/下年按钮与 `←` / `→` 切换年份（月份由下方选择器负责，输入框聚焦时不拦截）；月份标题与统计行吸顶；从最早数据年到当前年的连续年份选项卡；首次进入自动定位到有内容的月份（优先同月份的最近年份，其次最近月份），用户手动选择后不再自动跳转 |
-| 图库 | 按月份分组的懒加载瀑布流；按有效日期排序；收藏 / 待校对 / 翻译状态筛选；多选批量操作（标签、人物、合集、故事线、原图 ZIP） |
-| 详情 | 大图与上一张 / 下一张；发布日期与日记日期分开；原文案与原帖 permalink；小红书 / 公众号链接有值才显示；尺寸、体积、文件名、shortcode；下载；标签、备注、收藏；**出场人物** 芯片选择器 |
+| 图库 | 按月份分组的懒加载瀑布流；按有效日期排序；收藏 / 待校对 / 翻译状态筛选；多选批量操作（标签、人物、合集、故事线），以及流式原图 ZIP 下载：显示进度、可取消，按最多 100 张或 100 MB 自动分卷 |
+| 详情 | 大图与上一张 / 下一张；发布日期与日记日期分开；原文案与原帖 permalink；小红书 / 公众号链接有值才显示；尺寸、体积、文件名、shortcode；下载；标签、备注、收藏；人物芯片选择器 |
 | 出场人物标注 | 复用 `character` 标签维度：可搜索芯片，点选即标记、再点取消，已选排前并高亮，支持 `↑`/`↓` + `Enter`，可就地新建角色；图库多选可批量添加 / 移除同一组角色；角色页出场统计实时更新 |
 | 角色图鉴 | 17 个预置头像 + 自建角色；名称、颜色、从图片裁头像或上传；累计出场与最近出场；按角色浏览图库 |
 | 翻阅 | 全屏顺序阅读，控制条自动隐藏并支持 Fullscreen API；分段 **全部 / 绘日记**，默认「绘日记」并在手动切换后记住；切换范围时定位到最近条目，不会空白 |
 | 按日期查 | 在搜索框输入 `20261117`、`2026-11-17`、`11-17` 或 `11/17`，或点画历某天。结果为纵向单列卡片：日期与星期、发布日期、可复制的 shortcode、原帖 permalink、可折叠原文案、小红书 / 公众号链接；同一日期跨年份时按年纵向排列；支持多选与分享链接 |
 | 故事线 | 卡片含封面、标题、简介、张数、日期范围与最近编辑；**按 shortcode 建线**（换行、空格、逗号或完整 Instagram 链接，重复会提示，创建前预览顺序与未匹配项，创建后可调序）；章节备注、封面、标签、连续或滑动阅读、JSON/HTML 导出 |
-| 绘日记审核 | 待审 / 绘日记 / 非绘日记 / 全部 队列；大图审核；OCR 候选与裁切预览；推断日期 = 发布日 − 1 天；一键确认；`N` 标非绘日记；`←`/`→` 翻页；进度与剩余数；导出审核 JSON |
+| 绘日记审核 | 待审 / 绘日记 / 非绘日记 / 全部 队列；大图审核；OCR 候选与裁切预览；推断日期 = 发布日 − 1 天；一键确认；`N` 标非绘日记；`←`/`→` 翻页；进度与剩余数；导出审核 JSON；`/diary-review` 是真实地址 |
 | OCR | `npm run ocr` 识别画面上的手写日期并写入 `data/ocr.json`，审核页展示最多三个候选与置信度；仅 Windows、可选，只对清晰的日期文字有效 |
-| 搜索与筛选 | 关键词（标签 / 备注）、日期范围、年 / 月、合集、收藏、翻译状态；维度内 AND/OR；公开端隐藏备注类与「只看未校对」控件 |
+| 搜索与筛选 | 多字段搜索（文案、shortcode、标签、人物、备注、翻译、日期、拆解笔记、合集、文件名）；最多 6 个关键词，按空格或标点切分，默认 AND，无结果时给出放宽建议；错字容错模糊匹配；命中片段高亮；`↑`/`↓` + `Enter` + `Esc` 键盘操作；保留最近 8 次搜索并可清空；可与日期范围、年 / 月、合集、收藏、翻译状态组合，公开端隐藏备注类与「只看未校对」控件 |
 | 标签 | 五个内置维度 + 自定义维度；增删改、颜色、使用计数、批量打标签 |
 | 翻译 | 日文原文 + 多语言槽位；OCR 草稿供校对；已译 / 未译筛选；CSV/JSON 导入导出 |
 | 合集 | 命名合集、多选加入、拖拽排序、封面、浏览、导出 md/json/csv |
 | 临摹拆解 | 构图 / 配色 / 线条 / 表情备注，自动取色，相似图推荐 |
-| 统计 | 总数、作画天数、最长连续、审核进度；月度柱状、年度概览、标签与颜色分布 |
-| 数据与设置 | 完整 JSON 导入导出、审核 JSON、翻译 CSV/JSON、发布种子导出、**仅 dev 的本地写回**、待清理列表、重置、schema 与快捷键 |
+| 统计洞察 | 概览卡片（作品数、作画天数、最长连续、审核进度）；月度柱状、年度概览与标签分布；角色排行；**人物组合** 环形图，分「单人 / 双人 / 多人」标签页并写明统计口径；**角色共现矩阵** 可在 10 / 20 个角色间切换（手机上固定 10），颜色越深共现越多，附最高共现组合，点格子可筛选；每位角色的 **首末登场** 并可跳转到对应作品；**标签演变** 按年统计，每个维度取前 8；**文本画像** 统计文案长度、高频词与 emoji；**数据可信度** 展示已确认 / 推断 / 缺失占比与跨月、跨年提示 |
+| 关于与联系 | 关于页提供 GitHub 主页、站点仓库、两个小红书账号与微信公众号二维码（悬停或点击展开）；站点信息列出版本号、构建时间、作品数、覆盖年份、角色数与标签数；页脚重复 GitHub 与小红书入口 |
+| 数据与设置 | 完整标注 JSON 导入导出（合并或替换）、审核 JSON、翻译 CSV/JSON、发布种子导出、**仅 dev 的本地写回**、本地存储用量、待清理列表、重置、schema 与快捷键；当存储已满、损坏或不可用时，横幅会说明原因并提供 **导出完整标注 JSON** 与 **重试保存** |
 | 手机布局 | 可收缩的顶栏搜索、仍显示缩略图的紧凑画历、整行等分的翻阅分段控件、不使用固定 100vh、触摸时无蓝色高亮 |
 
 ### 键盘快捷键
@@ -205,6 +249,7 @@ namoridane/
 | `←` / `→` | 详情与翻阅中切换上一张 / 下一张；画历中切换上 / 下一年（输入框聚焦时不拦截） |
 | `Esc` | 关闭详情、弹窗或手机搜索面板 |
 | `/` | 聚焦全局搜索 |
+| `↑` / `↓` | 搜索框展开时在候选间上下移动 |
 | `R` | 随机一张 |
 | `F` | 收藏当前图 |
 | `Enter` | 审核页确认并前进；选择器中按输入新建或添加 |
@@ -249,7 +294,7 @@ unknown-<原始文件名>.jpg
 
 ```jsonc
 {
-  "version": 7,
+  "version": 9,
   "generatedAt": "2026-11-17T00:00:00.000Z",
   "datasetId": "…",
   "count": 1123,
@@ -261,6 +306,8 @@ unknown-<原始文件名>.jpg
       "file": "2021-06-01-CPlLQUStuZq.jpg",
       "postIndex": 0,
       "postCount": 1,
+      "category": "diary",                 // diary = 已确认绘日记，other = 已确认为非绘日记
+      "includedInPublic": true,            // 86 张非绘日记为 false
       "publishedAt": "2021-06-01",
       "dateKnown": true,
       "inferredYear": 2021,
@@ -279,6 +326,8 @@ unknown-<原始文件名>.jpg
   ]
 }
 ```
+
+`category` / `includedInPublic` 来自 `data/public.json` 的审核结论（`excludedIds`）：管理端构建保留全部 1,123 条，公开端构建会过滤掉所有 `includedInPublic: false` 的条目，因此只索引 1,037 张已确认绘日记。
 
 公开模式下会剥离 `inferred*`、`ocr`、`suggestedDiaryDate`，但保留 `caption` 与 `shortcode`，供详情页显示原文案与原帖。
 
@@ -359,7 +408,7 @@ npm run import -- "C:\path\to\new\images"
 
 ## 审核绘日记日期（原图永不修改）
 
-1. 在管理端打开 **绘日记审核**（`#/diary-review`）。
+1. 在管理端打开 **绘日记审核**（`/diary-review`）；旧的 `#/diary-review` 会自动改写。
 2. 有 OCR 结果时预填候选，否则预填 **发布日 − 1 天** 并标注 **推测**。
 3. 按 `Enter` 确认并跳到下一张；按 `N` 标记为非绘日记；用 `←` / `→` 翻页。
 4. 进度行显示 已确认 / 总数 与剩余数。
@@ -381,13 +430,28 @@ npm run import -- "C:\path\to\new\images"
 
 ---
 
+## 质量闸门
+
+以下四条命令在本地与 CI 中完全一致：
+
+| 命令 | 检查内容 |
+| --- | --- |
+| `npm run lint` | 用 ESLint 检查应用、脚本与测试 |
+| `npm run typecheck` | TypeScript 项目检查（不产出文件） |
+| `npm test` | 4 个 Vitest 套件、50 个用例：图库筛选、用户数据规范化、索引日期推断与公开数据裁剪 |
+| `npm run build:public` | 与实际部署完全一致的产物，含数据裁剪、预渲染页面与 sitemap |
+
+`.github/workflows/ci.yml` 会在每个 Pull Request 以及非 `main` 分支的推送时运行上述流程；`.github/workflows/deploy.yml` 在 `main` 上再跑一遍后才上传 Pages 产物，任何一步失败都会阻止部署。
+
+---
+
 ## 部署到 GitHub Pages
 
 仓库：<https://github.com/PayayaKamo/namoridane.git>
 
 `vite.config.ts` 使用 `base: './'`，因此无需改动即可部署在 `https://<user>.github.io/<repo>/` 下。
 
-`.github/workflows/deploy.yml` 会在每次推送 `main` 时运行 `npm run build:public` 并发布 `dist/`。
+`.github/workflows/deploy.yml` 先跑质量闸门，再用 `npm run build:public` 构建，把 `dist/` 作为 Pages 产物上传，并通过 `actions/deploy-pages` 发布。产物包含每个栏目与每张作品的 HTML，以及 `sitemap.xml`、`robots.txt` 和 `404.html` 回退。
 
 1. 仓库 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**。
 2. 推送 `main` 并等待工作流完成。
@@ -402,6 +466,8 @@ npm run import -- "C:\path\to\new\images"
 - OCR 可选且仅支持 Windows（PowerShell WinRT，无额外依赖），只是审核辅助，日期始终由人工确认。
 - Instagram 评论没有抓取，站点不会伪造评论，也不会留下空评论区。
 - 日期只有在确认后才会发布，推测永远不会以事实形式出现在公开端。
+- 语言按浏览器选择（`namori.locale`）或浏览器偏好决定，没有服务端语言协商。
+- 标注数据受浏览器 `localStorage` 容量限制。管理端会显示当前用量，保存失败时提示并提供 JSON 备份；数据较多时应及时导出并清理。
 - 部署产物包含原图与 WebP 派生图（约 260 MB）。如需更轻量，可在 `scripts/build-index.mjs` 调整大图尺寸或去掉原图，代价是失去下载功能。
 
 ---
