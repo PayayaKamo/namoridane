@@ -162,6 +162,7 @@ export const detail = {
   translation: {
     translated: '已翻译',
     untranslated: '未翻译',
+    emptyPublic: '暂无翻译。',
     save: '保存翻译',
     saved: '翻译已保存',
     cleared: '已清空这张图的翻译',

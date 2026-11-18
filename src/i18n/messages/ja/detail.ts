@@ -164,6 +164,7 @@ export const detail: DetailMessages = {
   translation: {
     translated: '翻訳済み',
     untranslated: '未翻訳',
+    emptyPublic: '翻訳はまだありません。',
     save: '翻訳を保存',
     saved: '翻訳を保存しました',
     cleared: 'この画像の翻訳を消去しました',

@@ -973,17 +973,48 @@ function TranslationPanel({
     setSlots((prev) => [...prev, { lang: nextLang, label, text: '' }])
   }
 
+  // 公开端只读展示译文；没有译文时给出占位提示，不渲染任何输入控件
+  if (readOnly) {
+    return (
+      <div className="translation-panel">
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <span className={`badge ${translated ? 'badge-sage' : 'badge-accent'}`}>
+            {translated ? t('detail.translation.translated') : t('detail.translation.untranslated')}
+          </span>
+        </div>
+        {translated ? (
+          <>
+            {source.trim() ? (
+              <div className="translation-field">
+                <span className="field-label">{t('detail.translation.sourceLabel')}</span>
+                <p className="translation-readonly">{source}</p>
+              </div>
+            ) : null}
+            {slots
+              .filter((slot) => slot.text.trim())
+              .map((slot) => (
+                <div key={slot.lang} className="translation-field">
+                  <span className="field-label">{slot.label}</span>
+                  <p className="translation-readonly">{slot.text}</p>
+                </div>
+              ))}
+          </>
+        ) : (
+          <p className="translation-empty">{t('detail.translation.emptyPublic')}</p>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="translation-panel">
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <span className={`badge ${translated ? 'badge-sage' : 'badge-accent'}`}>
           {translated ? t('detail.translation.translated') : t('detail.translation.untranslated')}
         </span>
-        {!readOnly && (
-          <button className="btn btn-primary btn-sm" onClick={save}>
-            {t('detail.translation.save')}
-          </button>
-        )}
+        <button className="btn btn-primary btn-sm" onClick={save}>
+          {t('detail.translation.save')}
+        </button>
       </div>
 
       <label className="translation-field">
@@ -992,12 +1023,11 @@ function TranslationPanel({
           className="textarea"
           placeholder={t('detail.translation.sourcePlaceholder')}
           value={source}
-          readOnly={readOnly}
           onChange={(e) => setSource(e.target.value)}
         />
       </label>
 
-      {!readOnly && draft && (
+      {draft && (
         <div className="translation-draft">
           <button className="btn btn-ghost btn-sm" onClick={() => setDraftOpen((v) => !v)}>
             {draftOpen ? t('detail.translation.hideDraft') : t('detail.translation.showDraft')}
@@ -1020,21 +1050,18 @@ function TranslationPanel({
         <label key={`${slot.lang}-${index}`} className="translation-field">
           <span className="row" style={{ justifyContent: 'space-between' }}>
             <span className="field-label">{slot.label}</span>
-            {!readOnly && (
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => setSlots((prev) => prev.filter((_, i) => i !== index))}
-                type="button"
-              >
-                {t('detail.translation.removeLanguage')}
-              </button>
-            )}
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => setSlots((prev) => prev.filter((_, i) => i !== index))}
+              type="button"
+            >
+              {t('detail.translation.removeLanguage')}
+            </button>
           </span>
           <textarea
             className="textarea"
             placeholder={t('detail.translation.slotPlaceholder', { label: slot.label })}
             value={slot.text}
-            readOnly={readOnly}
             onChange={(e) =>
               setSlots((prev) => prev.map((s, i) => (i === index ? { ...s, text: e.target.value } : s)))
             }
@@ -1042,11 +1069,9 @@ function TranslationPanel({
         </label>
       ))}
 
-      {!readOnly && (
-        <button className="btn btn-sm" onClick={addSlot}>
-          <Icon name="plus" size={13} />{t('detail.translation.addLanguage')}
-        </button>
-      )}
+      <button className="btn btn-sm" onClick={addSlot}>
+        <Icon name="plus" size={13} />{t('detail.translation.addLanguage')}
+      </button>
     </div>
   )
 }
