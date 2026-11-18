@@ -12,6 +12,13 @@ const BASE = import.meta.env.BASE_URL
 const CAST_RADIUS = 62
 const CAST_CIRC = 2 * Math.PI * CAST_RADIUS
 const COOC_LIMIT = 10
+const TEXT_BUCKET_KEYS = [
+  'stats.text.bucket.none',
+  'stats.text.bucket.short',
+  'stats.text.bucket.medium',
+  'stats.text.bucket.long',
+  'stats.text.bucket.veryLong',
+] as const
 
 export function StatsView() {
   const {
@@ -29,6 +36,7 @@ export function StatsView() {
   const { t } = useI18n()
   const [openDims, setOpenDims] = useState<Record<string, boolean>>({})
   const [hoveredCast, setHoveredCast] = useState<'single' | 'double' | 'multi' | null>(null)
+  const [evoDim, setEvoDim] = useState('')
   const [castTab, setCastTab] = useState<'single' | 'double' | 'multi'>(() => {
     const saved = localStorage.getItem('namori.stats.castTab')
     return saved === 'double' || saved === 'multi' ? saved : 'single'
@@ -311,6 +319,121 @@ export function StatsView() {
       return entry ? [{ id: row.id, ...entry }] : []
     })
   }, [characterRank, castItems, annotations, tags, getDate])
+
+  // 标签演变：选中维度下各标签按年份的出现次数
+  const activeEvoDim =
+    dimensions.find((dim) => dim.id === evoDim) ??
+    dimensions.find((dim) => dim.id !== 'character') ??
+    dimensions[0]
+  const evolution = useMemo(() => {
+    if (!activeEvoDim) return null
+    const dimTags = tags.filter((tag) => tag.dimensionId === activeEvoDim.id)
+    const dimTagIds = new Set(dimTags.map((tag) => tag.id))
+    const years = yearCounts.map(([y]) => y)
+    const byTag = new Map<string, Map<number, number>>()
+    for (const item of items) {
+      const y = getDate(item).year
+      if (!y) continue
+      for (const id of new Set(annotations[item.id]?.tags ?? [])) {
+        if (!dimTagIds.has(id)) continue
+        const counts = byTag.get(id) ?? new Map<number, number>()
+        counts.set(y, (counts.get(y) ?? 0) + 1)
+        byTag.set(id, counts)
+      }
+    }
+    const rows = dimTags
+      .map((tag) => {
+        const counts = byTag.get(tag.id)
+        const total = counts ? [...counts.values()].reduce((sum, n) => sum + n, 0) : 0
+        return { tag, total, byYear: years.map((y) => counts?.get(y) ?? 0) }
+      })
+      .filter((row) => row.total > 0)
+      .sort((a, b) => b.total - a.total || a.tag.name.localeCompare(b.tag.name))
+      .slice(0, 8)
+    const max = Math.max(1, ...rows.flatMap((row) => row.byYear))
+    return { dim: activeEvoDim, years, rows, max }
+  }, [activeEvoDim, tags, items, annotations, getDate, yearCounts])
+
+  // 文本画像：文案长度、高频词与 emoji（基于原始 caption，不做翻译）
+  const textProfile = useMemo(() => {
+    type SegmenterLike = {
+      segment: (input: string) => Iterable<{ segment: string; isWordLike?: boolean }>
+    }
+    const SegmenterCtor = (
+      Intl as unknown as {
+        Segmenter?: new (locales?: string, options?: { granularity: 'word' }) => SegmenterLike
+      }
+    ).Segmenter
+    const segmenter = SegmenterCtor ? new SegmenterCtor(undefined, { granularity: 'word' }) : null
+    const buckets = [0, 0, 0, 0, 0]
+    const wordCounts = new Map<string, number>()
+    const emojiCounts = new Map<string, number>()
+    const stopWords = new Set([
+      'です', 'ます', 'ました', 'して', 'から', 'まで', 'より', 'など', 'よう', 'こと', 'もの',
+      'これ', 'それ', 'あれ', '今日', '明日', '昨日',
+      'the', 'and', 'for', 'with', 'this', 'that', 'from', 'you', 'are',
+    ])
+    let captions = 0
+    for (const item of items) {
+      const caption = (item.caption ?? '').trim()
+      if (!caption) {
+        buckets[0]++
+        continue
+      }
+      captions++
+      const length = [...caption].length
+      if (length <= 20) buckets[1]++
+      else if (length <= 50) buckets[2]++
+      else if (length <= 100) buckets[3]++
+      else buckets[4]++
+      for (const emoji of caption.match(/\p{Extended_Pictographic}\uFE0F?/gu) ?? []) {
+        emojiCounts.set(emoji, (emojiCounts.get(emoji) ?? 0) + 1)
+      }
+      const addWord = (raw: string) => {
+        const word = raw.trim()
+        if (word.length < 2 || stopWords.has(word.toLowerCase())) return
+        wordCounts.set(word, (wordCounts.get(word) ?? 0) + 1)
+      }
+      if (segmenter) {
+        for (const part of segmenter.segment(caption)) {
+          if (part.isWordLike) addWord(part.segment)
+        }
+      } else {
+        const fallback =
+          caption.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]{2,}|[A-Za-z][A-Za-z']{2,}/gu) ?? []
+        for (const word of fallback) addWord(word)
+      }
+    }
+    const top = (counts: Map<string, number>, limit: number) =>
+      [...counts.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, limit)
+        .map(([text, count]) => ({ text, count }))
+    return {
+      buckets,
+      captions,
+      words: top(wordCounts, 16),
+      emojis: top(emojiCounts, 12),
+    }
+  }, [items])
+
+  // 数据可信度：确认/推断/无日期比例，以及跨月、跨年提示数量
+  const trust = useMemo(() => {
+    let confirmed = 0
+    let inferred = 0
+    let missing = 0
+    let rolloverMonth = 0
+    let rolloverYear = 0
+    for (const item of items) {
+      const d = getDate(item)
+      if (!d.iso) missing++
+      else if (d.confirmed) confirmed++
+      else inferred++
+      if (item.rollover === 'month') rolloverMonth++
+      else if (item.rollover === 'year') rolloverYear++
+    }
+    return { confirmed, inferred, missing, rolloverMonth, rolloverYear, total: items.length }
+  }, [items, getDate])
 
   const openCharacter = (id: string) => navigate(`/characters?char=${encodeURIComponent(id)}`)
   const charName = (id: string) => tagMap.get(id)?.name ?? id
@@ -993,6 +1116,217 @@ export function StatsView() {
           </>
         ) : (
           <p className="faint">{IS_PUBLIC ? t('stats.debut.emptyPublic') : t('stats.debut.empty')}</p>
+        )}
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h3>{t('stats.evolution.title')}</h3>
+          <span className="faint">{t('stats.evolution.subtitle')}</span>
+        </div>
+        {dimensions.length > 0 && (
+          <div className="evo-tabs">
+            {dimensions.map((dim) => (
+              <button
+                key={dim.id}
+                type="button"
+                className={`evo-tab${evolution?.dim.id === dim.id ? ' active' : ''}`}
+                onClick={() => setEvoDim(dim.id)}
+              >
+                {dim.name}
+              </button>
+            ))}
+          </div>
+        )}
+        {evolution && evolution.rows.length ? (
+          <>
+            <div className="evo-scroll">
+              <table className="evo-table">
+                <thead>
+                  <tr>
+                    <th className="evo-tag-head">{t('stats.evolution.tag')}</th>
+                    {evolution.years.map((y) => (
+                      <th key={y} className="num">
+                        {y}
+                      </th>
+                    ))}
+                    <th className="num">{t('stats.evolution.total')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {evolution.rows.map((row) => (
+                    <tr key={row.tag.id}>
+                      <th scope="row">
+                        <span className="evo-tag">
+                          <i style={{ background: row.tag.color }} />
+                          <span className="evo-tag-name">{row.tag.name}</span>
+                        </span>
+                      </th>
+                      {row.byYear.map((count, index) => (
+                        <td key={evolution.years[index]}>
+                          <span
+                            className={`evo-cell${count ? '' : ' is-empty'}`}
+                            style={
+                              count
+                                ? {
+                                    background: `color-mix(in srgb, var(--sage) ${8 + Math.round((count / evolution.max) * 62)}%, transparent)`,
+                                  }
+                                : undefined
+                            }
+                            title={t('stats.evolution.cellTooltip', {
+                              tag: row.tag.name,
+                              year: evolution.years[index],
+                              count,
+                            })}
+                          >
+                            {count || ''}
+                          </span>
+                        </td>
+                      ))}
+                      <td className="num evo-total">{row.total}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="stats-note">
+              {IS_PUBLIC
+                ? t('stats.dateBasis.public')
+                : t('stats.dateBasis.inferred', { count: timeline.inferredItems })}
+            </p>
+          </>
+        ) : (
+          <p className="faint">{t('stats.evolution.empty')}</p>
+        )}
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h3>{t('stats.text.title')}</h3>
+          <span className="faint">{t('stats.text.subtitle')}</span>
+        </div>
+        {textProfile.captions ? (
+          <div className="text-profile">
+            <div className="text-profile-block">
+              <h4>{t('stats.text.captionLength')}</h4>
+              <div className="length-bars">
+                {textProfile.buckets.map((count, index) => (
+                  <div className="length-row" key={TEXT_BUCKET_KEYS[index]}>
+                    <span className="length-label">{t(TEXT_BUCKET_KEYS[index])}</span>
+                    <span className="length-track">
+                      <span
+                        className={`length-fill${index === 0 ? ' is-empty' : ''}`}
+                        style={{ width: `${(count / Math.max(1, ...textProfile.buckets)) * 100}%` }}
+                      />
+                    </span>
+                    <span className="num length-count">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="text-profile-block">
+              <h4>{t('stats.text.words')}</h4>
+              {textProfile.words.length ? (
+                <div className="word-cloud">
+                  {textProfile.words.map((word) => (
+                    <span className="word-pill" key={word.text}>
+                      {word.text}
+                      <i className="num">{word.count}</i>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="faint">{t('stats.text.emptyWords')}</p>
+              )}
+            </div>
+            <div className="text-profile-block">
+              <h4>{t('stats.text.emoji')}</h4>
+              {textProfile.emojis.length ? (
+                <div className="emoji-cloud">
+                  {textProfile.emojis.map((emoji) => (
+                    <span
+                      className="emoji-pill"
+                      key={emoji.text}
+                      title={t('stats.text.count', { count: emoji.count })}
+                    >
+                      <span className="emoji-glyph">{emoji.text}</span>
+                      <i className="num">{emoji.count}</i>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="faint">{t('stats.text.emptyEmoji')}</p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <p className="faint">{t('stats.text.empty')}</p>
+        )}
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h3>{t('stats.trust.title')}</h3>
+          <span className="faint">{t('stats.trust.subtitle')}</span>
+        </div>
+        {trust.total ? (
+          <>
+            <div
+              className="trust-bar"
+              role="img"
+              aria-label={t('stats.trust.barAria', {
+                confirmed: trust.confirmed,
+                inferred: trust.inferred,
+                missing: trust.missing,
+              })}
+            >
+              {trust.confirmed > 0 && (
+                <span className="trust-seg is-confirmed" style={{ flexGrow: trust.confirmed }} />
+              )}
+              {trust.inferred > 0 && (
+                <span className="trust-seg is-inferred" style={{ flexGrow: trust.inferred }} />
+              )}
+              {trust.missing > 0 && <span className="trust-seg is-missing" style={{ flexGrow: trust.missing }} />}
+            </div>
+            <div className="trust-legend">
+              <span>
+                <i className="trust-dot is-confirmed" />
+                {t('stats.trust.confirmed', {
+                  count: trust.confirmed,
+                  percent: pct(trust.confirmed, trust.total),
+                })}
+              </span>
+              <span>
+                <i className="trust-dot is-inferred" />
+                {t('stats.trust.inferred', {
+                  count: trust.inferred,
+                  percent: pct(trust.inferred, trust.total),
+                })}
+              </span>
+              <span>
+                <i className="trust-dot is-missing" />
+                {t('stats.trust.missing', {
+                  count: trust.missing,
+                  percent: pct(trust.missing, trust.total),
+                })}
+              </span>
+            </div>
+            <div className="trust-rollover">
+              <div className="trust-card">
+                <span>{t('stats.trust.rolloverMonth')}</span>
+                <strong className="num">{trust.rolloverMonth}</strong>
+              </div>
+              <div className="trust-card">
+                <span>{t('stats.trust.rolloverYear')}</span>
+                <strong className="num">{trust.rolloverYear}</strong>
+              </div>
+            </div>
+            <p className="stats-note">
+              {IS_PUBLIC ? t('stats.dateBasis.public') : t('stats.trust.note')}
+            </p>
+          </>
+        ) : (
+          <p className="faint">{t('stats.timeline.noData')}</p>
         )}
       </section>
     </div>
