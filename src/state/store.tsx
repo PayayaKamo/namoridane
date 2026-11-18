@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -31,13 +32,17 @@ import { effectiveDate, isValidYmd, publishedDate, suggestedDate } from '../lib/
 import { defaultCharacterTags } from '../lib/constants'
 import {
   THEME_KEY,
+  downloadJson,
+  downloadText,
   emptyAnnotation,
   emptyUserData,
+  loadCorruptBackup,
   loadLocalUserData,
   loadSeedUserData,
   mergeUserData,
   normalizeUserData,
   saveLocalUserData,
+  type StorageIssue,
 } from '../lib/storage'
 import { uid } from '../lib/utils'
 import { translate } from '../i18n/core'
@@ -87,9 +92,14 @@ interface StoreValue {
   years: string[]
   theme: Theme
   toasts: Toast[]
+  /** 本地存储异常：配额不足 / 缓存损坏 / 存储不可用；界面据此常驻提示 */
+  storageIssue: StorageIssue | null
   notify: (text: string, tone?: Tone) => void
   dismissToast: (id: string) => void
   toggleTheme: () => void
+  retryStorageSave: () => boolean
+  exportLocalData: () => void
+  exportCorruptBackup: () => void
   getDate: (item: DiaryItem) => EffectiveDate
   getAnnotation: (id: string) => ItemAnnotation | undefined
   setItemTags: (id: string, tagIds: string[]) => void
@@ -165,10 +175,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [seedReady, setSeedReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [data, setData] = useState<UserData>(() => loadLocalUserData() ?? emptyUserData())
+  // 只读一次本地缓存：同时拿到数据与加载状态，避免损坏/禁用时无声重置
+  const [initialLoad] = useState(loadLocalUserData)
+  const [data, setData] = useState<UserData>(() => initialLoad.data ?? emptyUserData())
+  const [storageIssue, setStorageIssue] = useState<StorageIssue | null>(initialLoad.issue)
   const [lastDeletion, setLastDeletion] = useState<string[] | null>(null)
   const [theme, setTheme] = useState<Theme>(currentTheme)
   const [toasts, setToasts] = useState<Toast[]>([])
+  // 缓存损坏或存储不可用时先不改写本地数据，等用户明确操作后再恢复自动保存
+  const storageBlockedRef = useRef(initialLoad.issue === 'corrupt' || initialLoad.issue === 'unavailable')
+
+  const persist = useCallback((next: UserData): boolean => {
+    const result = saveLocalUserData(next)
+    if (result.ok) {
+      setStorageIssue((prev) => (prev ? null : prev))
+      return true
+    }
+    setStorageIssue(result.reason)
+    return false
+  }, [])
+
+  const markStorageWritable = useCallback(() => {
+    storageBlockedRef.current = false
+  }, [])
 
   // 加载索引
   useEffect(() => {
@@ -186,7 +215,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             return json.datasetId && !prev.datasetId ? { ...prev, datasetId: json.datasetId } : prev
           }
           const next = emptyUserData(true, json.datasetId)
-          saveLocalUserData(next)
+          // 缓存损坏/存储不可用时不覆盖原始数据，等用户导入或手动修改后再落盘
+          if (!storageBlockedRef.current) persist(next)
           return next
         })
         setLoading(false)
@@ -204,7 +234,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             seed.datasetId = json.datasetId
             setData((prev) => {
               if (prev.datasetId !== json.datasetId || Object.keys(prev.items).length > 0) return prev
-              saveLocalUserData(seed)
+              if (!storageBlockedRef.current) persist(seed)
               return seed
             })
           })
@@ -222,11 +252,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => controller.abort()
   }, [])
 
-  // 自动保存（防抖）
+  // 自动保存（防抖）；缓存损坏时暂停，避免把旧数据直接覆盖掉
   useEffect(() => {
-    const timer = setTimeout(() => saveLocalUserData(data), 250)
+    if (storageBlockedRef.current) return
+    const timer = setTimeout(() => persist(data), 250)
     return () => clearTimeout(timer)
-  }, [data])
+  }, [data, persist])
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -243,9 +274,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
 
-  const mutate = useCallback((fn: (prev: UserData) => UserData) => {
-    setData((prev) => ({ ...fn(prev), updatedAt: new Date().toISOString() }))
-  }, [])
+  const mutate = useCallback(
+    (fn: (prev: UserData) => UserData) => {
+      // 用户主动修改后才允许恢复自动保存，避免加载阶段覆盖损坏的原始缓存
+      markStorageWritable()
+      setData((prev) => ({ ...fn(prev), updatedAt: new Date().toISOString() }))
+    },
+    [markStorageWritable],
+  )
 
   const patchItem = useCallback(
     (id: string, updater: (ann: ItemAnnotation) => ItemAnnotation) => {
@@ -886,9 +922,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const importData = useCallback(
     (raw: unknown, mode: 'merge' | 'replace') => {
       const incoming = normalizeUserData(raw)
+      markStorageWritable()
       setData((prev) => (mode === 'merge' ? mergeUserData(prev, incoming) : incoming))
     },
-    [],
+    [markStorageWritable],
   )
 
   const importReview = useCallback(
@@ -932,14 +969,45 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       notify(translate('lib.seedNotFound'), 'error')
       return
     }
+    markStorageWritable()
     setData((prev) => mergeUserData(prev, { ...seed, datasetId: index?.datasetId ?? prev.datasetId }))
     notify(translate('lib.seedMerged'), 'success')
-  }, [index?.datasetId, notify])
+  }, [index?.datasetId, markStorageWritable, notify])
 
   const resetData = useCallback(() => {
+    markStorageWritable()
     setData(emptyUserData(false, index?.datasetId))
     notify(translate('lib.annotationsCleared'), 'success')
-  }, [index?.datasetId, notify])
+  }, [index?.datasetId, markStorageWritable, notify])
+
+  /** 立即重试落盘；失败时继续保持提示条 */
+  const retryStorageSave = useCallback(() => {
+    markStorageWritable()
+    const ok = persist(data)
+    notify(
+      ok ? translate('shell.storage.retryDone') : translate('shell.storage.retryFailed'),
+      ok ? 'success' : 'error',
+    )
+    return ok
+  }, [data, markStorageWritable, notify, persist])
+
+  /** 配额不足时的兜底出口：把完整标注导出为 JSON，用户可稍后导入恢复 */
+  const exportLocalData = useCallback(() => {
+    downloadJson(data, `namori-diary-${new Date().toISOString().slice(0, 10)}.json`)
+    notify(translate('shell.storage.exportDone'), 'success')
+  }, [data, notify])
+
+  /** 导出解析失败时保留的原始缓存，便于排查或手工抢救 */
+  const exportCorruptBackup = useCallback(() => {
+    const raw = loadCorruptBackup()
+    if (!raw) {
+      notify(translate('shell.storage.corruptMissing'), 'error')
+      return
+    }
+    const stamp = new Date().toISOString().slice(0, 10)
+    downloadText(raw, `namori-userdata-corrupt-${stamp}.json`, 'application/json')
+    notify(translate('shell.storage.corruptExported'), 'success')
+  }, [notify])
 
   const value = useMemo<StoreValue>(
     () => ({
@@ -968,9 +1036,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       years,
       theme,
       toasts,
+      storageIssue,
       notify,
       dismissToast,
       toggleTheme: () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')),
+      retryStorageSave,
+      exportLocalData,
+      exportCorruptBackup,
       getDate,
       getAnnotation,
       setItemTags,
@@ -1041,8 +1113,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       years,
       theme,
       toasts,
+      storageIssue,
       notify,
       dismissToast,
+      retryStorageSave,
+      exportLocalData,
+      exportCorruptBackup,
       getDate,
       getAnnotation,
       setItemTags,

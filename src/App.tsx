@@ -7,6 +7,7 @@ import { Layout } from './components/Layout'
 import { Modal, Toasts } from './components/Modal'
 import { Icon } from './components/Icon'
 import { ErrorBoundary, UnhandledRejectionBanner } from './components/ErrorBoundary'
+import { StorageBanner } from './components/StorageBanner'
 import { HomeView } from './views/HomeView'
 import { CalendarView } from './views/CalendarView'
 import { GalleryView } from './views/GalleryView'
@@ -158,6 +159,7 @@ export default function App() {
       )}
       {shortcutsOpen && <ShortcutPanel onClose={() => setShortcutsOpen(false)} />}
       <Toasts toasts={toasts} onDismiss={dismissToast} />
+      <StorageBanner />
       <UnhandledRejectionBanner />
     </>
   )

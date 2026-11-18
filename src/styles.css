@@ -1082,6 +1082,50 @@ hr {
   overflow-wrap: anywhere;
 }
 
+/* 本地标注写入异常提示条：固定在底部，避免与未处理错误提示条重叠 */
+.storage-banner {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: min(760px, calc(100vw - 32px));
+  padding: 10px 12px 10px 14px;
+  border: 1px solid var(--danger);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+  font-size: 12.5px;
+  transform: translateX(-50%);
+  animation: toast-in 0.25s var(--ease);
+}
+
+.storage-banner-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 220px;
+}
+
+.storage-banner-text strong {
+  color: var(--danger);
+}
+
+.storage-banner-text span {
+  color: var(--muted);
+}
+
+.storage-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .spinner {
   width: 26px;
   height: 26px;

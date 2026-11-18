@@ -4,6 +4,19 @@ import { IS_PUBLIC } from './appMode'
 
 export const STORAGE_KEY = 'namori.diary.userdata.v2'
 export const THEME_KEY = 'namori.theme'
+/** 本地缓存解析失败时保留的原始字符串，供用户下载排查或抢救 */
+export const CORRUPT_BACKUP_KEY = 'namori.diary.userdata.corrupt.v1'
+
+export type StorageIssue = 'quota' | 'corrupt' | 'unavailable'
+
+export type SaveResult =
+  | { ok: true }
+  | { ok: false; reason: Exclude<StorageIssue, 'corrupt'>; bytes: number }
+
+export interface LocalLoadResult {
+  data: UserData | null
+  issue: StorageIssue | null
+}
 
 /** 2026-11 按需求下线的角色（无任何作品出场），加载本地数据时一并清掉旧记录 */
 const RETIRED_CHARACTER_IDS: ReadonlySet<string> = new Set([
@@ -351,25 +364,70 @@ function clearCoverOverridesOnce(data: UserData): UserData {
   return next
 }
 
-export function loadLocalUserData(): UserData | null {
+function isQuotaError(err: unknown): boolean {
+  if (typeof DOMException !== 'undefined' && err instanceof DOMException) {
+    return (
+      err.name === 'QuotaExceededError' ||
+      err.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+      err.code === 22 ||
+      err.code === 1014
+    )
+  }
+  return err instanceof Error && /quota/i.test(err.name)
+}
+
+export function loadLocalUserData(): LocalLoadResult {
   // 公开端始终使用构建时的发布数据，避免旧 localStorage 缓存盖住新发布的封面与标注
-  if (IS_PUBLIC) return null
+  if (IS_PUBLIC) return { data: null, issue: null }
+  let raw: string | null
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    return clearCoverOverridesOnce(normalizeUserData(JSON.parse(raw)))
+    raw = localStorage.getItem(STORAGE_KEY)
+  } catch (err) {
+    console.warn('本地存储无法读取（可能被浏览器禁用）', err)
+    return { data: null, issue: 'unavailable' }
+  }
+  if (!raw) return { data: null, issue: null }
+  try {
+    return { data: clearCoverOverridesOnce(normalizeUserData(JSON.parse(raw))), issue: null }
+  } catch (err) {
+    // 解析失败绝不静默重置：先把原始字符串备份到独立 key，再交给界面提示
+    console.error('本地标注缓存损坏，已保留原始副本', err)
+    try {
+      localStorage.setItem(CORRUPT_BACKUP_KEY, raw)
+    } catch {
+      // 备份也写不进去时至少留下原始内容，便于从控制台抢救
+      console.error('[namori] corrupt userdata raw:', raw)
+    }
+    return { data: null, issue: 'corrupt' }
+  }
+}
+
+/** 读取损坏缓存的原始副本，用于导出抢救 */
+export function loadCorruptBackup(): string | null {
+  try {
+    return localStorage.getItem(CORRUPT_BACKUP_KEY)
   } catch {
     return null
   }
 }
 
-export function saveLocalUserData(data: UserData): void {
+export function saveLocalUserData(data: UserData): SaveResult {
   // 公开端只读：发布数据由构建产物提供，不写入浏览器缓存
-  if (IS_PUBLIC) return
+  if (IS_PUBLIC) return { ok: true }
+  let json: string
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    json = JSON.stringify(data)
   } catch (err) {
-    console.warn('本地存储写入失败（可能超出配额）', err)
+    console.warn('本地标注序列化失败', err)
+    return { ok: false, reason: 'unavailable', bytes: 0 }
+  }
+  try {
+    localStorage.setItem(STORAGE_KEY, json)
+    return { ok: true }
+  } catch (err) {
+    const reason = isQuotaError(err) ? 'quota' : 'unavailable'
+    console.warn(`本地标注保存失败（${reason}），本次修改未写入浏览器存储`, err)
+    return { ok: false, reason, bytes: json.length }
   }
 }
 
@@ -473,14 +531,21 @@ export function mergeUserData(current: UserData, incoming: UserData): UserData {
   }
 }
 
-export function downloadJson(data: unknown, filename: string): void {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
   a.download = filename
   a.click()
   setTimeout(() => URL.revokeObjectURL(url), 1500)
+}
+
+export function downloadJson(data: unknown, filename: string): void {
+  downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), filename)
+}
+
+export function downloadText(text: string, filename: string, type = 'text/plain;charset=utf-8'): void {
+  downloadBlob(new Blob([text], { type }), filename)
 }
 
 export function annotationCount(data: UserData): number {
