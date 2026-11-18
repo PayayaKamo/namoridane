@@ -50,6 +50,11 @@ const ROUTES = [
     title: '故事线 · 水母绘日记 Namori Diary',
     description: '把绘日记按主题串成故事线，按顺序重读 Namori 的手绘日常。',
   },
+  {
+    dir: 'about',
+    title: '关于 · 水母绘日记 Namori Diary',
+    description: '水母绘日记的联系方式与站点信息：GitHub、小红书、微信公众号，以及版本号、构建时间与数据规模。',
+  },
 ]
 
 const META_RE = (kind, key) => new RegExp(`<meta\\s+${kind}="${escapeRegExp(key)}"[\\s\\S]*?/>`, 'i')

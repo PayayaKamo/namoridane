@@ -59,6 +59,10 @@ const ROUTE_META: Partial<Record<RouteName, PageMeta>> = {
     title: '标签 · 水母绘日记 Namori Diary',
     description: '浏览水母绘日记的标签体系与使用情况。',
   },
+  about: {
+    title: '关于 · 水母绘日记 Namori Diary',
+    description: '水母绘日记的联系方式与站点信息：GitHub、小红书、微信公众号，以及版本号、构建时间与数据规模。',
+  },
 }
 
 function ensureMeta(kind: 'name' | 'property', key: string): HTMLMetaElement {
