@@ -111,7 +111,7 @@ export const stats: StatsMessages = {
   },
   evolution: {
     title: 'Tag evolution',
-    subtitle: 'How tags in each dimension rise and fall by year',
+    subtitle: 'How tags in each dimension rise and fall by year · top 8 per dimension',
     tag: 'Tag',
     total: 'Total',
     cellTooltip: '{tag} · {year} · {count} uses',

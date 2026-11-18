@@ -109,7 +109,7 @@ export const stats = {
   },
   evolution: {
     title: '标签演变',
-    subtitle: '各维度标签随年份的消长',
+    subtitle: '各维度标签随年份的消长 · 每维度显示前 8 个',
     tag: '标签',
     total: '合计',
     cellTooltip: '{tag} · {year} 年 · {count} 次',

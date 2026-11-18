@@ -111,7 +111,7 @@ export const stats: StatsMessages = {
   },
   evolution: {
     title: 'タグの推移',
-    subtitle: 'ディメンション別タグの年ごとの増減',
+    subtitle: 'ディメンション別タグの年ごとの増減 · 各ディメンション上位 8 件',
     tag: 'タグ',
     total: '合計',
     cellTooltip: '{tag} · {year} 年 · {count} 回',
