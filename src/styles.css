@@ -1635,48 +1635,89 @@ hr {
 }
 
 .cooc-panel .cooc-scroll {
-  max-height: 620px;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 4px;
 }
 
-.cooc-panel .cooc-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  background: var(--surface);
-  padding-bottom: 4px;
+/* 表格按容器宽度自适应，整张矩阵尽量一屏看全；只有确实放不下时才横向滚动 */
+.cooc-panel .cooc-table {
+  width: 100%;
+  max-width: calc(116px + var(--cooc-cols, 10) * 64px);
+  table-layout: fixed;
+}
+
+.cooc-panel .cooc-table th:first-child {
+  width: 108px;
 }
 
 .cooc-panel .cooc-table tbody th {
   position: sticky;
   left: 0;
-  z-index: 2;
+  z-index: 1;
   background: var(--surface);
 }
 
-.cooc-panel .cooc-table thead th:first-child {
-  left: 0;
-  z-index: 4;
+.cooc-panel .cooc-head-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 0 2px;
+}
+
+.cooc-panel .cooc-row-head {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding-right: 1px;
+}
+
+.cooc-panel .cooc-cell {
+  width: 100%;
 }
 
 .cooc-head-name {
   display: block;
-  margin: 3px auto 0;
+  width: 100%;
+  max-width: 100%;
+  font-size: 9.5px;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cooc-panel .cooc-row-name {
+  max-width: 100%;
+}
+
+.cooc-table.is-dense .cooc-head-name {
+  width: auto;
+  margin: 0 auto;
   max-height: 66px;
   writing-mode: vertical-rl;
   text-orientation: mixed;
-  font-size: 9.5px;
-  color: var(--muted);
-  overflow: hidden;
-  white-space: nowrap;
+  text-overflow: clip;
 }
 
 .cooc-table.is-dense {
   border-spacing: 2px;
 }
 
+.cooc-panel .cooc-table.is-dense {
+  max-width: calc(100px + var(--cooc-cols, 20) * 48px);
+}
+
+.cooc-panel .cooc-table.is-dense th:first-child {
+  width: 92px;
+}
+
 .cooc-table.is-dense .cooc-cell {
-  width: 28px;
+  width: 100%;
   height: 24px;
   font-size: 9px;
 }
@@ -1696,8 +1737,77 @@ hr {
   font-size: 10px;
 }
 
+.relation-chart {
+  max-width: 520px;
+  margin: 8px auto 0;
+}
+
+.relation-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.relation-edge {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition:
+    opacity 0.16s var(--ease),
+    stroke-width 0.16s var(--ease);
+}
+
+.relation-edge.is-active {
+  stroke: var(--accent-deep);
+}
+
+.relation-node {
+  cursor: pointer;
+}
+
+.relation-node-bg {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.relation-node-ring {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 3;
+  transition: stroke 0.16s var(--ease);
+}
+
+.relation-node.is-active .relation-node-ring,
+.relation-node:focus-visible .relation-node-ring {
+  stroke: var(--accent-deep);
+}
+
+.relation-node.is-dim {
+  opacity: 0.35;
+}
+
+.relation-node-letter {
+  fill: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.relation-hint {
+  margin-top: 10px;
+  text-align: center;
+}
+
 @media (max-width: 760px) {
   .cooc-limit-switch {
     display: none;
+  }
+
+  .cooc-panel .cooc-table {
+    min-width: calc(92px + var(--cooc-cols, 10) * 34px);
+    max-width: none;
+  }
+
+  .relation-chart {
+    max-width: 320px;
   }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
 import { CharacterAvatar } from '../components/CharacterAvatar'
@@ -11,9 +12,10 @@ import { useI18n } from '../i18n'
 const BASE = import.meta.env.BASE_URL
 const CAST_RADIUS = 62
 const CAST_CIRC = 2 * Math.PI * CAST_RADIUS
-const COOC_MOBILE_LIMIT = 10
-const COOC_DEFAULT_LIMIT = 20
-const COOC_OPTIONS = [COOC_MOBILE_LIMIT, COOC_DEFAULT_LIMIT] as const
+const COOC_MAJOR_SHARE = 0.05
+const COOC_COMPACT_AT = 10
+const COOC_MODES = ['major', 'all'] as const
+type CoocMode = (typeof COOC_MODES)[number]
 const TOP_PAIR_LIMIT = 4
 const TEXT_BUCKET_KEYS = [
   'stats.text.bucket.none',
@@ -30,6 +32,7 @@ export function StatsView() {
     annotations,
     tags,
     tagMap,
+    characterCovers,
     dimensions,
     tagUsage,
     collections,
@@ -40,17 +43,18 @@ export function StatsView() {
   const [openDims, setOpenDims] = useState<Record<string, boolean>>({})
   const [hoveredCast, setHoveredCast] = useState<'single' | 'double' | 'multi' | null>(null)
   const [evoDim, setEvoDim] = useState('')
+  const [hoverNode, setHoverNode] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 760px)').matches,
   )
-  const [coocMax, setCoocMax] = useState<number>(() => {
-    const saved = Number(localStorage.getItem('namori.stats.coocLimit'))
-    return saved === COOC_MOBILE_LIMIT || saved === COOC_DEFAULT_LIMIT ? saved : COOC_DEFAULT_LIMIT
-  })
-  const coocLimit = isMobile ? COOC_MOBILE_LIMIT : coocMax
-  const changeCoocLimit = (limit: number) => {
-    setCoocMax(limit)
-    localStorage.setItem('namori.stats.coocLimit', String(limit))
+  const [savedCoocMode, setSavedCoocMode] = useState<CoocMode>(() =>
+    localStorage.getItem('namori.stats.coocMode') === 'all' ? 'all' : 'major',
+  )
+  // 手机屏幕较窄，固定使用主要角色档位
+  const coocMode: CoocMode = isMobile ? 'major' : savedCoocMode
+  const changeCoocMode = (mode: CoocMode) => {
+    setSavedCoocMode(mode)
+    localStorage.setItem('namori.stats.coocMode', mode)
   }
   useEffect(() => {
     const media = window.matchMedia('(max-width: 760px)')
@@ -271,8 +275,8 @@ export function StatsView() {
     }
   }, [items, getDate])
 
-  // 角色共现矩阵：取出场最多的若干角色，统计两两同框张数
-  const cooc = useMemo(() => {
+  // 角色共现的基础数据：“主要角色”按出场张数占全部绘日记的比例自动判定
+  const coocBase = useMemo(() => {
     const charTagIds = new Set(tags.filter((tag) => tag.dimensionId === 'character').map((tag) => tag.id))
     const itemCharacters = new Map<string, string[]>()
     const appearances = new Map<string, number>()
@@ -282,15 +286,27 @@ export function StatsView() {
       itemCharacters.set(item.id, ids)
       for (const id of ids) appearances.set(id, (appearances.get(id) ?? 0) + 1)
     }
-    const ids = [...appearances.entries()]
+    const ranked = [...appearances.entries()]
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .slice(0, coocLimit)
-      .map(([id]) => id)
+      .map(([id, count]) => ({ id, count }))
+    // 出场张数 ≥ 全部绘日记的 5% 即视为主要角色；数据量不足时退回全部角色
+    const threshold = Math.max(1, Math.ceil(castItems.length * COOC_MAJOR_SHARE))
+    const major = ranked.filter((row) => row.count >= threshold)
+    return {
+      itemCharacters,
+      ranked,
+      major: major.length >= 2 ? major : ranked,
+    }
+  }, [castItems, annotations, tags])
+
+  // 角色共现矩阵：按当前档位取出场角色，统计两两同框张数
+  const cooc = useMemo(() => {
+    const ids = (coocMode === 'all' ? coocBase.ranked : coocBase.major).map((row) => row.id)
     if (ids.length < 2) return null
     const index = new Map(ids.map((id, i) => [id, i]))
     const matrix = ids.map(() => ids.map(() => 0))
     const totals = ids.map(() => 0)
-    for (const itemIds of itemCharacters.values()) {
+    for (const itemIds of coocBase.itemCharacters.values()) {
       const present = itemIds.filter((id) => index.has(id))
       for (const id of present) {
         const row = index.get(id)!
@@ -318,7 +334,58 @@ export function StatsView() {
       max: Math.max(1, max),
       topPairs: pairs.filter((pair) => pair.count === max),
     }
-  }, [castItems, annotations, tags, coocLimit])
+  }, [coocBase, coocMode])
+
+  // 人物关系热度：按出场数环形排布，同框次数决定连线粗细与深浅
+  const relation = useMemo(() => {
+    if (!cooc) return null
+    const center = 260
+    const ringRadius = 200
+    const totalMax = Math.max(1, ...cooc.totals)
+    const nodes = cooc.ids.map((id, i) => {
+      const angle = -Math.PI / 2 + (i * 2 * Math.PI) / cooc.ids.length
+      return {
+        id,
+        count: cooc.totals[i],
+        x: center + ringRadius * Math.cos(angle),
+        y: center + ringRadius * Math.sin(angle),
+        r: 12 + 13 * Math.sqrt(cooc.totals[i] / totalMax),
+      }
+    })
+    const edges: { a: string; b: string; count: number; x1: number; y1: number; x2: number; y2: number }[] = []
+    for (let i = 0; i < nodes.length; i += 1) {
+      for (let j = i + 1; j < nodes.length; j += 1) {
+        const count = cooc.matrix[i][j]
+        if (!count) continue
+        const from = nodes[i]
+        const to = nodes[j]
+        const dx = to.x - from.x
+        const dy = to.y - from.y
+        const len = Math.hypot(dx, dy) || 1
+        edges.push({
+          a: from.id,
+          b: to.id,
+          count,
+          x1: from.x + (dx / len) * (from.r + 2),
+          y1: from.y + (dy / len) * (from.r + 2),
+          x2: to.x - (dx / len) * (to.r + 2),
+          y2: to.y - (dy / len) * (to.r + 2),
+        })
+      }
+    }
+    return { nodes, edges, max: Math.max(1, cooc.max) }
+  }, [cooc])
+
+  const relationNeighbors = useMemo(() => {
+    const set = new Set<string>()
+    if (!hoverNode || !relation) return set
+    set.add(hoverNode)
+    for (const edge of relation.edges) {
+      if (edge.a === hoverNode) set.add(edge.b)
+      else if (edge.b === hoverNode) set.add(edge.a)
+    }
+    return set
+  }, [hoverNode, relation])
 
   // 首末登场：按角色记录最早与最晚的作品
   const debuts = useMemo(() => {
@@ -987,16 +1054,17 @@ export function StatsView() {
           <div className="cooc-head-tools">
             <span className="faint">{t('stats.cooc.subtitle')}</span>
             <div className="cooc-limit-switch" role="group" aria-label={t('stats.cooc.limitLabel')}>
-              {COOC_OPTIONS.map((limit) => (
+              {COOC_MODES.map((mode) => (
                 <button
-                  key={limit}
+                  key={mode}
                   type="button"
-                  className={`cooc-limit-btn${coocLimit === limit ? ' active' : ''}`}
-                  aria-pressed={coocLimit === limit}
-                  title={t('stats.cooc.limitOption', { count: limit })}
-                  onClick={() => changeCoocLimit(limit)}
+                  className={`cooc-limit-btn${coocMode === mode ? ' active' : ''}`}
+                  aria-pressed={coocMode === mode}
+                  onClick={() => changeCoocMode(mode)}
                 >
-                  {limit}
+                  {mode === 'major'
+                    ? t('stats.cooc.modeMajor', { count: coocBase.major.length })
+                    : t('stats.cooc.modeAll', { count: coocBase.ranked.length })}
                 </button>
               ))}
             </div>
@@ -1005,7 +1073,10 @@ export function StatsView() {
         {cooc ? (
           <>
             <div className="cooc-scroll">
-              <table className={`cooc-table${cooc.ids.length > COOC_MOBILE_LIMIT ? ' is-dense' : ''}`}>
+              <table
+                className={`cooc-table${cooc.ids.length > COOC_COMPACT_AT ? ' is-dense' : ''}`}
+                style={{ '--cooc-cols': cooc.ids.length } as CSSProperties}
+              >
                 <thead>
                   <tr>
                     <th aria-hidden="true" />
@@ -1017,10 +1088,8 @@ export function StatsView() {
                           onClick={() => openCharacter(id)}
                           title={t('stats.characterTooltip', { name: charName(id) })}
                         >
+                          <span className="cooc-head-name">{charName(id)}</span>
                           {castAvatar(id)}
-                          {cooc.ids.length > COOC_MOBILE_LIMIT && (
-                            <span className="cooc-head-name">{charName(id)}</span>
-                          )}
                         </button>
                       </th>
                     ))}
@@ -1031,10 +1100,10 @@ export function StatsView() {
                     <tr key={rowId}>
                       <th scope="row">
                         <span className="cooc-row-head">
-                          {castAvatarLink(rowId)}
                           <button type="button" className="cast-name-link cooc-row-name" onClick={() => openCharacter(rowId)}>
                             {charName(rowId)}
                           </button>
+                          {castAvatarLink(rowId)}
                         </span>
                       </th>
                       {cooc.ids.map((colId, colIndex) => {
@@ -1090,7 +1159,11 @@ export function StatsView() {
               </table>
             </div>
             <div className="cooc-foot">
-              <span className="faint">{t('stats.cooc.hint', { count: cooc.ids.length })}</span>
+              <span className="faint">
+                {t(coocMode === 'all' ? 'stats.cooc.hintAll' : 'stats.cooc.hintMajor', {
+                  count: cooc.ids.length,
+                })}
+              </span>
               {cooc.topPairs.length === 1 && (
                 <button
                   type="button"
@@ -1132,6 +1205,98 @@ export function StatsView() {
           <p className="faint">{t('stats.cooc.empty')}</p>
         )}
       </section>
+
+      {relation && (
+        <section className="panel relation-panel">
+          <div className="panel-head">
+            <h3>{t('stats.relation.title')}</h3>
+            <span className="faint">{t('stats.relation.subtitle')}</span>
+          </div>
+          <div className="relation-chart">
+            <svg viewBox="0 0 520 520" role="img" aria-label={t('stats.relation.aria')}>
+              <g>
+                {relation.edges.map((edge) => {
+                  const ratio = edge.count / relation.max
+                  const active = hoverNode === edge.a || hoverNode === edge.b
+                  const dim = hoverNode !== null && !active
+                  return (
+                    <line
+                      key={`${edge.a}-${edge.b}`}
+                      className={`relation-edge${active ? ' is-active' : ''}`}
+                      x1={edge.x1}
+                      y1={edge.y1}
+                      x2={edge.x2}
+                      y2={edge.y2}
+                      strokeWidth={0.8 + 4.5 * ratio}
+                      opacity={dim ? 0.03 : active ? 0.95 : 0.05 + 0.6 * ratio * ratio}
+                    >
+                      <title>
+                        {t('stats.relation.edgeTooltip', {
+                          a: charName(edge.a),
+                          b: charName(edge.b),
+                          count: edge.count,
+                        })}
+                      </title>
+                    </line>
+                  )
+                })}
+              </g>
+              {relation.nodes.map((node) => {
+                const cover = characterCovers.get(node.id)
+                const hovered = hoverNode === node.id
+                const dimmed = hoverNode !== null && hoverNode !== node.id && !relationNeighbors.has(node.id)
+                const open = () => navigate(`/gallery?tags=${encodeURIComponent(node.id)}`)
+                return (
+                  <g
+                    key={node.id}
+                    className={`relation-node${hovered ? ' is-active' : ''}${dimmed ? ' is-dim' : ''}`}
+                    transform={`translate(${node.x} ${node.y})`}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={charName(node.id)}
+                    onMouseEnter={() => setHoverNode(node.id)}
+                    onMouseLeave={() => setHoverNode(null)}
+                    onFocus={() => setHoverNode(node.id)}
+                    onBlur={() => setHoverNode(null)}
+                    onClick={open}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        open()
+                      }
+                    }}
+                  >
+                    <title>{t('stats.relation.nodeTooltip', { name: charName(node.id), count: node.count })}</title>
+                    <circle r={node.r + 2} className="relation-node-bg" fill={tagMap.get(node.id)?.color ?? 'var(--surface-3)'} />
+                    {cover ? (
+                      <>
+                        <clipPath id={`relation-clip-${node.id}`}>
+                          <circle r={node.r} />
+                        </clipPath>
+                        <image
+                          href={cover.src}
+                          x={-node.r}
+                          y={-node.r}
+                          width={node.r * 2}
+                          height={node.r * 2}
+                          clipPath={`url(#relation-clip-${node.id})`}
+                          preserveAspectRatio="xMidYMid slice"
+                        />
+                      </>
+                    ) : (
+                      <text className="relation-node-letter" textAnchor="middle" dominantBaseline="central">
+                        {(tagMap.get(node.id)?.name ?? node.id).slice(0, 1)}
+                      </text>
+                    )}
+                    <circle r={node.r + 2} className="relation-node-ring" />
+                  </g>
+                )
+              })}
+            </svg>
+          </div>
+          <p className="faint relation-hint">{t('stats.relation.hint')}</p>
+        </section>
+      )}
 
       <section className="panel">
         <div className="panel-head">
