@@ -21,7 +21,7 @@ export const detail: DetailMessages = {
     gray: 'グレースケール表示',
     mirror: '左右反転',
     compare: '並べて比較',
-    imageAlt: 'Namori 水母絵日記 {date} の手描きイラスト',
+    imageAlt: 'Namori Diary {date} の手描きイラスト',
   },
   excluded: {
     notice:

@@ -1,10 +1,10 @@
 import type { ShellMessages } from '../zh/shell'
 
 export const shell: ShellMessages = {
-  siteName: '水母絵日記',
-  siteTitle: '水母絵日記 · Namori Diary',
+  siteName: 'Namori Diary',
+  siteTitle: 'Namori Diary',
   brandSub: 'Namori Diary',
-  footerCopy: '水母絵日記 · Namori Diary',
+  footerCopy: 'Namori Diary',
   localeSwitch: '言語',
   nav: {
     browse: '見る',
@@ -86,7 +86,7 @@ export const shell: ShellMessages = {
     action: '元に戻す',
   },
   app: {
-    loading: '水母絵日記を読み込み中…',
+    loading: 'Namori Diary を読み込み中…',
     adminLoading: '管理機能を読み込み中…',
     noIndexTitle: '画像インデックスが見つかりません',
     noIndexHintBefore: 'プロジェクトのディレクトリで',

@@ -2,8 +2,8 @@ import type { HomeMessages } from '../zh/home'
 
 export const home: HomeMessages = {
   hero: {
-    eyebrow: 'Namori · 水母絵日記 2021 — 2025',
-    srTitle: '水母絵日記 · Namori Diary · ',
+    eyebrow: 'Namori Diary · 2021 — 2025',
+    srTitle: 'Namori Diary · ',
     title: '毎日を、1ページの絵に。',
     lead: 'Namori 先生が Instagram に投稿した手描き日記 {count} 枚を収録。カレンダーからめくったり、キャラクターや場面で整理したり、模写の分解や登場人物を書き留めることもできます。',
     startReading: 'めくりはじめる',
@@ -12,7 +12,7 @@ export const home: HomeMessages = {
   },
   daily: {
     label: '今日の1枚',
-    imageAlt: 'Namori 水母絵日記 {date} の今日の1枚',
+    imageAlt: 'Namori Diary {date} の今日の1枚',
     fromPastYear: '過去の今日 · {date} 投稿',
     shuffle: '別の1枚',
   },
