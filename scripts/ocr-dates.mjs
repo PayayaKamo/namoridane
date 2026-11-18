@@ -38,10 +38,6 @@ function publishedAtOf(name) {
   return m ? `${m[1]}-${m[2]}-${m[3]}` : ''
 }
 
-function pad(value) {
-  return String(value).padStart(2, '0')
-}
-
 /** 在左上角区域里找深色像素包围盒，返回原始图片坐标 */
 async function findTextBlock(file, width, height) {
   const regionW = Math.max(60, Math.round(width * 0.62))
@@ -126,7 +122,7 @@ function normalizeText(text) {
     .replace(/[／]/g, '/')
     .replace(/[．]/g, '.')
     .replace(/[－ー—−]/g, '-')
-    .replace(/[　]/g, ' ')
+    .replace(/\u3000/g, ' ')
     // Windows OCR 常把手写「月」认成这些形近字
     .replace(/[目且巪冃冚冄闫闰]|冂/g, '月')
     // 手写「1」常被认成反斜杠、竖线或字母 l / I；只在该位置像数字时替换

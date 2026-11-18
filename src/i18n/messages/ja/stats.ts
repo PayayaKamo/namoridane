@@ -93,6 +93,8 @@ export const stats: StatsMessages = {
   cooc: {
     title: 'キャラクターの共演',
     subtitle: '同じ絵に登場した回数の多い組み合わせ',
+    limitLabel: '表示するキャラクター数',
+    limitOption: '{count} 人を表示',
     hint: '行と列は登場回数の多い {count} 人です。数字は同じ絵に登場した枚数で、色が濃いほど多く共演しています。対角線以外のセルをクリックすると、2 人が同じ絵の絵日記に絞り込めます。',
     cellTooltip: '{a} × {b} · {count} 枚 · クリックで絞り込み',
     diagTooltip: '{name} · 累計 {count} 回登場 · クリックでキャラクターを見る',

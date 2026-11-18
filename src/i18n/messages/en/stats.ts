@@ -93,6 +93,8 @@ export const stats: StatsMessages = {
   cooc: {
     title: 'Character co-appearance',
     subtitle: 'Which characters share the most images',
+    limitLabel: 'Characters shown',
+    limitOption: 'Show {count} characters',
     hint: 'Rows and columns cover the {count} most frequent characters. Numbers are images featuring both; darker means more. Click an off-diagonal cell to filter the diary entries where both appear.',
     cellTooltip: '{a} × {b} · {count} images · click to filter',
     diagTooltip: '{name} · {count} appearances in total · click to view the character',

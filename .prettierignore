@@ -1,0 +1,12 @@
+# 与 ESLint 保持一致：只格式化源码与脚本，不碰构建产物、数据与素材
+dist/
+node_modules/
+public/
+data/
+images/
+docs/
+.cache/
+.screenshots/
+.trae-html-share-packages/
+coverage/
+package-lock.json

@@ -1594,3 +1594,110 @@ hr {
 .app-shell.is-collapsed .locale-switch {
   display: none;
 }
+
+/* ---------------- 角色共现矩阵 ---------------- */
+.cooc-head-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cooc-limit-switch {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface-2);
+}
+
+.cooc-limit-btn {
+  min-width: 30px;
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 20px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.cooc-limit-btn:hover {
+  color: var(--accent-deep);
+}
+
+.cooc-limit-btn.active {
+  background: var(--surface);
+  color: var(--accent-deep);
+  box-shadow: var(--shadow-sm);
+}
+
+.cooc-panel .cooc-scroll {
+  max-height: 620px;
+  overflow: auto;
+}
+
+.cooc-panel .cooc-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--surface);
+  padding-bottom: 4px;
+}
+
+.cooc-panel .cooc-table tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--surface);
+}
+
+.cooc-panel .cooc-table thead th:first-child {
+  left: 0;
+  z-index: 4;
+}
+
+.cooc-head-name {
+  display: block;
+  margin: 3px auto 0;
+  max-height: 66px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 9.5px;
+  color: var(--muted);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.cooc-table.is-dense {
+  border-spacing: 2px;
+}
+
+.cooc-table.is-dense .cooc-cell {
+  width: 28px;
+  height: 24px;
+  font-size: 9px;
+}
+
+.cooc-table.is-dense .cooc-head-btn .cast-avatar {
+  width: 20px;
+  height: 20px;
+  font-size: 8px;
+}
+
+.cooc-table.is-dense .cooc-row-head {
+  min-width: 82px;
+  max-width: 104px;
+}
+
+.cooc-table.is-dense .cooc-row-name {
+  font-size: 10px;
+}
+
+@media (max-width: 760px) {
+  .cooc-limit-switch {
+    display: none;
+  }
+}

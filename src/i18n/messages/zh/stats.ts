@@ -91,6 +91,8 @@ export const stats = {
   cooc: {
     title: '角色共现',
     subtitle: '同框最多的角色两两组合',
+    limitLabel: '显示角色数',
+    limitOption: '显示 {count} 位角色',
     hint: '行列均为出场最多的 {count} 位角色；数字为同框张数，颜色越深同框越多。点击非对角线格子可筛选出两人同框的绘日记。',
     cellTooltip: '{a} × {b} · {count} 张 · 点击筛选',
     diagTooltip: '{name} · 累计出场 {count} 次 · 点击查看角色',

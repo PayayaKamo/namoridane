@@ -6,6 +6,8 @@
   "type": "module",
   "description": "Namori 老师「绘日记」插画浏览、搜索与整理工具（纯前端静态站点）",
   "scripts": {
+    "lint": "eslint src scripts",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.mjs\"",
     "data": "node scripts/build-index.mjs",
     "data:force": "node scripts/build-index.mjs --force",
     "ocr": "node scripts/ocr-dates.mjs",
@@ -25,12 +27,19 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "gh-pages": "^6.2.0",
+    "globals": "^15.15.0",
+    "prettier": "^3.10.1",
     "sharp": "^0.34.4",
     "typescript": "^5.6.3",
-    "vite": "^5.4.11"
+    "typescript-eslint": "^8.73.0",
+    "vite": "^5.4.11",
+    "vitest": "^3.2.7"
   }
 }

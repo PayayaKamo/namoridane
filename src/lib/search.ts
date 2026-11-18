@@ -560,7 +560,7 @@ export function buildSnippet(match: SearchMatch, max = 96): Snippet {
   const [firstStart, firstEnd] = ranges[0]
   const context = Math.max(18, Math.floor((max - (firstEnd - firstStart)) / 2))
   let start = Math.max(0, firstStart - context)
-  let end = Math.min(text.length, start + max)
+  const end = Math.min(text.length, start + max)
   if (end - start < max) start = Math.max(0, end - max)
 
   const shifted = ranges

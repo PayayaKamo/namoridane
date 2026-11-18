@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
 import { CharacterAvatar } from '../components/CharacterAvatar'
@@ -11,7 +11,9 @@ import { useI18n } from '../i18n'
 const BASE = import.meta.env.BASE_URL
 const CAST_RADIUS = 62
 const CAST_CIRC = 2 * Math.PI * CAST_RADIUS
-const COOC_LIMIT = 10
+const COOC_MOBILE_LIMIT = 10
+const COOC_DEFAULT_LIMIT = 20
+const COOC_OPTIONS = [COOC_MOBILE_LIMIT, COOC_DEFAULT_LIMIT] as const
 const TOP_PAIR_LIMIT = 4
 const TEXT_BUCKET_KEYS = [
   'stats.text.bucket.none',
@@ -38,6 +40,24 @@ export function StatsView() {
   const [openDims, setOpenDims] = useState<Record<string, boolean>>({})
   const [hoveredCast, setHoveredCast] = useState<'single' | 'double' | 'multi' | null>(null)
   const [evoDim, setEvoDim] = useState('')
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 760px)').matches,
+  )
+  const [coocMax, setCoocMax] = useState<number>(() => {
+    const saved = Number(localStorage.getItem('namori.stats.coocLimit'))
+    return saved === COOC_MOBILE_LIMIT || saved === COOC_DEFAULT_LIMIT ? saved : COOC_DEFAULT_LIMIT
+  })
+  const coocLimit = isMobile ? COOC_MOBILE_LIMIT : coocMax
+  const changeCoocLimit = (limit: number) => {
+    setCoocMax(limit)
+    localStorage.setItem('namori.stats.coocLimit', String(limit))
+  }
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 760px)')
+    const onChange = () => setIsMobile(media.matches)
+    media.addEventListener('change', onChange)
+    return () => media.removeEventListener('change', onChange)
+  }, [])
   const [castTab, setCastTab] = useState<'single' | 'double' | 'multi'>(() => {
     const saved = localStorage.getItem('namori.stats.castTab')
     return saved === 'double' || saved === 'multi' ? saved : 'single'
@@ -264,7 +284,7 @@ export function StatsView() {
     }
     const ids = [...appearances.entries()]
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .slice(0, COOC_LIMIT)
+      .slice(0, coocLimit)
       .map(([id]) => id)
     if (ids.length < 2) return null
     const index = new Map(ids.map((id, i) => [id, i]))
@@ -298,7 +318,7 @@ export function StatsView() {
       max: Math.max(1, max),
       topPairs: pairs.filter((pair) => pair.count === max),
     }
-  }, [castItems, annotations, tags])
+  }, [castItems, annotations, tags, coocLimit])
 
   // 首末登场：按角色记录最早与最晚的作品
   const debuts = useMemo(() => {
@@ -961,15 +981,31 @@ export function StatsView() {
           ))}
       </section>
 
-      <section className="panel">
+      <section className="panel cooc-panel">
         <div className="panel-head">
           <h3>{t('stats.cooc.title')}</h3>
-          <span className="faint">{t('stats.cooc.subtitle')}</span>
+          <div className="cooc-head-tools">
+            <span className="faint">{t('stats.cooc.subtitle')}</span>
+            <div className="cooc-limit-switch" role="group" aria-label={t('stats.cooc.limitLabel')}>
+              {COOC_OPTIONS.map((limit) => (
+                <button
+                  key={limit}
+                  type="button"
+                  className={`cooc-limit-btn${coocLimit === limit ? ' active' : ''}`}
+                  aria-pressed={coocLimit === limit}
+                  title={t('stats.cooc.limitOption', { count: limit })}
+                  onClick={() => changeCoocLimit(limit)}
+                >
+                  {limit}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         {cooc ? (
           <>
             <div className="cooc-scroll">
-              <table className="cooc-table">
+              <table className={`cooc-table${cooc.ids.length > COOC_MOBILE_LIMIT ? ' is-dense' : ''}`}>
                 <thead>
                   <tr>
                     <th aria-hidden="true" />
@@ -982,6 +1018,9 @@ export function StatsView() {
                           title={t('stats.characterTooltip', { name: charName(id) })}
                         >
                           {castAvatar(id)}
+                          {cooc.ids.length > COOC_MOBILE_LIMIT && (
+                            <span className="cooc-head-name">{charName(id)}</span>
+                          )}
                         </button>
                       </th>
                     ))}
