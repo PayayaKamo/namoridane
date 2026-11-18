@@ -10,6 +10,7 @@ import { stats } from './stats'
 import { adminData } from './adminData'
 import { adminOrg } from './adminOrg'
 import { lib } from './lib'
+import { about } from './about'
 
 export const en: Messages = {
   common,
@@ -23,4 +24,5 @@ export const en: Messages = {
   adminData,
   adminOrg,
   lib,
+  about,
 }

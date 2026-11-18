@@ -19,6 +19,7 @@ export type RouteName =
   | 'review'
   | 'diary-review'
   | 'data'
+  | 'about'
   | 'item'
 
 export interface Route {
@@ -45,6 +46,7 @@ const KNOWN: RouteName[] = [
   'review',
   'diary-review',
   'data',
+  'about',
   'item',
 ]
 

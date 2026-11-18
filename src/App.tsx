@@ -15,6 +15,7 @@ import { DateFindView } from './views/DateFindView'
 import { ReaderView } from './views/ReaderView'
 import { CharactersView } from './views/CharactersView'
 import { StatsView } from './views/StatsView'
+import { AboutView } from './views/AboutView'
 import { DetailView } from './views/DetailView'
 
 // 管理端视图只在 admin 构建中打包；public 构建会把下面的分支整体折叠掉。
@@ -87,6 +88,8 @@ function CurrentView({ route }: { route: ReturnType<typeof useRoute> }) {
       return <StatsView />
     case 'data':
       return adminOnly(DataView ? <DataView /> : null)
+    case 'about':
+      return <AboutView />
     case 'item':
       return <GalleryView route={route} />
     default:

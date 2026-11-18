@@ -238,6 +238,14 @@ const PATHS: Record<string, JSX.Element> = {
       <path d="m3 12.5 9 4.7 9-4.7M3 16.8l9 4.7 9-4.7" />
     </>
   ),
+  qr: (
+    <>
+      <rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.2" />
+      <rect x="14" y="3.5" width="6.5" height="6.5" rx="1.2" />
+      <rect x="3.5" y="14" width="6.5" height="6.5" rx="1.2" />
+      <path d="M14 14h2.8v2.8H14zM20.5 14v2.8M14 20.5h2.8M20.5 20.5h.1" />
+    </>
+  ),
 }
 
 export type IconName = keyof typeof PATHS

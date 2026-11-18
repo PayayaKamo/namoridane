@@ -24,6 +24,7 @@ export const shell: ShellMessages = {
     diaryReview: '絵日記レビュー',
     dateReview: '日付校正',
     data: 'データと設定',
+    about: 'このサイト',
     works: '作品',
     pendingReview: '承認待ち',
     mobileLabel: 'よく使う機能',
@@ -46,6 +47,7 @@ export const shell: ShellMessages = {
     'diary-review': { eyebrow: 'Diary Review', title: '絵日記レビュー' },
     stats: { eyebrow: 'Insights', title: '統計' },
     data: { eyebrow: 'Data', title: 'データと設定' },
+    about: { eyebrow: 'About', title: 'このサイトについて' },
     item: { eyebrow: 'Detail', title: '作品詳細' },
   },
   theme: {
@@ -139,7 +141,7 @@ export const shell: ShellMessages = {
   footer: {
     githubProfile: 'GitHub プロフィール',
     repository: 'リポジトリ',
-    xiaohongshu: '小红书 · PayaYa',
+    xiaohongshu: '小红书 · @PayaYa',
     xiaohongshuAlt: '小红书 · @PayayaKamo',
   },
 }

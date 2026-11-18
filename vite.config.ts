@@ -7,6 +7,7 @@ import { applyReviewExport, sanitizePublicData, validateUserData } from './scrip
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const MAX_BODY_BYTES = 100 * 1024 * 1024
+const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')) as { version?: string }
 
 /**
  * 本地管理端专用：把当前浏览器里的数据写回仓库 JSON。
@@ -214,6 +215,8 @@ export default defineConfig(({ command, mode }) => ({
   ].filter(Boolean),
   define: {
     __APP_MODE__: JSON.stringify(mode === 'public' ? 'public' : 'admin'),
+    __APP_VERSION__: JSON.stringify(PKG.version ?? '0.0.0'),
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
   },
   build: {
     outDir: 'dist',

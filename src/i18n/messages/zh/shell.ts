@@ -22,6 +22,7 @@ export const shell = {
     diaryReview: '绘日记审核',
     dateReview: '日期校对',
     data: '数据与设置',
+    about: '关于',
     works: '作品',
     pendingReview: '待审核',
     mobileLabel: '常用功能',
@@ -44,6 +45,7 @@ export const shell = {
     'diary-review': { eyebrow: 'Diary Review', title: '绘日记审核' },
     stats: { eyebrow: 'Insights', title: '统计' },
     data: { eyebrow: 'Data', title: '数据与设置' },
+    about: { eyebrow: 'About', title: '关于' },
     item: { eyebrow: 'Detail', title: '作品详情' },
   },
   theme: {
@@ -137,7 +139,7 @@ export const shell = {
   footer: {
     githubProfile: 'GitHub 主页',
     repository: '站点仓库',
-    xiaohongshu: '小红书 · PayaYa',
+    xiaohongshu: '小红书 · @PayaYa',
     xiaohongshuAlt: '小红书 · @PayayaKamo',
   },
 }

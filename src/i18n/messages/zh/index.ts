@@ -9,6 +9,7 @@ import { stats } from './stats'
 import { adminData } from './adminData'
 import { adminOrg } from './adminOrg'
 import { lib } from './lib'
+import { about } from './about'
 
 export const zh = {
   common,
@@ -22,6 +23,7 @@ export const zh = {
   adminData,
   adminOrg,
   lib,
+  about,
 }
 
 export type Messages = typeof zh

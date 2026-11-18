@@ -24,6 +24,7 @@ export const shell: ShellMessages = {
     diaryReview: 'Diary Review',
     dateReview: 'Date Review',
     data: 'Data & Settings',
+    about: 'About',
     works: 'Works',
     pendingReview: 'To review',
     mobileLabel: 'Quick links',
@@ -46,6 +47,7 @@ export const shell: ShellMessages = {
     'diary-review': { eyebrow: 'Diary Review', title: 'Diary Review' },
     stats: { eyebrow: 'Insights', title: 'Insights' },
     data: { eyebrow: 'Data', title: 'Data & Settings' },
+    about: { eyebrow: 'About', title: 'About' },
     item: { eyebrow: 'Detail', title: 'Item Detail' },
   },
   theme: {
@@ -139,7 +141,7 @@ export const shell: ShellMessages = {
   footer: {
     githubProfile: 'GitHub profile',
     repository: 'Repository',
-    xiaohongshu: 'Xiaohongshu · PayaYa',
+    xiaohongshu: 'Xiaohongshu · @PayaYa',
     xiaohongshuAlt: 'Xiaohongshu · @PayayaKamo',
   },
 }

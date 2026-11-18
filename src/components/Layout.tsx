@@ -8,7 +8,7 @@ import { IS_PUBLIC } from '../lib/appMode'
 import { restoreFilesFromTrash } from '../lib/trash'
 import { useI18n, type MessageKey } from '../i18n'
 
-const PUBLIC_PATHS = new Set(['/', '/calendar', '/gallery', '/storylines', '/reader', '/search', '/characters', '/stats'])
+const PUBLIC_PATHS = new Set(['/', '/calendar', '/gallery', '/storylines', '/reader', '/search', '/characters', '/stats', '/about'])
 const SIDEBAR_KEY = 'namori.sidebar.collapsed'
 
 interface NavEntry {
@@ -133,6 +133,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
       items: [
         ...(IS_PUBLIC ? [] : [{ path: '/stats', label: t('shell.nav.stats'), icon: 'chart' }]),
         { path: '/data', label: t('shell.nav.data'), icon: 'database' },
+        { path: '/about', label: t('shell.nav.about'), icon: 'info' },
       ],
     },
   ]
