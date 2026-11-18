@@ -7,6 +7,9 @@ import { IS_PUBLIC } from '../lib/appMode'
 import { navigate } from '../lib/router'
 import { useI18n } from '../i18n'
 
+const CAST_RADIUS = 62
+const CAST_CIRC = 2 * Math.PI * CAST_RADIUS
+
 export function StatsView() {
   const {
     items,
@@ -21,7 +24,8 @@ export function StatsView() {
     getDate,
   } = useStore()
   const { t } = useI18n()
-  const [openDims, setOpenDims] = useState<Record<string, boolean>>({ character: true })
+  const [openDims, setOpenDims] = useState<Record<string, boolean>>({})
+  const [hoveredCast, setHoveredCast] = useState<'single' | 'double' | 'multi' | null>(null)
   const [castTab, setCastTab] = useState<'single' | 'double' | 'multi'>(() => {
     const saved = localStorage.getItem('namori.stats.castTab')
     return saved === 'double' || saved === 'multi' ? saved : 'single'
@@ -118,6 +122,8 @@ export function StatsView() {
   const tagGroups = useMemo(
     () =>
       dimensions
+        // 人物维度的出场次数已在“角色出场榜”呈现，这里不再重复
+        .filter((dim) => dim.id !== 'character')
         .map((dim) => ({
           dim,
           tags: tags
@@ -413,7 +419,13 @@ export function StatsView() {
           </div>
         ) : (
           <p className="faint">
-            {IS_PUBLIC ? t('stats.tags.emptyPublic') : t('stats.tags.empty')}
+            {cast.total > 0
+              ? IS_PUBLIC
+                ? t('stats.tags.emptyOthersPublic')
+                : t('stats.tags.emptyOthers')
+              : IS_PUBLIC
+                ? t('stats.tags.emptyPublic')
+                : t('stats.tags.empty')}
           </p>
         )}
       </section>
@@ -465,29 +477,85 @@ export function StatsView() {
               : t('stats.cast.subtitle', { count: cast.total })}
           </span>
         </div>
-        <div className="cast-tabs" role="tablist" aria-label={t('stats.cast.title')}>
-          {(
-            [
-              { key: 'single', label: t('stats.cast.single'), count: cast.single, hint: t('stats.cast.singleHint') },
-              { key: 'double', label: t('stats.cast.double'), count: cast.double, hint: t('stats.cast.doubleHint') },
-              { key: 'multi', label: t('stats.cast.multi'), count: cast.multi, hint: t('stats.cast.multiHint') },
-            ] as const
-          ).map((tabItem) => (
-            <button
-              key={tabItem.key}
-              role="tab"
-              aria-selected={castTab === tabItem.key}
-              className={`cast-tab${castTab === tabItem.key ? ' active' : ''}`}
-              onClick={() => changeCastTab(tabItem.key)}
-            >
-              <span className="cast-tab-label">
-                {tabItem.label} <span className="faint">{tabItem.hint}</span>
-              </span>
-              <span className="num cast-tab-count">
-                {t('stats.cast.countPercent', { count: tabItem.count, percent: pct(tabItem.count, cast.total) })}
-              </span>
-            </button>
-          ))}
+        <div className="cast-chart">
+          <div className="cast-donut">
+            <svg viewBox="0 0 160 160" aria-hidden="true">
+              <circle className="cast-donut-track" cx="80" cy="80" r={CAST_RADIUS} />
+              {(() => {
+                let acc = 0
+                return (
+                  [
+                    { key: 'single', count: cast.single, label: t('stats.cast.single'), color: 'var(--accent)' },
+                    { key: 'double', count: cast.double, label: t('stats.cast.double'), color: 'var(--sage)' },
+                    { key: 'multi', count: cast.multi, label: t('stats.cast.multi'), color: 'var(--gold)' },
+                  ] as const
+                ).map((seg) => {
+                  const frac = cast.total ? seg.count / cast.total : 0
+                  const dash = frac * CAST_CIRC
+                  const offset = -acc * CAST_CIRC
+                  acc += frac
+                  if (dash <= 0) return null
+                  const active = castTab === seg.key || hoveredCast === seg.key
+                  const dim = hoveredCast !== null && hoveredCast !== seg.key
+                  return (
+                    <circle
+                      key={seg.key}
+                      className={`cast-donut-seg${active ? ' is-active' : ''}${dim ? ' is-dim' : ''}`}
+                      cx="80"
+                      cy="80"
+                      r={CAST_RADIUS}
+                      stroke={seg.color}
+                      strokeWidth={active ? 24 : 17}
+                      strokeDasharray={`${Math.max(dash - 2, 0.5)} ${CAST_CIRC - Math.max(dash - 2, 0.5)}`}
+                      strokeDashoffset={offset}
+                      onMouseEnter={() => setHoveredCast(seg.key)}
+                      onMouseLeave={() => setHoveredCast(null)}
+                      onClick={() => changeCastTab(seg.key)}
+                    >
+                      <title>{`${seg.label} · ${seg.count} · ${pct(seg.count, cast.total)}`}</title>
+                    </circle>
+                  )
+                })
+              })()}
+            </svg>
+            <div className="cast-donut-center">
+              <strong className="num">{cast.total}</strong>
+              <span>{t('stats.cast.centerHint')}</span>
+            </div>
+          </div>
+          <div className="cast-legend" role="tablist" aria-label={t('stats.cast.chartAria')}>
+            {(
+              [
+                { key: 'single', label: t('stats.cast.single'), count: cast.single, hint: t('stats.cast.singleHint'), color: 'var(--accent)' },
+                { key: 'double', label: t('stats.cast.double'), count: cast.double, hint: t('stats.cast.doubleHint'), color: 'var(--sage)' },
+                { key: 'multi', label: t('stats.cast.multi'), count: cast.multi, hint: t('stats.cast.multiHint'), color: 'var(--gold)' },
+              ] as const
+            ).map((tabItem) => (
+              <button
+                key={tabItem.key}
+                role="tab"
+                aria-selected={castTab === tabItem.key}
+                className={`cast-legend-row${castTab === tabItem.key ? ' active' : ''}${
+                  hoveredCast !== null && hoveredCast !== tabItem.key ? ' is-dim' : ''
+                }`}
+                onMouseEnter={() => setHoveredCast(tabItem.key)}
+                onMouseLeave={() => setHoveredCast(null)}
+                onFocus={() => setHoveredCast(tabItem.key)}
+                onBlur={() => setHoveredCast(null)}
+                onClick={() => changeCastTab(tabItem.key)}
+              >
+                <span className="cast-legend-swatch" style={{ background: tabItem.color }} />
+                <span className="cast-legend-text">
+                  <b>{tabItem.label}</b>
+                  <span>{tabItem.hint}</span>
+                </span>
+                <span className="cast-legend-value">
+                  <b className="num">{tabItem.count}</b>
+                  <span>{pct(tabItem.count, cast.total)}</span>
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {castTab === 'single' &&

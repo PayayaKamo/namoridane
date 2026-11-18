@@ -2537,56 +2537,146 @@
   font-size: 9px;
 }
 
-/* 人物组合：单人 / 双人 / 多人 三页签 */
-.cast-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 12px;
+/* 人物组合：环形图 + 可交互图例 */
+.cast-chart {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  margin: 4px 0 16px;
 }
 
-.cast-tab {
+.cast-donut {
+  position: relative;
+  flex: none;
+  width: 188px;
+  height: 188px;
+}
+
+.cast-donut svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.cast-donut-track {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 17;
+  opacity: 0.55;
+}
+
+.cast-donut-seg {
+  fill: none;
+  stroke-linecap: butt;
+  cursor: pointer;
+  transition:
+    stroke-width 0.18s var(--ease),
+    opacity 0.18s var(--ease);
+}
+
+.cast-donut-seg.is-dim {
+  opacity: 0.28;
+}
+
+.cast-donut-center {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 9px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  color: var(--ink-2);
-  text-align: left;
-  cursor: pointer;
-  transition: 0.18s var(--ease);
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  pointer-events: none;
+  text-align: center;
 }
 
-.cast-tab:hover {
-  border-color: var(--line-strong);
-}
-
-.cast-tab.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+.cast-donut-center strong {
+  font-size: 28px;
+  line-height: 1.1;
   color: var(--ink);
 }
 
-.cast-tab-label {
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.cast-tab-label .faint {
-  margin-left: 4px;
+.cast-donut-center span {
   font-size: 10.5px;
-  font-weight: 400;
+  color: var(--muted);
+  letter-spacing: 0.04em;
 }
 
-.cast-tab-count {
-  font-size: 14px;
-  color: var(--ink-2);
+.cast-legend {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 220px;
 }
 
-.cast-tab.active .cast-tab-count {
+.cast-legend-row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  text-align: left;
+  transition:
+    background 0.16s var(--ease),
+    border-color 0.16s var(--ease),
+    opacity 0.16s var(--ease);
+}
+
+.cast-legend-row:hover,
+.cast-legend-row:focus-visible {
+  background: var(--surface-2);
+}
+
+.cast-legend-row.active {
+  border-color: var(--line);
+  background: var(--surface-2);
+}
+
+.cast-legend-row.is-dim {
+  opacity: 0.5;
+}
+
+.cast-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.cast-legend-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.cast-legend-text b {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.cast-legend-text span {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.cast-legend-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.cast-legend-value b {
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.cast-legend-value span {
+  font-size: 10.5px;
   color: var(--accent-deep);
 }
 
@@ -2753,14 +2843,20 @@
 }
 
 @media (max-width: 760px) {
-  .cast-tab {
-    padding: 8px 10px;
+  .cast-chart {
+    flex-direction: column;
+    gap: 14px;
   }
-  .cast-tab-label .faint {
-    display: none;
+  .cast-donut {
+    width: 164px;
+    height: 164px;
   }
-  .cast-tab-count {
-    font-size: 13px;
+  .cast-donut-center strong {
+    font-size: 24px;
+  }
+  .cast-legend {
+    width: 100%;
+    min-width: 0;
   }
   .cast-pair-row {
     grid-template-columns: 56px minmax(0, 1fr) 52px 74px;
