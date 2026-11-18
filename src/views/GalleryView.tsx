@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Route } from '../lib/router'
 import { navigate } from '../lib/router'
 import { useStore } from '../state/store'
@@ -9,12 +9,21 @@ import { Masonry } from '../components/ItemCard'
 import { Empty, Modal } from '../components/Modal'
 import { TagPicker } from '../components/TagPicker'
 import { CharacterPicker } from '../components/CharacterPicker'
-import { downloadBlob, downloadOriginalsZip } from '../lib/image'
+import {
+  countZipVolumes,
+  downloadBlob,
+  downloadOriginalsZip,
+  estimateZipBytes,
+  formatBytes,
+  ZIP_CONFIRM_BYTES,
+  ZIP_CONFIRM_ITEM_COUNT,
+} from '../lib/image'
+import type { ZipProgress } from '../lib/image'
 import { IS_PUBLIC } from '../lib/appMode'
 import { useI18n } from '../i18n'
 import { moveFilesToTrash } from '../lib/trash'
 import { applyItemSeo } from '../lib/seo'
-import type { FilterState } from '../types'
+import type { DiaryItem, FilterState } from '../types'
 
 export function GalleryView({ route }: { route: Route }) {
   const {
@@ -67,7 +76,9 @@ export function GalleryView({ route }: { route: Route }) {
   // 管理端默认只看已确认的绘日记；?diary=all 显示全部条目
   const [diaryOnly, setDiaryOnly] = useState(route.query.get('diary') !== 'all')
   const [showExcluded, setShowExcluded] = useState(route.query.get('excluded') === '1')
-  const [zipProgress, setZipProgress] = useState<string | null>(null)
+  const [zipState, setZipState] = useState<ZipProgress | null>(null)
+  const [zipConfirm, setZipConfirm] = useState<{ items: DiaryItem[]; bytes: number; volumes: number } | null>(null)
+  const zipAbortRef = useRef<AbortController | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [tagModal, setTagModal] = useState(false)
   const [characterModal, setCharacterModal] = useState(false)
@@ -166,19 +177,56 @@ export function GalleryView({ route }: { route: Route }) {
     [selectedIds, itemMap],
   )
 
-  const downloadSelected = async () => {
-    if (!selectedItems.length || zipProgress) return
-    setZipProgress(`0 / ${selectedItems.length}`)
+  const startZip = async (targets: DiaryItem[]) => {
+    if (!targets.length || zipState) return
+    setZipConfirm(null)
+    const controller = new AbortController()
+    zipAbortRef.current = controller
+    setZipState({ done: 0, total: targets.length, volume: 1, volumes: countZipVolumes(targets) })
     try {
-      await downloadOriginalsZip(selectedItems, (done, total) => setZipProgress(`${done} / ${total}`))
-      notify(t('browse.gallery.toastZipDone', { count: selectedItems.length }), 'success')
+      const result = await downloadOriginalsZip(targets, {
+        signal: controller.signal,
+        onProgress: setZipState,
+      })
+      if (result.canceled) {
+        notify(t('browse.gallery.toastZipCanceled', { done: result.packed, total: targets.length }), 'default')
+      } else if (result.failed.length) {
+        const files = result.failed
+          .slice(0, 3)
+          .map((failure) => failure.file)
+          .join(', ')
+        const more = result.failed.length > 3 ? ` +${result.failed.length - 3}` : ''
+        notify(
+          t('browse.gallery.toastZipPartial', {
+            done: result.packed,
+            failed: result.failed.length,
+            files: `${files}${more}`,
+          }),
+          'error',
+        )
+      } else {
+        notify(t('browse.gallery.toastZipDone', { count: result.packed }), 'success')
+      }
     } catch (err) {
       console.error(err)
       notify(t('browse.gallery.toastZipFailed'), 'error')
     } finally {
-      setZipProgress(null)
+      zipAbortRef.current = null
+      setZipState(null)
     }
   }
+
+  const downloadSelected = () => {
+    if (!selectedItems.length || zipState) return
+    const bytes = estimateZipBytes(selectedItems)
+    if (selectedItems.length > ZIP_CONFIRM_ITEM_COUNT || bytes > ZIP_CONFIRM_BYTES) {
+      setZipConfirm({ items: selectedItems, bytes, volumes: countZipVolumes(selectedItems) })
+      return
+    }
+    void startZip(selectedItems)
+  }
+
+  const cancelZip = () => zipAbortRef.current?.abort()
 
   const exportExcluded = () => {
     const text = excludedItems.map((item) => item.file).join('\r\n')
@@ -502,13 +550,34 @@ export function GalleryView({ route }: { route: Route }) {
         </div>
       )}
 
-      {!IS_PUBLIC && selectMode && selected.size > 0 && (
+      {!IS_PUBLIC && ((selectMode && selected.size > 0) || zipState) && (
         <div className="selection-bar">
+          {zipState ? (
+            <>
+              <span className="zip-progress">
+                <Icon name="download" size={13} />
+                <strong className="num">
+                  {zipState.done} / {zipState.total}
+                </strong>
+                {zipState.volumes > 1 && (
+                  <span className="faint">
+                    {t('browse.gallery.zipVolume', { volume: zipState.volume, volumes: zipState.volumes })}
+                  </span>
+                )}
+              </span>
+              <div className="divider-v" />
+              <button className="btn btn-sm" onClick={cancelZip}>
+                <Icon name="close" size={13} />
+                {t('browse.gallery.zipCancel')}
+              </button>
+            </>
+          ) : (
+            <>
           <span className="selection-count num">{t('common.selectedCount', { count: selected.size })}</span>
           <div className="divider-v" />
-          <button className="btn btn-sm btn-soft" onClick={downloadSelected} disabled={zipProgress !== null}>
+          <button className="btn btn-sm btn-soft" onClick={downloadSelected}>
             <Icon name="download" size={13} />
-            {zipProgress ? t('browse.gallery.zipProgress', { progress: zipProgress }) : t('browse.gallery.zipButton')}
+            {t('browse.gallery.zipButton')}
           </button>
           <button className="btn btn-sm btn-soft" onClick={() => { setPickTags([]); setTagModal(true) }}>
             <Icon name="tag" size={13} />
@@ -582,7 +651,31 @@ export function GalleryView({ route }: { route: Route }) {
           <button className="icon-btn" onClick={clearSelection} aria-label={t('browse.gallery.clearSelection')}>
             <Icon name="close" size={14} />
           </button>
+            </>
+          )}
         </div>
+      )}
+
+      {!IS_PUBLIC && zipConfirm && (
+        <Modal title={t('browse.gallery.zipConfirmTitle', { count: zipConfirm.items.length })} onClose={() => setZipConfirm(null)}>
+          <div className="muted" style={{ lineHeight: 1.7 }}>
+            {t('browse.gallery.zipConfirmBody', { size: formatBytes(zipConfirm.bytes) })}
+            {zipConfirm.volumes > 1 && (
+              <>
+                <br />
+                {t('browse.gallery.zipConfirmVolumes', { volumes: zipConfirm.volumes })}
+              </>
+            )}
+          </div>
+          <div className="modal-foot">
+            <button className="btn" onClick={() => setZipConfirm(null)}>
+              {t('common.cancel')}
+            </button>
+            <button className="btn btn-primary" onClick={() => void startZip(zipConfirm.items)}>
+              {t('browse.gallery.zipConfirmStart')}
+            </button>
+          </div>
+        </Modal>
       )}
 
       {!IS_PUBLIC && deleteOpen && (

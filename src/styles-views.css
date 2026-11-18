@@ -554,6 +554,18 @@
   flex: none;
 }
 
+.zip-progress {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.zip-progress strong {
+  font-variant-numeric: tabular-nums;
+}
+
 .collection-pick-list {
   display: flex;
   flex-direction: column;
