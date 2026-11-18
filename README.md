@@ -1,6 +1,8 @@
-# 水母绘日记 · Namori Diary
+# Namori Diary
 
 [English](README.md) · [中文](README.zh-CN.md) · [日本語](README.ja.md)
+
+> The application UI is currently in Chinese, so UI labels quoted here are translated into English. The site's Chinese name is 水母绘日记 ("Jellyfish Illustrated Diary"), and the brand line stays **Namori Diary**.
 
 A fully static, front-end-only site for browsing, curating and re-reading the daily sketches ("絵日記") that **Namori** ([@namoridane](https://www.instagram.com/namoridane)) posts on Instagram.
 
@@ -9,7 +11,7 @@ A fully static, front-end-only site for browsing, curating and re-reading the da
 - **Local-first**: annotations live in `localStorage` and travel as JSON; there is no backend, database or account
 - **Default dark theme**, light theme available and remembered per browser
 - **PC-first**, with phone layouts for home, calendar, gallery, reading and detail pages
-- Chinese UI with an English brand line; 17 placeholder character avatars from the *Yuru Yuri* cast
+- Chinese UI with the English brand line **Namori Diary**; 17 placeholder character avatars from the *Yuru Yuri* cast
 
 ## Links
 
@@ -67,7 +69,7 @@ npm run preview      # preview the last build
 
 Requires Node.js 18+.
 
-The committed archive in `images/original/` already produces a full site. With an empty folder both builds still succeed and the site shows a clear "还没有图片" empty state with the import command.
+The committed archive in `images/original/` already produces a full site. With an empty folder both builds still succeed and the site shows a clear "No images yet" empty state with the import command.
 
 ### npm scripts
 
@@ -103,7 +105,7 @@ The committed archive in `images/original/` already produces a full site. With a
 
 Admin-only views are lazy-loaded behind a compile-time guard, so the public bundle contains no admin routes, forms, delete endpoints or local write-back code. Hiding is done at the component level, not with CSS.
 
-Public empty states always use visitor-facing copy ("正在整理中，敬请期待"), never admin instructions.
+Public empty states always use visitor-facing copy ("In preparation, stay tuned"), never admin instructions.
 
 ---
 
@@ -113,10 +115,10 @@ The public build never reads your browser data. It reads the committed seed `dat
 
 ### Option A — export and write back in the admin app
 
-1. Open **数据与设置** in the admin app.
-2. **导出发布数据 public.json** downloads a public-only file (browse data: images, captions, permalinks, public tags, confirmed dates, Xiaohongshu / WeChat links).
-3. In the same page, **写入 data/public.json** stores it straight into the repository — available only in `npm run dev` (admin mode); the button and its dev-server endpoint are compiled out of production builds.
-4. **写入审核数据** writes the full review store to `data/userdata.json`, which is gitignored and contains private notes.
+1. Open **Data & settings** in the admin app.
+2. **Export public data public.json** downloads a public-only file (browse data: images, captions, permalinks, public tags, confirmed dates, Xiaohongshu / WeChat links).
+3. In the same page, **Write to data/public.json** stores it straight into the repository — available only in `npm run dev` (admin mode); the button and its dev-server endpoint are compiled out of production builds.
+4. **Write review data** writes the full review store to `data/userdata.json`, which is gitignored and contains private notes.
 
 Every write first copies the previous file to `.cache/data-backups/`, then validates the payload and writes atomically. Only files inside `data/` can be targeted; arbitrary paths are rejected.
 
@@ -129,7 +131,7 @@ npm run import:data -- "C:\Users\me\Downloads\namori-diary-review.json" --target
 
 Invalid or mismatched payloads fail loudly instead of overwriting the current file; a backup is created first.
 
-`data/public.json` keeps only public fields. Notes, study notes and translation drafts are stripped, and only confirmed diary dates are exported. The admin page shows **有未发布的修改** whenever local data is newer than the last export.
+`data/public.json` keeps only public fields. Notes, study notes and translation drafts are stripped, and only confirmed diary dates are exported. The admin page shows **Unpublished changes** whenever local data is newer than the last export.
 
 ---
 
@@ -177,14 +179,14 @@ namoridane/
 
 | Module | Description |
 | --- | --- |
-| Brand & theme | Site icon `namori_icon.webp` (WebP first, PNG/ICO fallbacks); name 水母绘日记 / Namori Diary; dark theme by default with no first-paint flash, light theme remembered once chosen |
+| Brand & theme | Site icon `namori_icon.webp` (WebP first, PNG/ICO fallbacks); name Namori Diary; dark theme by default with no first-paint flash, light theme remembered once chosen |
 | Home | Archive totals and coverage years; **daily pick = same month & day in any year** (deterministic per day), labelled with its full date, falling back to the latest confirmed diary page; editorial year/tag overview |
-| Calendar | Month grid with thumbnails; previous/next month buttons beside the title and `←` / `→` keys (ignored inside inputs); sticky month title and stats line; continuous year tabs from the earliest data year to the current year; first visit auto-lands on a month that has content (same month in a closer year first, then the nearest month) while manual choices always win |
+| Calendar | Month grid with thumbnails; previous/next **year** buttons beside the title and `←` / `→` keys (ignored inside inputs); months are chosen with the picker below; sticky month title and stats line; continuous year tabs from the earliest data year to the current year; first visit auto-lands on a month that has content (same month in a closer year first, then the nearest month) while manual choices always win |
 | Gallery | Lazy masonry grouped by month; effective-date ordering; favourite/pending filters; translation filter; multi-select batch actions (tags, characters, collections, storylines, ZIP of originals) |
-| Detail | Large image with previous/next; publish date and diary date separated; original caption and permalink; Xiaohongshu / WeChat jump links shown only when present; dims, size, file, shortcode; download; tags, note, favourite; **出场人物** chip picker for cast tagging |
+| Detail | Large image with previous/next; publish date and diary date separated; original caption and permalink; Xiaohongshu / WeChat jump links shown only when present; dims, size, file, shortcode; download; tags, note, favourite; **Cast** chip picker for cast tagging |
 | Cast tagging | Reuses the `character` tag dimension: searchable chips, click to tag or untag, selected characters float to the top and stay highlighted, `↑`/`↓` + `Enter` keyboard support, create a new character inline; gallery multi-select can add or remove the same cast in bulk; character page stats update immediately |
 | Characters | 17 preset avatars plus your own; name, colour, avatar cropped from an image or uploaded; appearance counts and recent appearances; gallery grouped by character |
-| Reader (翻阅) | Full-screen sequential reading, UI auto-hide and the Fullscreen API; segmented **全部 / 绘日记** with 绘日记 as the default (remembered after a manual switch); switching scope jumps to the nearest item instead of going blank |
+| Reader (browse) | Full-screen sequential reading, UI auto-hide and the Fullscreen API; segmented **All / Diary** with Diary as the default (remembered after a manual switch); switching scope jumps to the nearest item instead of going blank |
 | Find by date | Type `20261117`, `2026-11-17`, `11-17` or `11/17` in search, or click a calendar day. Results are a single-column card flow: date and weekday, publish date, copyable shortcode, permalink, collapsible caption, Xiaohongshu / WeChat links; multi-year hits stack by year; multi-select and shareable hash |
 | Storylines | Cards with cover, title, description, image count, date range and last edit; **build a storyline from a shortcode list** (newlines, spaces, commas or full Instagram links; duplicates are reported; preview with order numbers and unmatched codes; reorder after creation); chapter notes, cover, tags, continuous or slide reader, JSON/HTML export |
 | Diary review | Pending / diary / non-diary / all queues; large-image review; OCR candidates and crop preview; inferred date = publish date − 1 day; one-key confirm; `N` marks non-diary; `←`/`→` paging; progress and remaining count; export review JSON |
@@ -236,7 +238,7 @@ The date prefix is the Instagram **publish date** (`publishedAt`). Multi-image p
 - The publish date comes from the file name.
 - The hand-written diary date on the page is **confirmed by a human**, never guessed silently.
 - OCR can suggest up to three candidates with confidence, with the year inferred nearest to the publish date. OCR output is a hint, not a fact.
-- If there is no usable OCR result, the review page pre-fills **publish date − 1 day** and labels it clearly as **推测** (crossing month and year boundaries correctly).
+- If there is no usable OCR result, the review page pre-fills **publish date − 1 day** and labels it clearly as **Estimated** (crossing month and year boundaries correctly).
 - Only confirmed dates are exported to `data/public.json`. The public site never presents a guess as a date.
 
 ---
@@ -266,14 +268,14 @@ Generated, read-only for the front end:
       "inferredYear": 2021,
       "inferredMonth": 5,
       "inferredDay": 31,
-      "caption": "#ゆるゆり活動日記 …",
+      "caption": "#ゆるゆり活動日記 …",          // original Instagram caption, kept verbatim
       "thumb": "images/thumb/2021-06-01-CPlLQUStuZq.webp",
       "large": "images/large/2021-06-01-CPlLQUStuZq.webp",
       "original": "images/original/2021-06-01-CPlLQUStuZq.jpg",
       "w": 1080,
       "h": 1350,
       "color": "#e8dccb",
-      "ocr": { "rawText": "5月31日", "candidates": [] },
+      "ocr": { "rawText": "5月31日", "candidates": [] },   // text read from the page, kept verbatim
       "suggestedDiaryDate": { "year": 2021, "month": 5, "day": 31 }
     }
   ]
@@ -290,16 +292,16 @@ Storage key: `namori.diary.userdata.v2`. Full types: [`src/types.ts`](src/types.
 {
   "version": 2,
   "datasetId": "…",
-  "dimensions": [{ "id": "character", "name": "人物/角色", "order": 0, "builtIn": true }],
-  "tags": [{ "id": "t_xxx", "name": "赤座灯里", "dimensionId": "character", "color": "#c96f4a" }],
+  "dimensions": [{ "id": "character", "name": "People/Characters", "order": 0, "builtIn": true }],
+  "tags": [{ "id": "t_xxx", "name": "Akaza Akari", "dimensionId": "character", "color": "#c96f4a" }],
   "characters": [{ "id": "t_xxx", "avatarItemId": "…", "avatarCrop": { "cx": 0.5, "cy": 0.5 } }],
-  "collections": [{ "id": "c_xxx", "name": "临摹参考", "itemIds": ["…"] }],
+  "collections": [{ "id": "c_xxx", "name": "Copy practice", "itemIds": ["…"] }],
   "storylines": [{
     "id": "story_xxx",
-    "title": "夏日的一周",
+    "title": "A week in summer",
     "blocks": [
       { "id": "block_1", "type": "image", "itemId": "…" },
-      { "id": "block_2", "type": "note", "text": "第二章：雨天" }
+      { "id": "block_2", "type": "note", "text": "Chapter 2: rainy days" }
     ],
     "published": true
   }],
@@ -309,7 +311,7 @@ Storage key: `namori.diary.userdata.v2`. Full types: [`src/types.ts`](src/types.
       "favorite": true,
       "reviewed": true,
       "excluded": false,
-      "note": "私有备注",
+      "note": "private note",
       "date": { "year": 2021, "month": 5, "day": 31, "confirmed": true, "source": "manual" },
       "study": { "composition": "", "palette": "", "memo": "" }
     }
@@ -322,9 +324,11 @@ Storage key: `namori.diary.userdata.v2`. Full types: [`src/types.ts`](src/types.
 - `date.source`: `inferred`, `published` or `manual`. `confirmed` must be `true` for a date to appear on the public site.
 - Cast tags are ordinary tags on the `character` dimension; there is no parallel cast table.
 
+Sample values above are illustrative and translated; real stores keep whatever names you entered.
+
 ### Dataset version and reset
 
-`index.json` carries a `datasetId` derived from the sorted file list and byte sizes. When the id changes (new import, removed image), the app discards the previous annotation store and starts clean. **数据与设置 → 清空本地标注** resets annotations at any time. The public seed contains no `datasetId`; the public app binds it to the public index after loading.
+`index.json` carries a `datasetId` derived from the sorted file list and byte sizes. When the id changes (new import, removed image), the app discards the previous annotation store and starts clean. **Data & settings → Clear local annotations** resets annotations at any time. The public seed contains no `datasetId`; the public app binds it to the public index after loading.
 
 ---
 
@@ -357,12 +361,12 @@ Then run `npm run data` (or a build) to produce derivatives and update the index
 
 ## Reviewing diary dates (originals are never modified)
 
-1. Open **绘日记审核** (`#/diary-review`) in the admin app.
-2. The page pre-fills an OCR suggestion when available, otherwise **publish date − 1 day** labelled **推测**.
+1. Open **Diary review** (`#/diary-review`) in the admin app.
+2. The page pre-fills an OCR suggestion when available, otherwise **publish date − 1 day** labelled **Estimated**.
 3. Press `Enter` to confirm and jump to the next item; press `N` if the image is not a diary page; use `←` / `→` to page.
 4. The progress line shows confirmed / total and the remaining count.
 5. Export a review JSON for backup or restore; importing it updates only review state and confirmed dates.
-6. Write the result back with **写入 data/public.json** / **写入审核数据** (dev) or `npm run import:data`.
+6. Write the result back with **Write to data/public.json** / **Write review data** (dev) or `npm run import:data`.
 
 Nothing in this flow crops, renames, overwrites or deletes originals.
 
@@ -370,10 +374,10 @@ Nothing in this flow crops, renames, overwrites or deletes originals.
 
 ## Deleting unrelated images
 
-1. Use **删除** on a detail page or in the gallery multi-selection.
+1. Use **Delete** on a detail page or in the gallery multi-selection.
 2. Confirm the modal; the item disappears from all views and from the published seed, and the original moves to `images/_trash/`.
-3. Use the toast **撤销** to restore it within a short window.
-4. In **数据与设置 → 待清理原图**, **恢复** individual items or **执行清理** to remove them permanently (`npm run purge` also works).
+3. Use the toast **Undo** to restore it within a short window.
+4. In **Data & settings → Pending cleanup**, **Restore** individual items or **Run cleanup** to remove them permanently (`npm run purge` also works).
 
 The public build contains no delete endpoint or delete code path.
 

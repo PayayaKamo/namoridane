@@ -67,7 +67,7 @@ npm run preview      # 预览上一次构建
 
 需要 Node.js 18+。
 
-`images/original/` 已提交完整图片archive，开箱即可生成完整站点；即使目录为空，两档构建也能通过，并显示带导入命令的「还没有图片」空状态。
+`images/original/` 已提交完整图片归档，开箱即可生成完整站点；即使目录为空，两档构建也能通过，并显示带导入命令的「还没有图片」空状态。
 
 ### npm 脚本
 
@@ -138,7 +138,7 @@ npm run import:data -- "C:\Users\me\Downloads\namori-diary-review.json" --target
 ```
 namoridane/
 ├─ images/
-│  ├─ original/             # 图片 archive（由 npm run import 替换）
+│  ├─ original/             # 图片归档（由 npm run import 替换）
 │  └─ _trash/               # 已删除、等待清理的原图（gitignored）
 ├─ data/
 │  ├─ public.json           # build:public 使用的发布种子（已提交）
@@ -220,7 +220,7 @@ namoridane/
 
 1. 命令行参数：`--src="D:\path\to\images"`
 2. 环境变量：`NAMORI_SRC`
-3. 仓库 archive：`images/original/`（为空时自动创建）
+3. 仓库归档：`images/original/`（为空时自动创建）
 
 文件名必须可追溯：
 
@@ -250,6 +250,7 @@ unknown-<原始文件名>.jpg
 ```jsonc
 {
   "version": 7,
+  "generatedAt": "2026-11-17T00:00:00.000Z",
   "datasetId": "…",
   "count": 1123,
   "years": { "2021": 258, "2022": 401, "2023": 155, "2024": 308, "2025": 1 },
@@ -257,14 +258,23 @@ unknown-<原始文件名>.jpg
     {
       "id": "2021-06-01-CPlLQUStuZq",
       "shortcode": "CPlLQUStuZq",
+      "file": "2021-06-01-CPlLQUStuZq.jpg",
+      "postIndex": 0,
+      "postCount": 1,
       "publishedAt": "2021-06-01",
+      "dateKnown": true,
       "inferredYear": 2021,
       "inferredMonth": 5,
       "inferredDay": 31,
       "caption": "#ゆるゆり活動日記 …",
       "thumb": "images/thumb/2021-06-01-CPlLQUStuZq.webp",
       "large": "images/large/2021-06-01-CPlLQUStuZq.webp",
-      "original": "images/original/2021-06-01-CPlLQUStuZq.jpg"
+      "original": "images/original/2021-06-01-CPlLQUStuZq.jpg",
+      "w": 1080,
+      "h": 1350,
+      "color": "#e8dccb",
+      "ocr": { "rawText": "5月31日", "candidates": [] },
+      "suggestedDiaryDate": { "year": 2021, "month": 5, "day": 31 }
     }
   ]
 }
@@ -279,14 +289,24 @@ unknown-<原始文件名>.jpg
 ```jsonc
 {
   "version": 2,
+  "datasetId": "…",
   "dimensions": [{ "id": "character", "name": "人物/角色", "order": 0, "builtIn": true }],
   "tags": [{ "id": "t_xxx", "name": "赤座灯里", "dimensionId": "character", "color": "#c96f4a" }],
-  "characters": [{ "id": "t_xxx", "avatarItemId": "…" }],
+  "characters": [{ "id": "t_xxx", "avatarItemId": "…", "avatarCrop": { "cx": 0.5, "cy": 0.5 } }],
   "collections": [{ "id": "c_xxx", "name": "临摹参考", "itemIds": ["…"] }],
-  "storylines": [{ "id": "story_xxx", "title": "夏日的一周", "blocks": [], "published": true }],
+  "storylines": [{
+    "id": "story_xxx",
+    "title": "夏日的一周",
+    "blocks": [
+      { "id": "block_1", "type": "image", "itemId": "…" },
+      { "id": "block_2", "type": "note", "text": "第二章：雨天" }
+    ],
+    "published": true
+  }],
   "items": {
     "2021-06-01-CPlLQUStuZq": {
       "tags": ["t_xxx"],
+      "favorite": true,
       "reviewed": true,
       "excluded": false,
       "note": "私有备注",
@@ -302,6 +322,8 @@ unknown-<原始文件名>.jpg
 - `date.source` 取值 `inferred` / `published` / `manual`；只有 `confirmed: true` 才会出现在公开端。
 - 出场人物就是 `character` 维度上的普通标签，没有并行的第二套数据。
 
+以上示例值仅作示意，实际数据以你自己录入的名称为准。
+
 ### 数据集版本与重置
 
 `index.json` 带有基于文件列表与字节数计算的 `datasetId`。当 id 变化（新导入、删除图片）时，应用会丢弃旧标注并重新开始。**数据与设置 → 清空本地标注** 可随时重置。发布种子不含 `datasetId`，公开端加载后与公开索引绑定。
@@ -313,7 +335,7 @@ unknown-<原始文件名>.jpg
 - 缓存：`.cache/images.json`，键为 `file:target-size:mtime`。
 - 再次运行 `npm run data` 会复用未变图片，通常一秒内完成。
 - 用 `npm run data:force` 强制重建。
-- 审核与标注不会改动图片 archive，只有增删源文件才会改变索引。
+- 审核与标注不会改动图片归档，只有增删源文件才会改变索引。
 
 ---
 
