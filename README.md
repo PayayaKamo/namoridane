@@ -251,7 +251,7 @@ Generated, read-only for the front end:
 
 ```jsonc
 {
-  "version": 7,
+  "version": 9,
   "generatedAt": "2026-11-17T00:00:00.000Z",
   "datasetId": "…",
   "count": 1123,
@@ -263,6 +263,8 @@ Generated, read-only for the front end:
       "file": "2021-06-01-CPlLQUStuZq.jpg",
       "postIndex": 0,
       "postCount": 1,
+      "category": "diary",                 // "diary" = confirmed diary page, "other" = reviewed as non-diary
+      "includedInPublic": true,            // false for the 86 images reviewed as non-diary
       "publishedAt": "2021-06-01",
       "dateKnown": true,
       "inferredYear": 2021,
@@ -281,6 +283,8 @@ Generated, read-only for the front end:
   ]
 }
 ```
+
+`category` / `includedInPublic` come from the review conclusions in `data/public.json` (`excludedIds`): the admin build keeps all 1,123 items, while the public build filters out every item with `includedInPublic: false` and therefore indexes only the 1,037 confirmed diary pages.
 
 In public mode, `inferred*`, `ocr` and `suggestedDiaryDate` are stripped; `caption` and `shortcode` stay so the detail page can show the original text and link.
 

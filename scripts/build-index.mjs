@@ -60,7 +60,7 @@ const MODE =
 const THUMB_WIDTH = 480
 const LARGE_WIDTH = 1400
 const CACHE_VERSION = 4
-const INDEX_VERSION = 8
+const INDEX_VERSION = 9
 const CONCURRENCY = 6
 
 const NAME_RE = /^(\d{4})-(\d{2})-(\d{2})-([A-Za-z0-9_-]{11})(?:-(\d+))?\.jpe?g$/i
@@ -96,10 +96,6 @@ function parseName(fileName) {
     }
   }
   return null
-}
-
-function isoDate(y, m, d) {
-  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
 function shiftDay({ year, month, day }, delta) {
@@ -322,6 +318,35 @@ async function loadPostMeta() {
   }
 }
 
+/**
+ * 审核结论：确认非绘日记的 id 集合。
+ * 公开构建只认 data/public.json（发布口径）；管理端优先本地完整审核数据。
+ * 找不到依据时返回空集合，全部按绘日记处理，不猜测分类。
+ */
+async function loadClassification(mode) {
+  const candidates =
+    mode === 'public'
+      ? [PUBLIC_DATA_FILE]
+      : [path.join(ROOT, 'data', 'userdata.json'), PUBLIC_DATA_FILE]
+  for (const file of candidates) {
+    if (!fs.existsSync(file)) continue
+    try {
+      const data = JSON.parse(await fsp.readFile(file, 'utf8'))
+      const ids = new Set(
+        Array.isArray(data.excludedIds) ? data.excludedIds.filter((id) => typeof id === 'string') : [],
+      )
+      for (const [id, ann] of Object.entries(data.items ?? {})) {
+        if (ann?.excluded) ids.add(id)
+      }
+      return { ids, source: path.relative(ROOT, file) }
+    } catch (err) {
+      log(`${path.relative(ROOT, file)} 读取失败：${err.message}`)
+      if (mode === 'public') break
+    }
+  }
+  return { ids: new Set(), source: null }
+}
+
 /** 公开站种子：去掉非绘日记、私密备注、未确认推测日期与草稿故事线 */
 function prunePublicData(data) {
   const items = {}
@@ -424,23 +449,28 @@ async function main() {
     }
   }
 
+  const classification = await loadClassification(MODE)
+  const excludedIds = new Set(classification.ids)
   let publicData = null
-  let excludedIds = new Set()
   if (MODE === 'public') {
     if (!fs.existsSync(PUBLIC_DATA_FILE)) {
       console.error('[data] 公开构建需要 data/public.json，请先在管理端「数据与设置」导出发布数据')
       process.exit(1)
     }
     publicData = JSON.parse(await fsp.readFile(PUBLIC_DATA_FILE, 'utf8'))
-    excludedIds = new Set([
-      ...(Array.isArray(publicData.excludedIds) ? publicData.excludedIds : []),
-      ...Object.entries(publicData.items ?? {})
-        .filter(([, ann]) => ann?.excluded || ann?.deleted)
-        .map(([id]) => id),
-    ])
+    for (const [id, ann] of Object.entries(publicData.items ?? {})) {
+      if (ann?.excluded || ann?.deleted) excludedIds.add(id)
+    }
+  }
+  if (classification.source) {
+    log(`审核分类：${excludedIds.size} 张标记为非绘日记（依据 ${classification.source}）`)
+  } else {
+    log('未找到审核分类依据，全部按绘日记处理')
+  }
+  if (MODE === 'public') {
     const before = entries.length
     entries = entries.filter((entry) => !excludedIds.has(idByFile.get(entry.name)))
-    log(`公开模式：排除 ${before - entries.length} 张非绘日记`)
+    log(`公开模式：按审核分类排除 ${before - entries.length} 张非绘日记`)
   }
 
   if (skippedNames.length) {
@@ -488,6 +518,7 @@ async function main() {
         ? shiftDay(e.parsed, -1)
         : { year: 0, month: 0, day: 0 }
     const isPublic = MODE === 'public'
+    const isOther = excludedIds.has(id)
     const meta = postMeta[e.name] ?? null
     // 文案与永久链接只来自公开的帖子元数据；缺失时降级为空，不影响索引生成
     const permalink =
@@ -504,6 +535,9 @@ async function main() {
       permalink,
       postIndex,
       postCount: list.length,
+      // 审核结论：diary = 确认是绘日记，other = 确认非绘日记；公开构建只保留 includedInPublic
+      category: isOther ? 'other' : 'diary',
+      includedInPublic: !isOther,
       publishedAt: e.parsed.publishedAt,
       dateKnown: e.parsed.dateKnown,
       // 日记日期的初始建议：OCR 图内日期 > 发布日期前一天；没有发布日期时为 0，等待人工确认

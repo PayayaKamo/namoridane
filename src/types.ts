@@ -26,6 +26,10 @@ export interface DiaryItem {
   permalink: string | null
   postIndex: number
   postCount: number
+  /** 审核结论：diary = 确认是绘日记，other = 确认非绘日记 */
+  category: 'diary' | 'other'
+  /** 是否进入公开构建（只有 category === 'diary' 才会公开） */
+  includedInPublic: boolean
   /** 发布日期，来自文件名；日期未知时为空字符串 */
   publishedAt: string
   /** 文件名是否带可信的发布日期 */
