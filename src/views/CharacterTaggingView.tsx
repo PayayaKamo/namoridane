@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../state/store'
+import { useI18n } from '../i18n'
 import { CharacterPicker } from '../components/CharacterPicker'
 import { Icon } from '../components/Icon'
 import { sortCharacterTags } from '../lib/constants'
@@ -14,6 +15,7 @@ type Scope = 'todo' | 'labeled' | 'all'
  */
 export function CharacterTaggingView() {
   const { confirmedDiaryItems, annotations, tags, itemMap, setItemTags, getDate } = useStore()
+  const { t } = useI18n()
   const [scope, setScope] = useState<Scope>('todo')
   const [charFilter, setCharFilter] = useState('')
   const [queue, setQueue] = useState<string[]>([])
@@ -155,13 +157,13 @@ export function CharacterTaggingView() {
       <div className="tagging-bar">
         <div className="tagging-progress">
           <strong>
-            {labeled} / {total}
+            {t('characters.tagging.progress', { done: labeled, total })}
           </strong>
-          <span>已标注</span>
+          <span>{t('characters.tagging.labeled')}</span>
           {!charFilter && scope === 'todo' ? (
-            <span className="tagging-todo">还差 {todoCount} 张</span>
+            <span className="tagging-todo">{t('characters.tagging.remaining', { count: todoCount })}</span>
           ) : (
-            <span className="tagging-todo">当前 {queue.length} 张</span>
+            <span className="tagging-todo">{t('characters.tagging.current', { count: queue.length })}</span>
           )}
         </div>
         <div className="tagging-filters">
@@ -173,7 +175,7 @@ export function CharacterTaggingView() {
                 setScope('todo')
               }}
             >
-              未标注
+              {t('characters.tagging.scopeTodo')}
             </button>
             <button
               className={!charFilter && scope === 'labeled' ? 'active' : ''}
@@ -182,7 +184,7 @@ export function CharacterTaggingView() {
                 setScope('labeled')
               }}
             >
-              已标注
+              {t('characters.tagging.scopeLabeled')}
             </button>
             <button
               className={!charFilter && scope === 'all' ? 'active' : ''}
@@ -191,14 +193,14 @@ export function CharacterTaggingView() {
                 setScope('all')
               }}
             >
-              全部
+              {t('common.all')}
             </button>
           </div>
           <select className="select" value={charFilter} onChange={(event) => setCharFilter(event.target.value)}>
-            <option value="">按角色筛选…</option>
+            <option value="">{t('characters.tagging.filterPlaceholder')}</option>
             {characterTags.map((tag) => (
               <option key={tag.id} value={tag.id}>
-                {tag.name}（{charCounts.get(tag.id) ?? 0}）
+                {t('characters.tagging.option', { name: tag.name, count: charCounts.get(tag.id) ?? 0 })}
               </option>
             ))}
           </select>
@@ -208,12 +210,12 @@ export function CharacterTaggingView() {
       {!queue.length ? (
         <div className="panel tagging-empty">
           {charFilter
-            ? '这个角色下还没有标注过的绘日记。'
+            ? t('characters.tagging.emptyForCharacter')
             : scope === 'todo'
-              ? '全部绘日记都标完了。'
+              ? t('characters.tagging.emptyDone')
               : scope === 'labeled'
-                ? '还没有已标注的绘日记。'
-                : '还没有已确认的绘日记，请先到「绘日记审核」确认。'}
+                ? t('characters.tagging.emptyLabeled')
+                : t('characters.tagging.emptyNoConfirmed')}
         </div>
       ) : (
         current && (
@@ -222,9 +224,7 @@ export function CharacterTaggingView() {
               <img src={`${BASE}${current.large || current.thumb}`} alt="" />
             </div>
             <div className="tagging-meta">
-              <span>
-                {date?.year} 年 {date?.month} 月 {date?.day} 日
-              </span>
+              {date && <span>{t('common.fullDate', { year: date.year, month: date.month, day: date.day })}</span>}
               {current.shortcode && <span className="tagging-code">#{current.shortcode}</span>}
               <span className="tagging-pos">
                 {safeIndex + 1} / {queue.length}
@@ -234,15 +234,15 @@ export function CharacterTaggingView() {
               <CharacterPicker selected={selected} onChange={(ids) => applyChars(current.id, ids)} />
             </div>
             <div className="tagging-foot">
-              <button className="btn btn-sm" onClick={goPrev} title="上一张（←，第一张时跳到末尾）">
+              <button className="btn btn-sm" onClick={goPrev} title={t('characters.tagging.prevTitle')}>
                 <Icon name="left" size={14} />
-                上一张
+                {t('common.previous')}
               </button>
               <p className="tagging-hint">
-                点选芯片标记或取消 · <kbd>Enter</kbd> / <kbd>→</kbd> 下一张 · <kbd>←</kbd> 上一张 · <kbd>1</kbd>–<kbd>9</kbd> 快速点选
+                {t('characters.tagging.hintClick')} · <kbd>Enter</kbd> / <kbd>→</kbd> {t('characters.tagging.hintNext')} · <kbd>←</kbd> {t('characters.tagging.hintPrev')} · <kbd>1</kbd>–<kbd>9</kbd> {t('characters.tagging.hintQuick')}
               </p>
-              <button className="btn btn-primary tagging-confirm" onClick={goNext} title="确认并看下一张（Enter / →）">
-                确认
+              <button className="btn btn-primary tagging-confirm" onClick={goNext} title={t('characters.tagging.confirmTitle')}>
+                {t('common.confirm')}
                 <Icon name="right" size={14} />
               </button>
             </div>

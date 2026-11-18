@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Icon } from '../components/Icon'
 import { Empty } from '../components/Modal'
-import { isValidYmd } from '../lib/dates'
+import { formatMonthDay, isValidYmd } from '../lib/dates'
 import { originalUrl } from '../lib/image'
 import { navigate } from '../lib/router'
 import { downloadReviewJson, reviewStatusOf } from '../lib/review'
 import { useStore } from '../state/store'
+import { useI18n } from '../i18n'
 import type { DiaryItem, DiaryReviewStatus } from '../types'
 
 const BASE = import.meta.env.BASE_URL
@@ -20,6 +21,7 @@ export function DiaryReviewView() {
     excludedItems,
     notify,
   } = useStore()
+  const { t } = useI18n()
   const [queue, setQueue] = useState<Queue>('pending')
   const [currentId, setCurrentId] = useState<string | null>(null)
 
@@ -69,25 +71,25 @@ export function DiaryReviewView() {
 
   const exportReview = () => {
     downloadReviewJson(allItems, annotations)
-    notify('审核结果 JSON 已导出，原始图片未做任何改动', 'success')
+    notify(t('adminData.review.exported'), 'success')
   }
 
   return (
     <div className="diary-review-view">
       <div className="page-head">
         <div>
-          <div className="page-eyebrow">Diary Review</div>
-          <h2 className="page-title">绘日记审核</h2>
+          <div className="page-eyebrow">{t('shell.page.diary-review.eyebrow')}</div>
+          <h2 className="page-title">{t('shell.page.diary-review.title')}</h2>
           <div className="page-sub">
-            逐张人工确认类型和图内日期。有 OCR 候选时默认预填建议值，没有时回填「发布日 - 1 天」的推测值；以你的确认为准，且不修改任何原始图片。
+            {t('adminData.review.subtitle')}
           </div>
         </div>
         <div className="page-actions">
           <button className="btn" onClick={() => navigate('/review')}>
-            <Icon name="calendar" size={14} />日期校对
+            <Icon name="calendar" size={14} />{t('shell.nav.dateReview')}
           </button>
           <button className="btn btn-primary" onClick={exportReview}>
-            <Icon name="download" size={14} />导出审核 JSON
+            <Icon name="download" size={14} />{t('adminData.review.export')}
           </button>
         </div>
       </div>
@@ -95,10 +97,13 @@ export function DiaryReviewView() {
       <div className="progress-card">
         <div className="progress-head">
           <span>
-            审核进度 · 已确认 {confirmedDiaryItems.length} 张绘日记，{excludedItems.length} 张非绘日记
+            {t('adminData.review.progress', {
+              confirmed: confirmedDiaryItems.length,
+              excluded: excludedItems.length,
+            })}
           </span>
           <span className="num">
-            {reviewedCount} / {allItems.length} · 剩余 {remainingCount}
+            {reviewedCount} / {allItems.length} · {t('adminData.review.remaining', { count: remainingCount })}
           </span>
         </div>
         <div className="progress-track">
@@ -110,10 +115,10 @@ export function DiaryReviewView() {
         <div className="segmented">
           {(
             [
-              ['pending', `待确认 ${pendingReviewItems.length}`],
-              ['diary', `是绘日记 ${confirmedDiaryItems.length}`],
-              ['not_diary', `非绘日记 ${excludedItems.length}`],
-              ['all', `全部 ${allItems.length}`],
+              ['pending', t('adminData.review.queue.pending', { count: pendingReviewItems.length })],
+              ['diary', t('adminData.review.queue.diary', { count: confirmedDiaryItems.length })],
+              ['not_diary', t('adminData.review.queue.notDiary', { count: excludedItems.length })],
+              ['all', t('adminData.review.queue.all', { count: allItems.length })],
             ] as [Queue, string][]
           ).map(([key, label]) => (
             <button key={key} className={queue === key ? 'active' : ''} onClick={() => chooseQueue(key)}>
@@ -122,15 +127,23 @@ export function DiaryReviewView() {
           ))}
         </div>
         <div className="spacer" />
-        <span className="faint">待确认暂时保留在图库；确认非绘日记后才隐藏。</span>
+        <span className="faint">{t('adminData.review.queueHint')}</span>
       </div>
 
       {!current ? (
         <Empty
           icon="check"
-          title={queue === 'pending' ? '待确认图片已经全部处理完' : '这个分组还没有图片'}
-          hint={queue === 'pending' ? '可以切换到「是绘日记」复查，或导出审核 JSON 备份。' : '切换其他分组继续查看。'}
-          action={queue === 'pending' ? <button className="btn" onClick={() => chooseQueue('diary')}>查看已确认</button> : undefined}
+          title={
+            queue === 'pending'
+              ? t('adminData.review.empty.pendingTitle')
+              : t('adminData.review.empty.groupTitle')
+          }
+          hint={
+            queue === 'pending'
+              ? t('adminData.review.empty.pendingHint')
+              : t('adminData.review.empty.groupHint')
+          }
+          action={queue === 'pending' ? <button className="btn" onClick={() => chooseQueue('diary')}>{t('adminData.review.empty.pendingAction')}</button> : undefined}
         />
       ) : (
         <ReviewStage
@@ -163,6 +176,7 @@ function ReviewStage({
   onAdvance: () => void
 }) {
   const { annotations, getDate, setDateOverride, setReviewStatus, notify } = useStore()
+  const { t } = useI18n()
   const date = getDate(item)
   const status = reviewStatusOf(annotations[item.id])
   const [year, setYear] = useState(date.year ? String(date.year) : '')
@@ -191,18 +205,18 @@ function ReviewStage({
     const m = Number(month)
     const d = Number(day)
     if (!isValidYmd(y, m, d)) {
-      notify('日记日期不合法，请检查年月日', 'error')
+      notify(t('adminData.review.date.invalid'), 'error')
       return
     }
     setDateOverride(item.id, { year: y, month: m, day: d, confirmed: true, source })
     setReviewStatus([item.id], 'diary')
-    notify('已确认为绘日记并保存日记日期', 'success')
+    notify(t('adminData.review.date.confirmed'), 'success')
     onAdvance()
   }
 
   const markNotDiary = () => {
     setReviewStatus([item.id], 'not_diary')
-    notify('已标记为非绘日记；原图仍完整保留', 'success')
+    notify(t('adminData.review.decisions.notDiaryDone'), 'success')
     onAdvance()
   }
 
@@ -215,7 +229,7 @@ function ReviewStage({
 
   const markPending = () => {
     setReviewStatus([item.id], 'pending')
-    notify('已移回待确认', 'success')
+    notify(t('adminData.review.decisions.pendingDone'), 'success')
     onAdvance()
   }
 
@@ -259,19 +273,36 @@ function ReviewStage({
       <aside className="diary-review-side">
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <span className={`badge ${status === 'diary' ? 'badge-sage' : status === 'not_diary' ? 'badge-warn' : 'badge-accent'}`}>
-            {status === 'diary' ? '已确认绘日记' : status === 'not_diary' ? '已确认非绘日记' : '待确认'}
+            {status === 'diary'
+              ? t('adminData.review.status.diary')
+              : status === 'not_diary'
+                ? t('adminData.review.status.notDiary')
+                : t('adminData.review.status.pending')}
           </span>
           <span className="faint num">{index + 1} / {total}</span>
         </div>
 
         <div className="diary-review-file">
           <strong>{item.sourceFile ?? item.file}</strong>
-          <span>原始文件名 · {item.sourceFile ? 'Instagram CDN' : '未记录'}</span>
-          <span>导入后文件名 · {item.file}</span>
-          <span>Shortcode · {item.shortcode}</span>
-          <span>原图尺寸 · {item.w} × {item.h}</span>
-          {item.postCount > 1 && <span>同帖图片 · 第 {item.postIndex + 1} / {item.postCount} 张</span>}
-          <span className="faint">发布日期来自帖子元数据；文件名是导入时重命名的。</span>
+          <span>
+            {t('adminData.review.file.originalName', {
+              value: item.sourceFile
+                ? t('adminData.review.file.cdn')
+                : t('adminData.review.file.notRecorded'),
+            })}
+          </span>
+          <span>{t('adminData.review.file.importName', { file: item.file })}</span>
+          <span>{t('adminData.review.file.shortcode', { code: item.shortcode })}</span>
+          <span>{t('adminData.review.file.dimensions', { width: item.w, height: item.h })}</span>
+          {item.postCount > 1 && (
+            <span>
+              {t('adminData.review.file.multiPost', {
+                index: item.postIndex + 1,
+                count: item.postCount,
+              })}
+            </span>
+          )}
+          <span className="faint">{t('adminData.review.file.note')}</span>
         </div>
 
         {item.ocr?.candidates?.length ? (
@@ -280,10 +311,10 @@ function ReviewStage({
               className="ocr-crop"
               style={{ backgroundImage: `url(${BASE}${item.large})` }}
               role="img"
-              aria-label="左上角日期区域预览"
+              aria-label={t('adminData.review.ocr.preview')}
             />
             <div className="ocr-meta">
-              <span className="badge badge-accent">Windows OCR 候选 · 仍需人工确认</span>
+              <span className="badge badge-accent">{t('adminData.review.ocr.badge')}</span>
               <div className="row row-wrap" style={{ gap: 6 }}>
                 {item.ocr.candidates.map((candidate) => (
                   <button
@@ -296,85 +327,96 @@ function ReviewStage({
                 ))}
               </div>
               {item.ocr.rawText && (
-                <span className="faint">识别原文：{item.ocr.rawText.slice(0, 90)}</span>
+                <span className="faint">
+                  {t('adminData.review.ocr.raw', { text: item.ocr.rawText.slice(0, 90) })}
+                </span>
               )}
             </div>
           </div>
         ) : null}
 
         <section className="diary-review-section">
-          <div className="field-label">发布日期（导入时写入文件名）</div>
-          <div className="diary-review-published num">{item.publishedAt || '未知（文件名没有日期）'}</div>
+          <div className="field-label">{t('adminData.review.published.label')}</div>
+          <div className="diary-review-published num">{item.publishedAt || t('adminData.review.published.unknown')}</div>
         </section>
 
         <section className="diary-review-section">
           <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
-            <span className="field-label">图内日记日期</span>
+            <span className="field-label">{t('adminData.review.date.label')}</span>
             <span className="faint">
               {source === 'manual'
-                ? '手动填写'
+                ? t('adminData.review.date.manual')
                 : item.suggestedDiaryDate
-                  ? 'OCR 建议（发布日就近推断年份），以你的确认为准'
+                  ? t('adminData.review.date.suggested')
                   : item.dateKnown
-                    ? '推测（发布日 - 1 天），可直接改月 / 日'
-                    : '日期未知，请手动填写'}
+                    ? t('adminData.review.date.inferred')
+                    : t('adminData.review.date.unknown')}
             </span>
           </div>
           <div className="diary-review-date-inputs">
             <input
               className="input num"
               value={year}
-              placeholder="年"
+              placeholder={t('common.year')}
               onChange={(e) => { setYear(e.target.value.replace(/\D/g, '').slice(0, 4)); setSource('manual') }}
-              aria-label="日记年份"
+              aria-label={t('adminData.review.date.yearAria')}
             />
-            <span>年</span>
+            <span>{t('common.year')}</span>
             <input
               className="input num"
               value={month}
-              placeholder="月"
+              placeholder={t('common.month')}
               onChange={(e) => { setMonth(e.target.value.replace(/\D/g, '').slice(0, 2)); setSource('manual') }}
-              aria-label="日记月份"
+              aria-label={t('adminData.review.date.monthAria')}
             />
-            <span>月</span>
+            <span>{t('common.month')}</span>
             <input
               className="input num"
               value={day}
-              placeholder="日"
+              placeholder={t('common.day')}
               onChange={(e) => { setDay(e.target.value.replace(/\D/g, '').slice(0, 2)); setSource('manual') }}
-              aria-label="日记日"
+              aria-label={t('adminData.review.date.dayAria')}
             />
-            <span>日</span>
+            <span>{t('common.day')}</span>
           </div>
           <div className="row row-wrap" style={{ gap: 6, marginTop: 8 }}>
             <button className="btn btn-ghost btn-sm" onClick={useInferredDate} disabled={!item.inferredMonth || !item.inferredDay}>
-              {item.suggestedDiaryDate ? '填入 OCR 建议' : '填入推测日期'} {item.inferredMonth ? `${item.inferredMonth}/${item.inferredDay}` : '—'}
+              {t(
+                item.suggestedDiaryDate
+                  ? 'adminData.review.date.fillOcr'
+                  : 'adminData.review.date.fillInferred',
+                {
+                  date: item.inferredMonth
+                    ? formatMonthDay(item.inferredMonth, item.inferredDay)
+                    : '—',
+                },
+              )}
             </button>
             <button className="btn btn-ghost btn-sm" onClick={usePublishedDate} disabled={!item.publishedAt}>
-              沿用发布日
+              {t('adminData.review.date.usePublished')}
             </button>
           </div>
         </section>
 
         <div className="diary-review-decisions">
           <button className="btn btn-primary btn-lg" onClick={confirmDiary}>
-            <Icon name="check" size={16} />是绘日记，保存并下一张
+            <Icon name="check" size={16} />{t('adminData.review.decisions.confirm')}
           </button>
           <button className="btn btn-danger-ghost" onClick={markNotDiary}>
-            <Icon name="close" size={15} />非绘日记
+            <Icon name="close" size={15} />{t('adminData.review.decisions.notDiary')}
           </button>
-          {status !== 'pending' && <button className="btn btn-ghost btn-sm" onClick={markPending}>移回待确认</button>}
+          {status !== 'pending' && <button className="btn btn-ghost btn-sm" onClick={markPending}>{t('adminData.review.decisions.pending')}</button>}
         </div>
 
-        <span className="faint">快捷键：Enter 确认 · N 非绘日记 · ← → 翻页</span>
+        <span className="faint">{t('adminData.review.decisions.shortcuts')}</span>
 
         <a className="btn btn-ghost btn-sm" href={originalUrl(item)} target="_blank" rel="noreferrer">
-          <Icon name="expand" size={13} />查看原始 JPG
+          <Icon name="expand" size={13} />{t('adminData.review.decisions.viewOriginal')}
         </a>
 
         <div className="diary-review-nav">
-          <button className="btn btn-sm" onClick={onPrevious}><Icon name="left" size={13} />上一张</button>
-          <button className="btn btn-sm" onClick={onNext}>下一张<Icon name="right" size={13} /></button>
+          <button className="btn btn-sm" onClick={onPrevious}><Icon name="left" size={13} />{t('common.previous')}</button>
+          <button className="btn btn-sm" onClick={onNext}>{t('common.next')}<Icon name="right" size={13} /></button>
         </div>
       </aside>
     </div>

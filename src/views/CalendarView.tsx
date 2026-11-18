@@ -3,16 +3,17 @@ import type { Route } from '../lib/router'
 import { navigate } from '../lib/router'
 import { useStore } from '../state/store'
 import {
-  MONTHS_CN,
-  WEEKDAYS_CN,
   daysInMonth,
   effectiveDate,
   firstWeekday,
   isoOf,
+  monthNames,
   todayKey,
+  weekdayNames,
 } from '../lib/dates'
 import { Icon } from '../components/Icon'
 import { IS_PUBLIC } from '../lib/appMode'
+import { useI18n } from '../i18n'
 import type { DiaryItem, EffectiveDate } from '../types'
 
 const BASE = import.meta.env.BASE_URL
@@ -83,6 +84,9 @@ function resolveInitialMonth(
 
 export function CalendarView({ route }: { route: Route }) {
   const { items, annotations, years, getDate, seedReady } = useStore()
+  const { t } = useI18n()
+  const months = monthNames()
+  const weekdays = weekdayNames()
   const [initial] = useState(() => {
     const now = new Date()
     const queryYear = Number(route.query.get('y')) || Number(route.query.get('year'))
@@ -203,32 +207,40 @@ export function CalendarView({ route }: { route: Route }) {
   return (
     <div className="calendar-view">
       <div className="cal-sticky">
-        <div className="page-eyebrow">Calendar</div>
+        <div className="page-eyebrow">{t('shell.page.calendar.eyebrow')}</div>
         <div className="cal-title-row">
-          <button className="icon-btn" onClick={() => stepYear(-1)} aria-label="上一年" title="上一年（←）">
+          <button
+            className="icon-btn"
+            onClick={() => stepYear(-1)}
+            aria-label={t('browse.calendar.prevYear')}
+            title={t('browse.calendar.prevYearHint')}
+          >
             <Icon name="left" />
           </button>
-          <h2 className="page-title">
-            {year} 年 {MONTHS_CN[month - 1]}
-          </h2>
-          <button className="icon-btn" onClick={() => stepYear(1)} aria-label="下一年" title="下一年（→）">
+          <h2 className="page-title">{t('browse.calendar.heading', { year, month: months[month - 1] })}</h2>
+          <button
+            className="icon-btn"
+            onClick={() => stepYear(1)}
+            aria-label={t('browse.calendar.nextYear')}
+            title={t('browse.calendar.nextYearHint')}
+          >
             <Icon name="right" />
           </button>
         </div>
         <div className="page-sub">
-          本月 {dayCount} 天有画 · 共 {total} 张 · 缺 {days - dayCount} 天
+          {t('browse.calendar.summary', { days: dayCount, total, missing: days - dayCount })}
         </div>
       </div>
       <div className="cal-controls">
         <select className="select" style={{ width: 104 }} value={year} onChange={(e) => selectMonth(Number(e.target.value), month)}>
           {yearOptions.map((y) => (
             <option key={y} value={y}>
-              {y} 年
+              {t('common.yearLabel', { year: y })}
             </option>
           ))}
         </select>
         <select className="select" style={{ width: 96 }} value={month} onChange={(e) => selectMonth(year, Number(e.target.value))}>
-          {MONTHS_CN.map((name, idx) => (
+          {months.map((name, idx) => (
             <option key={name} value={idx + 1}>
               {name}
             </option>
@@ -241,11 +253,11 @@ export function CalendarView({ route }: { route: Route }) {
             selectMonth(now.getFullYear(), now.getMonth() + 1)
           }}
         >
-          今天
+          {t('browse.calendar.today')}
         </button>
-        <button className="btn btn-sm" onClick={() => window.print()} title="打印当前月历">
+        <button className="btn btn-sm" onClick={() => window.print()} title={t('browse.calendar.printHint')}>
           <Icon name="download" />
-          打印月历
+          {t('browse.calendar.print')}
         </button>
       </div>
 
@@ -253,14 +265,17 @@ export function CalendarView({ route }: { route: Route }) {
         <div className="excluded-banner">
           {IS_PUBLIC ? (
             <div>
-              <strong>内容正在整理</strong>
-              <span>绘日记还在整理中，稍后再来看看。</span>
+              <strong>{t('browse.calendar.emptyPublicTitle')}</strong>
+              <span>{t('browse.calendar.emptyPublicHint')}</span>
             </div>
           ) : (
             <div>
-              <strong>还没有图片</strong>
+              <strong>{t('browse.calendar.emptyTitle')}</strong>
               <span>
-                运行 <code>npm run import -- "&lt;解压目录&gt;"</code> 导入图片，再执行 <code>npm run data</code> 生成索引后，日历会按确认的日期填充。
+                {t('browse.calendar.emptyHintBefore')}{' '}
+                <code>npm run import -- "{t('browse.calendar.importPlaceholder')}"</code>{' '}
+                {t('browse.calendar.emptyHintMiddle')} <code>npm run data</code>{' '}
+                {t('browse.calendar.emptyHintAfter')}
               </span>
             </div>
           )}
@@ -268,8 +283,8 @@ export function CalendarView({ route }: { route: Route }) {
       )}
 
       <div className="print-only print-head">
-        <h1>Namori 水母绘日记 · {year} 年 {MONTHS_CN[month - 1]}</h1>
-        <p>本月 {dayCount} 天有画 · 共 {total} 张</p>
+        <h1>{t('browse.calendar.printTitle', { year, month: months[month - 1] })}</h1>
+        <p>{t('browse.calendar.printSummary', { days: dayCount, total })}</p>
       </div>
 
       <div className="year-strip">
@@ -278,7 +293,7 @@ export function CalendarView({ route }: { route: Route }) {
             key={idx}
             className={`year-month${idx + 1 === month ? ' active' : ''}${count ? '' : ' empty-month'}`}
             onClick={() => selectMonth(year, idx + 1)}
-            title={`${MONTHS_CN[idx]} · ${count} 张`}
+            title={t('browse.calendar.monthTooltip', { month: months[idx], count })}
           >
             <span>{idx + 1}</span>
             <span className="year-month-bar" style={{ opacity: count ? Math.min(1, 0.25 + count / 30) : 0.12 }} />
@@ -291,11 +306,11 @@ export function CalendarView({ route }: { route: Route }) {
         <div className="segmented">
           {(
             [
-              ['all', '全部'],
-              ['filled', '有图'],
-              ['missing', '缺图'],
-              ['favorite', '收藏'],
-              ['pending', '待校对'],
+              ['all', t('common.all')],
+              ['filled', t('browse.calendar.filterFilled')],
+              ['missing', t('browse.calendar.filterMissing')],
+              ['favorite', t('browse.calendar.filterFavorite')],
+              ['pending', t('browse.calendar.filterPending')],
             ] as [CalFilter, string][]
           ).map(([key, label]) => (
             <button key={key} className={filter === key ? 'active' : ''} onClick={() => setFilter(key)}>
@@ -306,9 +321,9 @@ export function CalendarView({ route }: { route: Route }) {
       </div>
 
       <div className="cal-grid">
-        {WEEKDAYS_CN.map((w) => (
+        {weekdays.map((w) => (
           <div key={w} className="cal-weekday">
-            周{w}
+            {w}
           </div>
         ))}
         {cells.map((day, idx) => {
@@ -341,9 +356,11 @@ export function CalendarView({ route }: { route: Route }) {
             >
               <div className="cal-day">
                 <span className={`hand${day === 1 ? ' first' : ''}`}>{day}</span>
-                {day === 1 && <span className="cal-month-tag">{month}月</span>}
+                {day === 1 && <span className="cal-month-tag">{months[month - 1]}</span>}
                 <span className="spacer" />
-                {pending && list.length > 0 && <span className="dot-warn" title="有未校对日期" />}
+                {pending && list.length > 0 && (
+                  <span className="dot-warn" title={t('browse.calendar.pendingHint')} />
+                )}
                 {list.length > 3 && <span className="cal-count num">{list.length}</span>}
               </div>
               <div className="cal-thumbs">
@@ -351,7 +368,7 @@ export function CalendarView({ route }: { route: Route }) {
                   <div key={item.id} className="cal-thumb" style={{ background: item.color }}>
                     <img
                       src={`${BASE}${item.thumb}`}
-                      alt={`Namori 水母绘日记 ${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} 第 ${thumbIndex + 1} 张`}
+                      alt={t('browse.calendar.thumbAlt', { date: iso, count: thumbIndex + 1 })}
                       loading="lazy"
                       decoding="async"
                     />

@@ -3,6 +3,7 @@ import type { SearchHit, SearchMatch } from '../lib/search'
 import { buildSnippet, parseKeywords } from '../lib/search'
 import { dayQueryOf, formatShortDate, parseDateQuery } from '../lib/dates'
 import { navigate } from '../lib/router'
+import { useI18n } from '../i18n'
 import { Icon } from './Icon'
 
 const BASE = import.meta.env.BASE_URL
@@ -103,13 +104,16 @@ export function SearchBar({
   onSubmit,
   onViewAll,
 }: SearchBarProps) {
+  const { t } = useI18n()
   const listId = useId()
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([])
   const dateQuery = parseDateQuery(query)
   const rows = [
-    ...(dateQuery ? [{ type: 'date' as const, label: `${dateQuery.month} 月 ${dateQuery.day} 日` }] : []),
+    ...(dateQuery
+      ? [{ type: 'date' as const, label: t('common.monthDay', { month: dateQuery.month, day: dateQuery.day }) }]
+      : []),
     ...hits.slice(0, 6).map((hit) => ({ type: 'hit' as const, hit })),
   ]
   const suggestionsOnly = query.trim().length > 0 && rows.length === 0 && suggestions.length > 0
@@ -174,7 +178,7 @@ export function SearchBar({
         <Icon name="search" size={18} />
         <input
           value={query}
-          placeholder="搜索文案、短码、日期、标签、人物…"
+          placeholder={t('browse.search.bar.placeholder')}
           role="combobox"
           aria-expanded={showPanel}
           aria-controls={listId}
@@ -197,7 +201,7 @@ export function SearchBar({
               onChange('')
               setOpen(true)
             }}
-            aria-label="清空关键词"
+            aria-label={t('browse.search.bar.clearQuery')}
           >
             <Icon name="close" size={14} />
           </button>
@@ -208,7 +212,7 @@ export function SearchBar({
 
       {!query.trim() && recent.length > 0 && (
         <div className="search-recent">
-          <span className="search-recent-label">最近搜索</span>
+          <span className="search-recent-label">{t('browse.search.bar.recent')}</span>
           {recent.map((value) => (
             <button
               key={value}
@@ -223,7 +227,7 @@ export function SearchBar({
             </button>
           ))}
           <button type="button" className="search-recent-clear" onClick={onClearRecent}>
-            清空
+            {t('browse.search.bar.clearRecent')}
           </button>
         </div>
       )}
@@ -259,7 +263,7 @@ export function SearchBar({
                   <span className="search-dropdown-icon">
                     <Icon name="calendar" size={15} />
                   </span>
-                  <span>按日期查看 {row.label}</span>
+                  <span>{t('browse.search.bar.dateRow', { date: row.label })}</span>
                   <kbd>Enter</kbd>
                 </button>
               )
@@ -303,7 +307,8 @@ export function SearchBar({
           {suggestionsOnly && (
             <div className="search-dropdown-suggest">
               <div className="search-dropdown-suggest-title">
-                没有找到「{parseKeywords(query).join(' ')}」{suggestions.length ? '，试试：' : ''}
+                {t('browse.search.bar.noResults', { keyword: parseKeywords(query).join(' ') })}
+                {suggestions.length ? t('browse.search.bar.trySuggestions') : ''}
               </div>
               <div className="row row-wrap" style={{ gap: 6 }}>
                 {suggestions.map((value) => (
@@ -332,7 +337,7 @@ export function SearchBar({
                 onViewAll()
               }}
             >
-              查看全部 <b>{total}</b> 条结果
+              {t('browse.search.bar.viewAll', { count: total })}
               <Icon name="right" size={12} />
             </button>
           )}

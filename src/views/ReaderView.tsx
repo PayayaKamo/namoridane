@@ -5,6 +5,7 @@ import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
 import { formatFullDate, weekdayLabel } from '../lib/dates'
 import { IS_PUBLIC } from '../lib/appMode'
+import { useI18n } from '../i18n'
 
 const BASE = import.meta.env.BASE_URL
 const SCOPE_KEY = 'namori.reader.scope'
@@ -18,6 +19,7 @@ const dateValue = (iso: string) => {
 
 export function ReaderView({ route }: { route: Route }) {
   const { items, confirmedDiaryItems, getDate, annotations, toggleFavorite, notify } = useStore()
+  const { t } = useI18n()
   const [scope, setScope] = useState<Scope>(() => (localStorage.getItem(SCOPE_KEY) === 'all' ? 'all' : 'diary'))
   const ordered = useMemo(() => {
     const pool = scope === 'diary' ? confirmedDiaryItems : items
@@ -93,9 +95,9 @@ export function ReaderView({ route }: { route: Route }) {
   if (!item || !date) {
     return (
       <div className="reader-empty">
-        <p>{IS_PUBLIC ? '绘日记正在整理中，敬请期待。' : '还没有可以翻阅的作品。'}</p>
+        <p>{IS_PUBLIC ? t('browse.reader.emptyPublic') : t('browse.reader.empty')}</p>
         <button className="btn" onClick={() => navigate(IS_PUBLIC ? '/' : '/gallery')}>
-          {IS_PUBLIC ? '回到首页' : '去图库'}
+          {IS_PUBLIC ? t('browse.reader.backHome') : t('browse.reader.goGallery')}
         </button>
       </div>
     )
@@ -106,7 +108,7 @@ export function ReaderView({ route }: { route: Route }) {
       if (document.fullscreenElement) await document.exitFullscreen()
       else await shellRef.current?.requestFullscreen()
     } catch {
-      notify('当前浏览器不支持全屏，可用 F11', 'default')
+      notify(t('browse.reader.fullscreenUnsupported'), 'default')
     }
   }
 
@@ -147,19 +149,19 @@ export function ReaderView({ route }: { route: Route }) {
       <div className="reader-chrome reader-top">
         <button className="btn btn-ghost btn-sm" onClick={() => navigate('/gallery')}>
           <Icon name="close" size={14} />
-          退出翻阅
+          {t('browse.reader.exit')}
         </button>
         <div className="reader-progress">
           <div className="reader-progress-fill" style={{ width: `${((index + 1) / ordered.length) * 100}%` }} />
         </div>
-        <div className="reader-scope" role="tablist" aria-label="翻阅范围">
+        <div className="reader-scope" role="tablist" aria-label={t('browse.reader.scopeAria')}>
           <button
             className={scope === 'all' ? 'active' : ''}
             onClick={() => switchScope('all')}
             role="tab"
             aria-selected={scope === 'all'}
           >
-            全部
+            {t('common.all')}
           </button>
           <button
             className={scope === 'diary' ? 'active' : ''}
@@ -167,16 +169,16 @@ export function ReaderView({ route }: { route: Route }) {
             role="tab"
             aria-selected={scope === 'diary'}
           >
-            绘日记
+            {t('browse.reader.scopeDiary')}
           </button>
         </div>
         <span className="num reader-count">
           {index + 1} / {ordered.length}
         </span>
-        <button className="icon-btn" onClick={() => toggleFavorite([item.id])} title="收藏（F）">
+        <button className="icon-btn" onClick={() => toggleFavorite([item.id])} title={t('browse.reader.favorite')}>
           <Icon name={ann?.favorite ? 'heartFill' : 'heart'} size={17} />
         </button>
-        <button className="icon-btn" onClick={toggleFullscreen} title="全屏">
+        <button className="icon-btn" onClick={toggleFullscreen} title={t('browse.reader.fullscreen')}>
           <Icon name="expand" size={17} />
         </button>
       </div>
@@ -185,7 +187,7 @@ export function ReaderView({ route }: { route: Route }) {
         className="reader-nav left"
         onClick={() => setIndex((i) => Math.max(0, i - 1))}
         disabled={index === 0}
-        aria-label="上一页"
+        aria-label={t('browse.reader.prevPage')}
       >
         <Icon name="left" size={22} />
       </button>
@@ -196,7 +198,7 @@ export function ReaderView({ route }: { route: Route }) {
           <img
             key={item.id}
             src={`${BASE}${item.large}`}
-            alt={`Namori 水母绘日记 ${date.iso} 手绘插画`}
+            alt={t('browse.reader.imageAlt', { date: date.iso })}
             onLoad={() => setLoadedId(item.id)}
             style={{ opacity: loaded ? 1 : 0 }}
             loading="eager"
@@ -208,20 +210,20 @@ export function ReaderView({ route }: { route: Route }) {
         className="reader-nav right"
         onClick={() => setIndex((i) => Math.min(ordered.length - 1, i + 1))}
         disabled={index === ordered.length - 1}
-        aria-label="下一页"
+        aria-label={t('browse.reader.nextPage')}
       >
         <Icon name="right" size={22} />
       </button>
 
       <div className="reader-chrome reader-bottom">
         <div className="reader-date">
-          <span className="hand">
-            {date.month} 月 {date.day} 日
-          </span>
+          <span className="hand">{t('common.monthDay', { month: date.month, day: date.day })}</span>
           <span className="num">{date.year}</span>
-          <span className="faint">{weekdayLabel(date.iso)} · 发布 {formatFullDate(item.publishedAt)}</span>
+          <span className="faint">
+            {weekdayLabel(date.iso)} · {t('browse.reader.published', { date: formatFullDate(item.publishedAt) })}
+          </span>
         </div>
-        <div className="reader-hint faint">← → 翻页 · F 收藏 · Esc 退出全屏</div>
+        <div className="reader-hint faint">{t('browse.reader.hint')}</div>
       </div>
     </div>
   )

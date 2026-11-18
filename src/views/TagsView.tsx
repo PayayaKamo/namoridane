@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
+import { useI18n } from '../i18n'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
 import { TAG_COLORS } from '../lib/constants'
@@ -18,6 +19,7 @@ export function TagsView() {
     deleteDimension,
     notify,
   } = useStore()
+  const { t } = useI18n()
 
   const [name, setName] = useState('')
   const [dimId, setDimId] = useState(dimensions[0]?.id ?? 'custom')
@@ -54,29 +56,32 @@ export function TagsView() {
     const value = name.trim()
     if (!value) return
     if (tags.some((t) => t.name === value && t.dimensionId === dimId)) {
-      notify('该维度下已有同名标签', 'error')
+      notify(t('shell.tagPicker.duplicate'), 'error')
       return
     }
     addTag(value, dimId, color)
     setName('')
-    notify(`已创建标签「${value}」`, 'success')
+    notify(t('shell.tagPicker.created', { name: value }), 'success')
   }
 
   return (
     <div className="tags-view">
       <div className="page-head">
         <div>
-          <div className="page-eyebrow">Tags & Dimensions</div>
-          <h2 className="page-title">标签体系</h2>
+          <div className="page-eyebrow">{t('adminOrg.tags.eyebrow')}</div>
+          <h2 className="page-title">{t('adminOrg.tags.title')}</h2>
           <div className="page-sub">
-            {dimensions.length} 个维度 · {tags.length} 个标签 · 已使用{' '}
-            {Object.values(tagUsage).reduce((a, b) => a + b, 0)} 次
+            {t('adminOrg.tags.summary', {
+              dimensions: dimensions.length,
+              tags: tags.length,
+              used: Object.values(tagUsage).reduce((a, b) => a + b, 0),
+            })}
           </div>
         </div>
         <div className="page-actions">
           <button className="btn" onClick={() => navigate('/search')}>
             <Icon name="filter" size={14} />
-            组合筛选
+            {t('adminOrg.tags.combineFilter')}
           </button>
         </div>
       </div>
@@ -85,12 +90,12 @@ export function TagsView() {
         <div className="tags-main">
           <section className="panel">
             <div className="panel-head">
-              <h3>新建标签</h3>
+              <h3>{t('adminOrg.tags.createTitle')}</h3>
             </div>
             <div className="tag-create-row">
               <input
                 className="input"
-                placeholder="例如：通勤、疲惫、咖啡、线稿"
+                placeholder={t('adminOrg.tags.createPlaceholder')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && create()}
@@ -109,13 +114,13 @@ export function TagsView() {
                     className={`color-dot${color === c ? ' active' : ''}`}
                     style={{ background: c }}
                     onClick={() => setColor(c)}
-                    aria-label={c}
+                    aria-label={t('shell.tagPicker.colorLabel', { color: c })}
                   />
                 ))}
               </div>
               <button className="btn btn-primary" onClick={create} disabled={!name.trim()}>
                 <Icon name="plus" size={14} />
-                创建
+                {t('adminOrg.tags.create')}
               </button>
             </div>
           </section>
@@ -133,22 +138,22 @@ export function TagsView() {
                         setDimEditing(null)
                       }}
                     >
-                      保存
+                      {t('common.save')}
                     </button>
                     <button className="btn btn-sm btn-ghost" onClick={() => setDimEditing(null)}>
-                      取消
+                      {t('common.cancel')}
                     </button>
                   </div>
                 ) : (
                   <>
                     <h3>
                       {dim.name}
-                      <span className="group-count num">{dimTags.length} 个标签</span>
+                      <span className="group-count num">{t('adminOrg.tags.tagCount', { count: dimTags.length })}</span>
                     </h3>
                     <div className="row" style={{ gap: 2 }}>
                       <button
                         className="icon-btn"
-                        title="重命名维度"
+                        title={t('adminOrg.tags.renameDimension')}
                         onClick={() => {
                           setDimEditing(dim.id)
                           setDimName(dim.name)
@@ -159,10 +164,10 @@ export function TagsView() {
                       {dim.id !== 'custom' && (
                         <button
                           className="icon-btn"
-                          title="删除维度（标签会移入「其他」）"
+                          title={t('adminOrg.tags.deleteDimension')}
                           onClick={() => {
                             deleteDimension(dim.id)
-                            notify('维度已删除，标签移入「其他」')
+                            notify(t('adminOrg.tags.dimensionDeleted'))
                           }}
                         >
                           <Icon name="trash" size={14} />
@@ -181,7 +186,7 @@ export function TagsView() {
                         className="color-dot"
                         style={{ background: tag.color }}
                         onClick={() => setColorFor(colorFor === tag.id ? null : tag.id)}
-                        title="修改颜色"
+                        title={t('adminOrg.tags.changeColor')}
                       />
                       {editing === tag.id ? (
                         <>
@@ -204,7 +209,7 @@ export function TagsView() {
                               setEditing(null)
                             }}
                           >
-                            保存
+                            {t('common.save')}
                           </button>
                         </>
                       ) : (
@@ -212,12 +217,14 @@ export function TagsView() {
                           {tag.name}
                         </button>
                       )}
-                      <span className="tag-usage num">{tagUsage[tag.id] ?? 0} 张</span>
+                      <span className="tag-usage num">
+                        {t('common.itemCount', { count: tagUsage[tag.id] ?? 0 })}
+                      </span>
                       <select
                         className="select select-mini"
                         value={tag.dimensionId}
                         onChange={(e) => updateTag(tag.id, { dimensionId: e.target.value })}
-                        title="移动维度"
+                        title={t('adminOrg.tags.moveDimension')}
                       >
                         {dimensions.map((d) => (
                           <option key={d.id} value={d.id}>
@@ -231,11 +238,15 @@ export function TagsView() {
                           setEditing(tag.id)
                           setEditName(tag.name)
                         }}
-                        title="重命名"
+                        title={t('adminOrg.tags.rename')}
                       >
                         <Icon name="edit" size={13} />
                       </button>
-                      <button className="icon-btn" onClick={() => setConfirmTag(tag.id)} title="删除">
+                      <button
+                        className="icon-btn"
+                        onClick={() => setConfirmTag(tag.id)}
+                        title={t('common.delete')}
+                      >
                         <Icon name="trash" size={13} />
                       </button>
                       {colorFor === tag.id && (
@@ -258,7 +269,7 @@ export function TagsView() {
                 </div>
               ) : (
                 <p className="faint" style={{ padding: '8px 2px' }}>
-                  这个维度还没有标签。
+                  {t('adminOrg.tags.emptyDimension')}
                 </p>
               )}
             </section>
@@ -268,8 +279,8 @@ export function TagsView() {
         <aside className="tags-side">
           <section className="panel">
             <div className="panel-head">
-              <h3>标签云</h3>
-              <span className="faint">{cloud.length} 个已使用</span>
+              <h3>{t('adminOrg.tags.cloudTitle')}</h3>
+              <span className="faint">{t('adminOrg.tags.cloudCount', { count: cloud.length })}</span>
             </div>
             {cloud.length ? (
               <div className="tag-cloud">
@@ -286,7 +297,7 @@ export function TagsView() {
                         background: `color-mix(in srgb, ${tag.color} 12%, transparent)`,
                       }}
                       onClick={() => navigate(`/gallery?tag=${tag.id}`)}
-                      title={`${tag.name} · ${usage} 张`}
+                      title={t('adminOrg.tags.cloudTagTitle', { name: tag.name, count: usage })}
                     >
                       {tag.name}
                       <span className="num">{usage}</span>
@@ -296,19 +307,19 @@ export function TagsView() {
               </div>
             ) : (
               <p className="faint">
-                还没有使用标签。到图库里多选作品，点「打标签」即可批量归类。
+                {t('adminOrg.tags.cloudEmpty')}
               </p>
             )}
           </section>
 
           <section className="panel">
             <div className="panel-head">
-              <h3>自定义维度</h3>
+              <h3>{t('adminOrg.tags.customTitle')}</h3>
             </div>
             <div className="row">
               <input
                 className="input"
-                placeholder="例如：季节、配色、用途"
+                placeholder={t('adminOrg.tags.customPlaceholder')}
                 value={newDim}
                 onChange={(e) => setNewDim(e.target.value)}
               />
@@ -318,27 +329,27 @@ export function TagsView() {
                 onClick={() => {
                   addDimension(newDim.trim())
                   setNewDim('')
-                  notify('已新增维度', 'success')
+                  notify(t('adminOrg.tags.dimensionAdded'), 'success')
                 }}
               >
-                添加
+                {t('common.add')}
               </button>
             </div>
             <p className="faint" style={{ marginTop: 8, fontSize: 11.5 }}>
-              维度用于跨维度组合筛选，例如「人物=小狐狸」+「场景=通勤」。
+              {t('adminOrg.tags.customHint')}
             </p>
           </section>
 
           <section className="panel">
             <div className="panel-head">
-              <h3>使用建议</h3>
+              <h3>{t('adminOrg.tags.tipsTitle')}</h3>
             </div>
             <ul className="hint-list">
-              <li>人物/角色：用来生成角色图鉴与出场索引。</li>
-              <li>使用场景：通勤、睡前、午后，方便按用途找图。</li>
-              <li>情绪：疲惫、开心、放空，适合按心情检索。</li>
-              <li>画面元素：猫、咖啡、窗、雨，用于临摹素材。</li>
-              <li>技法：线稿、平涂、配色、留白等拆解标签。</li>
+              <li>{t('adminOrg.tags.tips.character')}</li>
+              <li>{t('adminOrg.tags.tips.scene')}</li>
+              <li>{t('adminOrg.tags.tips.mood')}</li>
+              <li>{t('adminOrg.tags.tips.element')}</li>
+              <li>{t('adminOrg.tags.tips.technique')}</li>
             </ul>
           </section>
         </aside>
@@ -346,28 +357,28 @@ export function TagsView() {
 
       {confirmTag && (
         <Modal
-          title="删除标签"
+          title={t('adminOrg.tags.deleteTitle')}
           onClose={() => setConfirmTag(null)}
           footer={
             <>
               <button className="btn" onClick={() => setConfirmTag(null)}>
-                取消
+                {t('common.cancel')}
               </button>
               <button
                 className="btn btn-danger"
                 onClick={() => {
                   deleteTag(confirmTag)
                   setConfirmTag(null)
-                  notify('标签已删除，并从未校对/已标作品上移除', 'success')
+                  notify(t('adminOrg.tags.deleted'), 'success')
                 }}
               >
-                确认删除
+                {t('adminOrg.tags.deleteConfirm')}
               </button>
             </>
           }
         >
           <p>
-            标签「{tags.find((t) => t.id === confirmTag)?.name}」会从所有作品上移除，此操作不可撤销。
+            {t('adminOrg.tags.deleteBody', { name: tags.find((t) => t.id === confirmTag)?.name ?? '' })}
           </p>
         </Modal>
       )}

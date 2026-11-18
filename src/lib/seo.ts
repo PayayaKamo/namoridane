@@ -1,5 +1,6 @@
 import type { DiaryItem, EffectiveDate } from '../types'
 import type { Route as AppRoute, RouteName } from './router'
+import { translate } from '../i18n/core'
 
 export const SITE_URL = 'https://payayakamo.github.io/namoridane/'
 export const SITE_NAME = '水母绘日记 · Namori Diary'
@@ -133,7 +134,10 @@ export function applyItemSeo(item: DiaryItem, date: EffectiveDate | null, tagNam
   const url = `${SITE_URL}item/${encodeURIComponent(item.id)}/`
   const image = `${SITE_URL}${item.original}`
   const iso = date?.iso || item.publishedAt
-  const title = iso ? `Namori 绘日记 ${iso} · 水母绘日记` : `Namori 绘日记 · 水母绘日记`
+  const site = translate('shell.siteName')
+  const title = iso
+    ? translate('lib.seo.itemTitle', { date: iso, site })
+    : translate('lib.seo.itemTitleNoDate', { site })
   const tagText = tagNames.length ? `出场：${tagNames.slice(0, 4).join('、')}。` : ''
   const snippet = captionSnippet(item.caption)
   const description = `Namori 的手绘绘日记${iso ? `（${iso}）` : ''}。${tagText}${snippet || '可查看大图、原文案与临摹拆解。'}`

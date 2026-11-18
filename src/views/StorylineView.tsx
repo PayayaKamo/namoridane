@@ -395,14 +395,14 @@ function StorylineDetail({ id, readMode }: { id: string; readMode: boolean }) {
       <div className="storyline-reader">
         <div className="storyline-reader-head">
           <div>
-            <div className="page-eyebrow">Storyline · Reading</div>
+            <div className="page-eyebrow">{t('storylines.detail.readerEyebrow')}</div>
             <h2 className="page-title">{story.title}</h2>
             {story.description && <div className="faint">{story.description}</div>}
           </div>
           <div className="row" style={{ gap: 8 }}>
             <span className="faint num">{blocks.length ? page + 1 : 0} / {blocks.length}</span>
             <button className="btn btn-sm" onClick={() => navigate(`/storyline/${story.id}`)}>
-              <Icon name="close" size={13} />退出阅读
+              <Icon name="close" size={13} />{t('storylines.detail.exitReading')}
             </button>
           </div>
         </div>
@@ -410,25 +410,25 @@ function StorylineDetail({ id, readMode }: { id: string; readMode: boolean }) {
           {block?.type === 'image' && block.itemId ? (
             (() => {
               const item = itemMap.get(block.itemId)
-              if (!item) return <div className="faint">图片不存在</div>
+              if (!item) return <div className="faint">{t('storylines.block.imageMissing')}</div>
               return <img src={`${BASE}${item.large}`} alt={item.file} />
             })()
           ) : block?.type === 'note' ? (
             <div className="storyline-reader-note">{block.text}</div>
           ) : (
-            <div className="faint">这条故事线还没有内容</div>
+            <div className="faint">{t('storylines.detail.readerEmpty')}</div>
           )}
         </div>
         <div className="storyline-reader-nav">
           <button className="btn" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page <= 0}>
-            <Icon name="left" size={14} />上一页
+            <Icon name="left" size={14} />{t('storylines.detail.prevPage')}
           </button>
           <button
             className="btn btn-primary"
             onClick={() => setPage((p) => Math.min(blocks.length - 1, p + 1))}
             disabled={page >= blocks.length - 1}
           >
-            下一页<Icon name="right" size={14} />
+            {t('storylines.detail.nextPage')}<Icon name="right" size={14} />
           </button>
         </div>
       </div>
@@ -447,7 +447,7 @@ function StorylineDetail({ id, readMode }: { id: string; readMode: boolean }) {
   const copyShare = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl)
-      notify('阅读链接已复制', 'success')
+      notify(t('storylines.detail.shareCopied'), 'success')
     } catch {
       notify(shareUrl, 'default')
     }
@@ -476,7 +476,7 @@ function StorylineDetail({ id, readMode }: { id: string; readMode: boolean }) {
     <div className="storyline-detail">
       <div className="page-head">
         <div style={{ flex: 1 }}>
-          <div className="page-eyebrow">Storyline</div>
+          <div className="page-eyebrow">{t('shell.page.storyline.eyebrow')}</div>
           {IS_PUBLIC ? (
             <>
               <h2 className="page-title">{story.title}</h2>
@@ -495,18 +495,18 @@ function StorylineDetail({ id, readMode }: { id: string; readMode: boolean }) {
                 className="storyline-title-input"
                 value={story.title}
                 onChange={(e) => updateStoryline(story.id, { title: e.target.value })}
-                aria-label="故事线标题"
+                aria-label={t('storylines.detail.titleAria')}
               />
               <textarea
                 className="textarea storyline-desc-input"
-                placeholder="写一段简介"
+                placeholder={t('storylines.detail.descriptionPlaceholder')}
                 value={story.description}
                 onChange={(e) => updateStoryline(story.id, { description: e.target.value })}
               />
               <input
                 className="input"
                 style={{ maxWidth: 420 }}
-                placeholder="标签，用逗号分隔"
+                placeholder={t('storylines.detail.tagsPlaceholder')}
                 value={story.tags.join(', ')}
                 onChange={(e) =>
                   updateStoryline(story.id, {
@@ -523,42 +523,45 @@ function StorylineDetail({ id, readMode }: { id: string; readMode: boolean }) {
                   checked={Boolean(story.published)}
                   onChange={(e) => updateStoryline(story.id, { published: e.target.checked })}
                 />
-                <span>公开此故事线（会出现在发布数据与公开站）</span>
+                <span>{t('storylines.detail.publish')}</span>
               </label>
             </>
           )}
         </div>
         <div className="page-actions">
           <button className="btn" onClick={() => navigate(`/storyline/${story.id}?read=1`)}>
-            <Icon name="eye" size={14} />阅读模式
+            <Icon name="eye" size={14} />{t('storylines.detail.readMode')}
           </button>
           <button className="btn" onClick={copyShare}>
-            <Icon name="share" size={14} />分享链接
+            <Icon name="share" size={14} />{t('storylines.detail.shareLink')}
           </button>
           <button className="btn" onClick={() => downloadJson(story, `storyline-${story.id}.json`)}>
-            <Icon name="download" size={14} />导出 JSON
+            <Icon name="download" size={14} />{t('storylines.detail.exportJson')}
           </button>
           <button className="btn" onClick={exportHtml}>
-            <Icon name="download" size={14} />导出 HTML
+            <Icon name="download" size={14} />{t('storylines.detail.exportHtml')}
           </button>
           {!IS_PUBLIC && (
             <button
               className="btn btn-danger-ghost"
               onClick={() => {
                 deleteStoryline(story.id)
-                notify('故事线已删除，图片本身不受影响', 'success')
+                notify(t('storylines.detail.deleted'), 'success')
                 navigate('/storylines')
               }}
             >
-              <Icon name="trash" size={14} />删除
+              <Icon name="trash" size={14} />{t('common.delete')}
             </button>
           )}
         </div>
       </div>
 
       <div className="storyline-stats faint">
-        {images.length} 张图片 · {blocks.filter((b) => b.type === 'note').length} 段备注 · 最后编辑{' '}
-        {formatShortDate(story.updatedAt.slice(0, 10))}
+        {t('storylines.detail.stats', {
+          images: images.length,
+          notes: blocks.filter((b) => b.type === 'note').length,
+          date: formatShortDate(story.updatedAt.slice(0, 10)),
+        })}
       </div>
 
       <div className="storyline-blocks">
@@ -585,7 +588,7 @@ function StorylineDetail({ id, readMode }: { id: string; readMode: boolean }) {
             {block.type === 'image' && block.itemId ? (
               (() => {
                 const item = itemMap.get(block.itemId)
-                if (!item) return <div className="faint">图片不存在</div>
+                if (!item) return <div className="faint">{t('storylines.block.imageMissing')}</div>
                 const date = effectiveDate(item, annotations[item.id])
                 return (
                   <div className="storyline-image-block">
@@ -595,11 +598,11 @@ function StorylineDetail({ id, readMode }: { id: string; readMode: boolean }) {
                       <div className="row" style={{ gap: 4 }}>
                         {!IS_PUBLIC && (
                           <button className="btn btn-ghost btn-sm" onClick={() => updateStoryline(story.id, { coverItemId: item.id })}>
-                            {story.coverItemId === item.id ? '当前封面' : '设为封面'}
+                            {story.coverItemId === item.id ? t('storylines.block.coverCurrent') : t('storylines.block.setCover')}
                           </button>
                         )}
                         <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/item/${item.id}`)}>
-                          查看
+                          {t('storylines.block.view')}
                         </button>
                       </div>
                     </div>
@@ -616,31 +619,31 @@ function StorylineDetail({ id, readMode }: { id: string; readMode: boolean }) {
                     const next = blocks.map((b) => (b.id === block.id ? { ...b, text: e.target.value } : b))
                     reorderStorylineBlocks(story.id, next)
                   }}
-                  placeholder="章节说明 / 备注"
+                  placeholder={t('storylines.block.notePlaceholder')}
                 />
               </div>
             )}
             {!IS_PUBLIC && (
               <div className="storyline-block-actions">
-              <button className="icon-btn" onClick={() => moveBlock(index, index - 1)} disabled={index === 0} aria-label="上移">
+              <button className="icon-btn" onClick={() => moveBlock(index, index - 1)} disabled={index === 0} aria-label={t('storylines.block.moveUp')}>
                 <Icon name="up" size={14} />
               </button>
-              <button className="icon-btn" onClick={() => moveBlock(index, index + 1)} disabled={index === blocks.length - 1} aria-label="下移">
+              <button className="icon-btn" onClick={() => moveBlock(index, index + 1)} disabled={index === blocks.length - 1} aria-label={t('storylines.block.moveDown')}>
                 <Icon name="down" size={14} />
               </button>
-              <button className="icon-btn" onClick={() => removeStorylineBlock(story.id, block.id)} aria-label="移除">
+              <button className="icon-btn" onClick={() => removeStorylineBlock(story.id, block.id)} aria-label={t('common.remove')}>
                 <Icon name="trash" size={14} />
               </button>
               </div>
             )}
           </div>
         ))}
-        {!blocks.length && <div className="faint">还没有内容，可从图库选图加入，或在下面插入备注。</div>}
+        {!blocks.length && <div className="faint">{t('storylines.detail.emptyBlocks')}</div>}
       </div>
 
       {!IS_PUBLIC && (
         <div className="storyline-add-note">
-          <textarea className="textarea" placeholder="插入一段章节备注" value={note} onChange={(e) => setNote(e.target.value)} />
+          <textarea className="textarea" placeholder={t('storylines.detail.addNotePlaceholder')} value={note} onChange={(e) => setNote(e.target.value)} />
           <button
             className="btn"
             disabled={!note.trim()}
@@ -649,14 +652,14 @@ function StorylineDetail({ id, readMode }: { id: string; readMode: boolean }) {
               setNote('')
             }}
           >
-            <Icon name="plus" size={14} />插入备注
+            <Icon name="plus" size={14} />{t('storylines.detail.addNote')}
           </button>
           <button
             className="btn"
             onClick={() => navigate('/gallery')}
-            title="在图库多选后使用「加入故事线」批量补充"
+            title={t('storylines.detail.galleryTip')}
           >
-            <Icon name="gallery" size={14} />去图库选图
+            <Icon name="gallery" size={14} />{t('storylines.detail.goGallery')}
           </button>
         </div>
       )}

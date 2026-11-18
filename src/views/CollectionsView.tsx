@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { Route } from '../lib/router'
 import { navigate } from '../lib/router'
 import { useStore } from '../state/store'
+import { useI18n } from '../i18n'
 import { Icon } from '../components/Icon'
 import { Empty, Modal } from '../components/Modal'
 import { effectiveDate } from '../lib/dates'
@@ -24,6 +25,7 @@ export function CollectionsView({ route }: { route: Route }) {
     removeFromCollection,
     notify,
   } = useStore()
+  const { t } = useI18n()
 
   const [name, setName] = useState('')
   const [desc, setDesc] = useState('')
@@ -75,7 +77,7 @@ export function CollectionsView({ route }: { route: Route }) {
       mime = 'application/json'
       ext = 'json'
     } else if (format === 'csv') {
-      const head = '序号,日记日期,发布日期,标签,备注,文件名'
+      const head = t('adminOrg.collections.export.csvHead')
       const body = rows
         .map((r) =>
           [r.index, r.diaryDate, r.publishedAt, r.tags, r.note, r.file]
@@ -91,15 +93,18 @@ export function CollectionsView({ route }: { route: Route }) {
         `# ${col.name}`,
         col.description ? `> ${col.description}` : '',
         '',
-        '| # | 日记日期 | 发布日 | 标签 | 备注 |',
+        t('adminOrg.collections.export.markdownHead'),
         '| --- | --- | --- | --- | --- |',
         ...rows.map((r) => `| ${r.index} | ${r.diaryDate} | ${r.publishedAt} | ${r.tags} | ${r.note.replace(/\|/g, '/')} |`),
       ].join('\n')
       mime = 'text/markdown;charset=utf-8'
       ext = 'md'
     }
-    downloadBlob(new Blob([content], { type: mime }), `${col.name}-清单.${ext}`)
-    notify('清单已导出', 'success')
+    downloadBlob(
+      new Blob([content], { type: mime }),
+      `${col.name}-${t('adminOrg.collections.fileSuffix')}.${ext}`,
+    )
+    notify(t('adminOrg.collections.listExported'), 'success')
   }
 
   const onDrop = (target: number) => {
@@ -116,9 +121,13 @@ export function CollectionsView({ route }: { route: Route }) {
       return (
         <Empty
           icon="folder"
-          title="找不到这个合集"
-          hint="可能已被删除。"
-          action={<button className="btn btn-sm" onClick={() => navigate('/collections')}>返回合集列表</button>}
+          title={t('adminOrg.collections.detail.notFoundTitle')}
+          hint={t('adminOrg.collections.detail.notFoundHint')}
+          action={
+            <button className="btn btn-sm" onClick={() => navigate('/collections')}>
+              {t('adminOrg.collections.detail.backToList')}
+            </button>
+          }
         />
       )
     }
@@ -126,24 +135,27 @@ export function CollectionsView({ route }: { route: Route }) {
       <div className="collection-detail">
         <div className="page-head">
           <div>
-            <div className="page-eyebrow">Collection</div>
+            <div className="page-eyebrow">{t('adminOrg.collections.detail.eyebrow')}</div>
             <h2 className="page-title">{detail.name}</h2>
             <div className="page-sub">
-              {detail.itemIds.length} 张 · {detail.description || '拖动缩略图可调整顺序'}
+              {t('adminOrg.collections.detail.subtitle', {
+                count: detail.itemIds.length,
+                note: detail.description || t('adminOrg.collections.detail.dragHint'),
+              })}
             </div>
           </div>
           <div className="page-actions">
             <button className="btn btn-ghost" onClick={() => navigate('/collections')}>
               <Icon name="left" size={14} />
-              返回
+              {t('common.back')}
             </button>
             <button className="btn" onClick={() => setEditing(detail)}>
               <Icon name="edit" size={14} />
-              编辑信息
+              {t('adminOrg.collections.detail.editInfo')}
             </button>
             <button className="btn" onClick={() => exportList(detail, 'md')}>
               <Icon name="download" size={14} />
-              导出清单
+              {t('adminOrg.collections.exportList')}
             </button>
             <button className="btn btn-ghost" onClick={() => exportList(detail, 'json')}>
               JSON
@@ -177,17 +189,17 @@ export function CollectionsView({ route }: { route: Route }) {
                     <div className="row" style={{ gap: 2 }}>
                       <button
                         className="icon-btn"
-                        title="设为封面"
+                        title={t('adminOrg.collections.detail.setCover')}
                         onClick={() => {
                           updateCollection(detail.id, { coverItemId: item.id })
-                          notify('已设为封面', 'success')
+                          notify(t('adminOrg.collections.detail.coverSet'), 'success')
                         }}
                       >
                         <Icon name="heart" size={12} />
                       </button>
                       <button
                         className="icon-btn"
-                        title="移出合集"
+                        title={t('adminOrg.collections.detail.remove')}
                         onClick={() => removeFromCollection(detail.id, [item.id])}
                       >
                         <Icon name="close" size={12} />
@@ -197,7 +209,9 @@ export function CollectionsView({ route }: { route: Route }) {
                   <span className="drag-hint">
                     <Icon name="grip" size={14} />
                   </span>
-                  {detail.coverItemId === item.id && <span className="cover-tag">封面</span>}
+                  {detail.coverItemId === item.id && (
+                    <span className="cover-tag">{t('adminOrg.collections.detail.cover')}</span>
+                  )}
                 </div>
               )
             })}
@@ -205,11 +219,11 @@ export function CollectionsView({ route }: { route: Route }) {
         ) : (
           <Empty
             icon="folder"
-            title="合集还是空的"
-            hint="去图库多选作品后点「加入合集」，或者在这里慢慢添加。"
+            title={t('adminOrg.collections.detail.emptyTitle')}
+            hint={t('adminOrg.collections.detail.emptyHint')}
             action={
               <button className="btn btn-primary btn-sm" onClick={() => navigate('/gallery')}>
-                去图库挑选
+                {t('adminOrg.collections.detail.goGallery')}
               </button>
             }
           />
@@ -222,14 +236,16 @@ export function CollectionsView({ route }: { route: Route }) {
     <div className="collections-view">
       <div className="page-head">
         <div>
-          <div className="page-eyebrow">Collections</div>
-          <h2 className="page-title">合集</h2>
-          <div className="page-sub">{collections.length} 个命名合集，可交叉收录同一张作品</div>
+          <div className="page-eyebrow">{t('adminOrg.collections.eyebrow')}</div>
+          <h2 className="page-title">{t('adminOrg.collections.title')}</h2>
+          <div className="page-sub">
+            {t('adminOrg.collections.summary', { count: collections.length })}
+          </div>
         </div>
         <div className="page-actions">
           <button className="btn" onClick={() => navigate('/gallery')}>
             <Icon name="gallery" size={14} />
-            去图库挑选
+            {t('adminOrg.collections.goGallery')}
           </button>
         </div>
       </div>
@@ -238,13 +254,13 @@ export function CollectionsView({ route }: { route: Route }) {
         <div className="row" style={{ gap: 8 }}>
           <input
             className="input"
-            placeholder="合集名称，如「临摹参考」「场景分组」"
+            placeholder={t('adminOrg.collections.createNamePlaceholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
           <input
             className="input"
-            placeholder="一句话描述（可选）"
+            placeholder={t('adminOrg.collections.createDescPlaceholder')}
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
           />
@@ -255,11 +271,11 @@ export function CollectionsView({ route }: { route: Route }) {
               addCollection(name.trim(), desc.trim())
               setName('')
               setDesc('')
-              notify('合集已创建', 'success')
+              notify(t('adminOrg.collections.created'), 'success')
             }}
           >
             <Icon name="plus" size={14} />
-            新建合集
+            {t('adminOrg.collections.create')}
           </button>
         </div>
       </div>
@@ -286,7 +302,7 @@ export function CollectionsView({ route }: { route: Route }) {
                     <div className="row" style={{ gap: 2 }}>
                       <button
                         className="icon-btn"
-                        title="编辑"
+                        title={t('common.edit')}
                         onClick={() => {
                           setEditing(col)
                           setEditName(col.name)
@@ -295,21 +311,30 @@ export function CollectionsView({ route }: { route: Route }) {
                       >
                         <Icon name="edit" size={13} />
                       </button>
-                      <button className="icon-btn" title="删除" onClick={() => setConfirmDelete(col)}>
+                      <button
+                        className="icon-btn"
+                        title={t('common.delete')}
+                        onClick={() => setConfirmDelete(col)}
+                      >
                         <Icon name="trash" size={13} />
                       </button>
                     </div>
                   </div>
-                  <p className="faint collection-desc">{col.description || '还没有描述'}</p>
+                  <p className="faint collection-desc">
+                    {col.description || t('adminOrg.collections.noDescription')}
+                  </p>
                   <div className="row" style={{ gap: 6, marginTop: 10 }}>
                     <button className="btn btn-sm" onClick={() => navigate(`/collection/${col.id}`)}>
-                      打开
+                      {t('adminOrg.collections.open')}
                     </button>
                     <button className="btn btn-sm btn-ghost" onClick={() => exportList(col, 'md')}>
-                      导出清单
+                      {t('adminOrg.collections.exportList')}
                     </button>
-                    <button className="btn btn-sm btn-ghost" onClick={() => navigate(`/gallery?collection=${col.id}`)}>
-                      在图库筛选
+                    <button
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => navigate(`/gallery?collection=${col.id}`)}
+                    >
+                      {t('adminOrg.collections.filterInGallery')}
                     </button>
                   </div>
                 </div>
@@ -320,39 +345,39 @@ export function CollectionsView({ route }: { route: Route }) {
       ) : (
         <Empty
           icon="folder"
-          title="还没有合集"
-          hint="合集像一本小册子：把临摹参考、场景练习、最喜欢的作品分别收进去，可重叠收录。"
+          title={t('adminOrg.collections.emptyTitle')}
+          hint={t('adminOrg.collections.emptyHint')}
         />
       )}
 
       {editing && (
         <Modal
-          title="编辑合集"
+          title={t('adminOrg.collections.editTitle')}
           onClose={() => setEditing(null)}
           footer={
             <>
               <button className="btn" onClick={() => setEditing(null)}>
-                取消
+                {t('common.cancel')}
               </button>
               <button
                 className="btn btn-primary"
                 onClick={() => {
                   updateCollection(editing.id, { name: editName.trim() || editing.name, description: editDesc })
                   setEditing(null)
-                  notify('已保存', 'success')
+                  notify(t('adminOrg.collections.saved'), 'success')
                 }}
               >
-                保存
+                {t('common.save')}
               </button>
             </>
           }
         >
           <div className="field" style={{ marginBottom: 12 }}>
-            <div className="field-label">名称</div>
+            <div className="field-label">{t('adminOrg.collections.field.name')}</div>
             <input className="input" value={editName} onChange={(e) => setEditName(e.target.value)} />
           </div>
           <div className="field">
-            <div className="field-label">描述</div>
+            <div className="field-label">{t('adminOrg.collections.field.description')}</div>
             <textarea className="textarea" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
           </div>
         </Modal>
@@ -360,27 +385,27 @@ export function CollectionsView({ route }: { route: Route }) {
 
       {confirmDelete && (
         <Modal
-          title="删除合集"
+          title={t('adminOrg.collections.deleteTitle')}
           onClose={() => setConfirmDelete(null)}
           footer={
             <>
               <button className="btn" onClick={() => setConfirmDelete(null)}>
-                取消
+                {t('common.cancel')}
               </button>
               <button
                 className="btn btn-danger"
                 onClick={() => {
                   deleteCollection(confirmDelete.id)
                   setConfirmDelete(null)
-                  notify('合集已删除', 'success')
+                  notify(t('adminOrg.collections.deleted'), 'success')
                 }}
               >
-                删除
+                {t('common.delete')}
               </button>
             </>
           }
         >
-          <p>只会删除合集本身，作品与标签数据不受影响。</p>
+          <p>{t('adminOrg.collections.deleteBody')}</p>
         </Modal>
       )}
     </div>

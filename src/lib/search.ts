@@ -1,5 +1,6 @@
 import type { Collection, DiaryItem, ItemAnnotation, Tag } from '../types'
-import { effectiveDate } from './dates'
+import { effectiveDate, formatFullDate } from './dates'
+import { translate, type MessageKey } from '../i18n/core'
 
 /**
  * 轻量前端搜索：为约 1,100 条索引建立字段文档，支持多关键词 AND、
@@ -122,8 +123,10 @@ function makeField(seed: FieldSeed): SearchField | null {
 function dateText(year: number, month: number, day: number): string {
   const monthText = String(month)
   const dayText = String(day)
+  const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
   return [
-    `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+    formatFullDate(iso),
+    iso,
     `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`,
     `${year} 年 ${monthText} 月 ${dayText} 日`,
     `${monthText} 月 ${dayText} 日`,
@@ -137,13 +140,13 @@ function dateSeeds(item: DiaryItem, ann: ItemAnnotation | undefined): FieldSeed[
   const seeds: FieldSeed[] = []
   const date = effectiveDate(item, ann)
   if (date.iso) {
-    seeds.push({ kind: 'date', label: '日期', text: dateText(date.year, date.month, date.day) })
+    seeds.push({ kind: 'date', label: translate('lib.search.date'), text: dateText(date.year, date.month, date.day) })
   }
   // 发布日是索引里始终可信的日期，公开站也能按发布日搜索
   if (item.publishedAt && item.publishedAt !== date.iso) {
     const [year, month, day] = item.publishedAt.split('-').map(Number)
     if (year && month && day) {
-      seeds.push({ kind: 'date', label: '发布日', text: dateText(year, month, day) })
+      seeds.push({ kind: 'date', label: translate('lib.search.publishedAt'), text: dateText(year, month, day) })
     }
   }
   return seeds
@@ -154,32 +157,40 @@ function translationSeeds(ann: ItemAnnotation | undefined): FieldSeed[] {
   if (!translation) return []
   const seeds: FieldSeed[] = []
   if (translation.source.trim()) {
-    seeds.push({ kind: 'translation', label: '原文', text: translation.source })
+    seeds.push({ kind: 'translation', label: translate('lib.search.source'), text: translation.source })
   }
   if (translation.sourceDraft?.trim()) {
-    seeds.push({ kind: 'translation', label: '原文草稿', text: translation.sourceDraft })
+    seeds.push({ kind: 'translation', label: translate('lib.search.sourceDraft'), text: translation.sourceDraft })
   }
   for (const slot of translation.slots ?? []) {
     if (slot.text.trim()) {
-      seeds.push({ kind: 'translation', label: `翻译 · ${slot.label || slot.lang}`, text: slot.text })
+      seeds.push({
+        kind: 'translation',
+        label: translate('lib.search.translationSlot', { name: slot.label || slot.lang }),
+        text: slot.text,
+      })
     }
   }
   return seeds
 }
 
-const STUDY_LABELS: Record<string, string> = {
-  composition: '构图',
-  palette: '配色',
-  linework: '线条',
-  expression: '表情',
-  memo: '拆解备注',
-}
+const STUDY_LABEL_KEYS = {
+  composition: 'lib.studyFields.composition.label',
+  palette: 'lib.studyFields.palette.label',
+  linework: 'lib.studyFields.linework.label',
+  expression: 'lib.studyFields.expression.label',
+  memo: 'lib.search.study',
+} satisfies Record<string, MessageKey>
 
 function studySeeds(ann: ItemAnnotation | undefined): FieldSeed[] {
   const study = ann?.study
   if (!study) return []
-  return Object.entries(STUDY_LABELS)
-    .map(([key, label]) => ({ kind: 'study' as const, label, text: study[key as keyof typeof study] ?? '' }))
+  return Object.entries(STUDY_LABEL_KEYS)
+    .map(([key, labelKey]) => ({
+      kind: 'study' as const,
+      label: translate(labelKey),
+      text: study[key as keyof typeof study] ?? '',
+    }))
     .filter((seed) => seed.text.trim().length > 0)
 }
 
@@ -199,24 +210,28 @@ export function buildSearchDocs(input: SearchInput): SearchDoc[] {
     const ann = input.annotations[item.id]
     const seeds: FieldSeed[] = []
 
-    if (item.caption?.trim()) seeds.push({ kind: 'caption', label: '文案', text: item.caption })
-    seeds.push({ kind: 'shortcode', label: '短码', text: item.shortcode })
-    seeds.push({ kind: 'file', label: '文件名', text: item.file })
+    if (item.caption?.trim()) seeds.push({ kind: 'caption', label: translate('lib.search.caption'), text: item.caption })
+    seeds.push({ kind: 'shortcode', label: translate('lib.search.shortcode'), text: item.shortcode })
+    seeds.push({ kind: 'file', label: translate('lib.search.file'), text: item.file })
     seeds.push(...dateSeeds(item, ann))
 
     for (const tagId of ann?.tags ?? []) {
       const tag = tagMap.get(tagId)
       if (!tag) continue
       const isCharacter = tag.dimensionId === 'character'
-      seeds.push({ kind: isCharacter ? 'character' : 'tag', label: isCharacter ? '人物' : '标签', text: tag.name })
+      seeds.push({
+        kind: isCharacter ? 'character' : 'tag',
+        label: translate(isCharacter ? 'lib.search.character' : 'lib.search.tag'),
+        text: tag.name,
+      })
     }
 
-    if (ann?.note?.trim()) seeds.push({ kind: 'note', label: '备注', text: ann.note })
+    if (ann?.note?.trim()) seeds.push({ kind: 'note', label: translate('lib.search.note'), text: ann.note })
     seeds.push(...translationSeeds(ann))
     seeds.push(...studySeeds(ann))
 
     for (const name of collectionNames.get(item.id) ?? []) {
-      seeds.push({ kind: 'collection', label: '合集', text: name })
+      seeds.push({ kind: 'collection', label: translate('lib.search.collection'), text: name })
     }
 
     const fields = seeds.map(makeField).filter((field): field is SearchField => Boolean(field))

@@ -1,4 +1,73 @@
-// StatsView 文案占位
-export const stats = {}
+export const stats = {
+  overview: {
+    subtitle: '{from} — {to} · 共 {count} 张（{posts} 个帖子）',
+  },
+  cards: {
+    works: '作品',
+    multiPosts: '其中多图帖 {count} 张',
+    drawingDays: '有画的日子',
+    longestStreak: '最长连续 {count} 天',
+    tagged: '已归类',
+    tagsCount: '{count} 个标签',
+    tagsAndCollections: '{tags} 个标签 · {collections} 个合集',
+    characters: '人物出场',
+    charactersHint: '{count} 位角色有出场记录',
+    confirmedDates: '日期已确认',
+    pendingReview: '待校对 {count}',
+    favorites: '收藏 / 笔记',
+    favoritesHint: '拆解或备注 {count} 张',
+  },
+  monthly: {
+    title: '月度张数',
+    barTooltip: '{month} · {count} 张 · {days} 天',
+    hint: '深色柱为作品数，悬停可看当月有画的天数。',
+  },
+  yearly: {
+    title: '年度概览',
+    average: '平均每天',
+    span: '覆盖跨度',
+    localNotes: '本地标注',
+    records: '{count} 条记录',
+  },
+  tags: {
+    title: '标签分布',
+    subtitle: '按维度分组 · 全部标签',
+    groupCount: '{items} 项 · {uses} 次',
+    barTooltip: '{name} · {count} 次 · 点击查看相关作品',
+    emptyPublic: '目前还没有可展示的标签分布。',
+    empty: '还没有使用标签。去图库多选作品批量打标签后，这里会出现分布。',
+  },
+  castRank: {
+    title: '角色出场榜',
+    subtitle: '{characters} 位角色 · 累计 {count} 次出场',
+    count: '{count} 次 · {percent}',
+    empty: '目前还没有公开的角色出场记录。',
+  },
+  cast: {
+    title: '人物组合',
+    subtitlePublic: '仅统计公开的绘日记 · 共 {count} 张有人物标注',
+    subtitle: '仅统计已确认的绘日记 · 共 {count} 张有人物标注',
+    single: '单人',
+    singleHint: '仅一人出镜',
+    double: '双人',
+    doubleHint: 'CP 两两配对',
+    multi: '多人',
+    multiHint: '3 人及以上',
+    countPercent: '{count} 张 · {percent}',
+    singleNote:
+      '口径：按角色统计「该图仅此一人出镜」的张数，每张图只计一次；与双人、多人合计等于 {total} 张有人物标注的绘日记。',
+    doubleNote:
+      '口径：同一张图内的角色两两配对，3 人及以上会拆成多组（如 3 人 = 3 组），所以占比以「有 2 人及以上标注的 {count} 张」为分母，合计可能超过 100%。完整群像请切到「多人」。',
+    multiNote:
+      '口径：按整组统计（如 A × B × C 记为一组，一张图只计一次），与「双人」页签里把 3 人拆成 3 组的两两配对不同。',
+    singleEmptyPublic: '目前还没有单人出镜的公开标注。',
+    singleEmpty: '还没有「单人出镜」的标注。给只有一位角色的绘日记标上人物后，这里会按角色排名。',
+    doubleEmptyPublic: '目前还没有可展示的双人组合。',
+    doubleEmpty: '暂时没有可配对的出场标注。至少需要一张已确认绘日记标注了 2 位及以上角色，组合才会出现在这里。',
+    multiEmptyPublic: '目前还没有 3 人及以上的公开群像。',
+    multiEmpty: '还没有 3 人及以上的群像标注。标注多位角色后，完整组合会按张数排在这里。',
+  },
+  characterTooltip: '查看「{name}」的角色图鉴',
+}
 
 export type StatsMessages = typeof stats

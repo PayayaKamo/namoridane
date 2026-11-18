@@ -7,6 +7,7 @@ import { Icon } from '../components/Icon'
 import { Empty, Modal } from '../components/Modal'
 import { TagPicker } from '../components/TagPicker'
 import { IS_PUBLIC } from '../lib/appMode'
+import { useI18n } from '../i18n'
 import type { DiaryItem } from '../types'
 
 const BASE = import.meta.env.BASE_URL
@@ -23,6 +24,7 @@ export function DateFindView({ route }: { route: Route }) {
     addTagToItems,
     notify,
   } = useStore()
+  const { t } = useI18n()
 
   const md = route.query.get('md') ?? ''
   const [monthPart, dayPart] = md.split('-')
@@ -147,7 +149,7 @@ export function DateFindView({ route }: { route: Route }) {
     const url = `${location.origin}${siteHref(`/datefind?${params.toString()}`)}`
     try {
       await navigator.clipboard.writeText(url)
-      notify('日期查询链接已复制', 'success')
+      notify(t('browse.datefind.shareCopied'), 'success')
     } catch {
       notify(url, 'default')
     }
@@ -186,7 +188,7 @@ export function DateFindView({ route }: { route: Route }) {
   const copyShortcode = async (code: string) => {
     try {
       await navigator.clipboard.writeText(code)
-      notify(`已复制 shortcode：${code}`, 'success')
+      notify(t('browse.datefind.shortcodeCopied', { code }), 'success')
     } catch {
       notify(code, 'default')
     }
@@ -203,7 +205,7 @@ export function DateFindView({ route }: { route: Route }) {
   const applySelectionTags = () => {
     if (!selectedIds.length) return
     for (const tagId of pickTags) addTagToItems(selectedIds, tagId)
-    notify(`已为 ${selectedIds.length} 张作品打上 ${pickTags.length} 个标签`, 'success')
+    notify(t('browse.datefind.tagsApplied', { count: selectedIds.length, tags: pickTags.length }), 'success')
     setPickTags([])
     setTagModal(false)
     resetSelection()
@@ -214,11 +216,11 @@ export function DateFindView({ route }: { route: Route }) {
       <div className="datefind-view">
         <Empty
           icon="calendar"
-          title="没有识别出有效日期"
-          hint="在顶部搜索框输入 20261117、2026-11-17、11-17 或 11/17 即可按日期查画。"
+          title={t('browse.datefind.invalidTitle')}
+          hint={t('browse.datefind.invalidHint')}
           action={
             <button className="btn btn-sm" style={{ marginTop: 16 }} onClick={() => navigate('/calendar')}>
-              去日历挑一天
+              {t('browse.datefind.goCalendar')}
             </button>
           }
         />
@@ -230,21 +232,22 @@ export function DateFindView({ route }: { route: Route }) {
     <div className="datefind-view">
       <div className="page-head">
         <div>
-          <div className="page-eyebrow">Date Lookup</div>
-          <h2 className="page-title">{formatMonthDayCN(month, day)}的绘日记</h2>
+          <div className="page-eyebrow">{t('shell.page.datefind.eyebrow')}</div>
+          <h2 className="page-title">{t('browse.datefind.title', { date: formatMonthDayCN(month, day) })}</h2>
           <div className="page-sub">
-            {visible.length} 张 · 默认只统计人工确认的日期
-            {includeInferred ? ' · 已包含推测日期' : ''}
-            {String(focusYear) !== '0' && ` · 聚焦 ${focusYear} 年`}
+            {t('browse.datefind.summary', { count: visible.length })}
+            {includeInferred ? t('browse.datefind.includedInferred') : ''}
+            {String(focusYear) !== '0' && t('browse.datefind.focusYear', { year: focusYear })}
           </div>
         </div>
         <div className="page-actions">
           <label className="switch-line">
             <input type="checkbox" checked={includeInferred} onChange={toggleInferred} />
-            包含推测日期（发布日 - 1）
+            {t('browse.datefind.includeInferred')}
           </label>
           <button className="btn" onClick={copyShare}>
-            <Icon name="share" size={14} />分享查询
+            <Icon name="share" size={14} />
+            {t('browse.datefind.share')}
           </button>
         </div>
       </div>
@@ -275,7 +278,7 @@ export function DateFindView({ route }: { route: Route }) {
           ))}
           {tagIds.length > 0 && (
             <button className="btn btn-ghost btn-sm" onClick={() => { setTagIds([]); syncUrl({ tags: [] }) }}>
-              清除筛选
+              {t('browse.datefind.clearFilters')}
             </button>
           )}
         </section>
@@ -284,22 +287,22 @@ export function DateFindView({ route }: { route: Route }) {
       {groups.length === 0 ? (
         <Empty
           icon="calendar"
-          title={formatMonthDayCN(month, day) + ' 暂无已确认的绘日记'}
+          title={t('browse.datefind.emptyTitle', { date: formatMonthDayCN(month, day) })}
           hint={
             IS_PUBLIC
-              ? '这个日期暂无已确认的绘日记，可以换一天或调整筛选条件。'
+              ? t('browse.datefind.emptyPublicHint')
               : includeInferred
-                ? '可以到「绘日记审核」确认日期，或检查标签筛选条件。'
-                : '可打开「包含推测日期」查看发布日 - 1 的推测结果。'
+                ? t('browse.datefind.emptyInferredHint')
+                : t('browse.datefind.emptyHint')
           }
           action={
             !includeInferred ? (
               <button className="btn btn-sm" style={{ marginTop: 16 }} onClick={toggleInferred}>
-                包含推测日期
+                {t('browse.datefind.includeInferredAction')}
               </button>
             ) : IS_PUBLIC ? null : (
               <button className="btn btn-sm" style={{ marginTop: 16 }} onClick={() => navigate('/diary-review')}>
-                去审核日期
+                {t('browse.datefind.goReview')}
               </button>
             )
           }
@@ -315,16 +318,18 @@ export function DateFindView({ route }: { route: Route }) {
               }}
             >
               <Icon name="checkSquare" size={14} />
-              {selectMode ? '退出多选' : '多选'}
+              {selectMode ? t('browse.datefind.exitSelect') : t('browse.datefind.enterSelect')}
             </button>
             {selectMode && (
               <>
-                <span className="faint">已选 {selectedIds.length} 张</span>
+                <span className="faint">{t('common.selectedCount', { count: selectedIds.length })}</span>
                 <button className="btn btn-sm" disabled={!selectedIds.length} onClick={() => setStorylineModal(true)}>
-                  <Icon name="book" size={14} />加入故事线
+                  <Icon name="book" size={14} />
+                  {t('browse.datefind.addToStoryline')}
                 </button>
                 <button className="btn btn-sm" disabled={!selectedIds.length} onClick={() => setTagModal(true)}>
-                  <Icon name="tag" size={14} />批量打标签
+                  <Icon name="tag" size={14} />
+                  {t('browse.datefind.batchTag')}
                 </button>
               </>
             )}
@@ -333,8 +338,8 @@ export function DateFindView({ route }: { route: Route }) {
           {groups.map(([year, list]) => (
             <section key={year} className={`datefind-group${focusYear === year ? ' focus' : ''}`}>
               <button className="datefind-group-head" onClick={() => toggleYear(year)}>
-                <span className="hand">{year} 年</span>
-                <span className="badge">{list.length} 张</span>
+                <span className="hand">{t('common.yearLabel', { year })}</span>
+                <span className="badge">{t('common.itemCount', { count: list.length })}</span>
                 <span className="spacer" />
                 <Icon name={openYears(year) ? 'up' : 'down'} size={14} />
               </button>
@@ -371,16 +376,20 @@ export function DateFindView({ route }: { route: Route }) {
                         <div className="date-card-body">
                           <div className="date-card-head">
                             <span className="date-card-date">
-                              {d.month} 月 {d.day} 日 · {weekday}
+                              {t('common.monthDay', { month: d.month, day: d.day })} · {weekday}
                             </span>
                             <span className="date-card-year num">{d.year}</span>
-                            {!d.confirmed && <span className="badge">推测</span>}
+                            {!d.confirmed && <span className="badge">{t('browse.datefind.inferred')}</span>}
                           </div>
                           <div className="date-card-meta">
-                            <span>发布于 {item.publishedAt || '未知日期'}</span>
+                            <span>
+                              {t('browse.datefind.publishedAt', {
+                                date: item.publishedAt || t('common.dateUnknown'),
+                              })}
+                            </span>
                             {item.postCount > 1 && (
                               <span className="faint">
-                                · 第 {item.postIndex + 1}/{item.postCount} 张
+                                {t('browse.datefind.postIndex', { index: item.postIndex + 1, total: item.postCount })}
                               </span>
                             )}
                           </div>
@@ -388,24 +397,25 @@ export function DateFindView({ route }: { route: Route }) {
                             <button
                               className="date-card-code"
                               onClick={() => copyShortcode(item.shortcode)}
-                              title="复制 shortcode"
+                              title={t('browse.datefind.copyShortcode')}
                             >
                               <code>{item.shortcode}</code>
                               <Icon name="copy" size={12} />
                             </button>
                             {item.permalink && (
                               <a className="date-card-link" href={item.permalink} target="_blank" rel="noreferrer">
-                                <Icon name="share" size={12} />原帖
+                                <Icon name="share" size={12} />
+                                {t('browse.datefind.originalPost')}
                               </a>
                             )}
                             {ann?.xiaohongshu && (
                               <a className="date-card-link" href={ann.xiaohongshu} target="_blank" rel="noreferrer">
-                                小红书
+                                {t('browse.datefind.xiaohongshu')}
                               </a>
                             )}
                             {ann?.wechat && (
                               <a className="date-card-link" href={ann.wechat} target="_blank" rel="noreferrer">
-                                公众号
+                                {t('browse.datefind.wechat')}
                               </a>
                             )}
                           </div>
@@ -419,7 +429,9 @@ export function DateFindView({ route }: { route: Route }) {
                                   toggleCaption(item.id)
                                 }}
                               >
-                                {captionOpen ? '收起原文案' : '展开原文案'}
+                                {captionOpen
+                                  ? t('browse.datefind.collapseCaption')
+                                  : t('browse.datefind.expandCaption')}
                               </button>
                             </div>
                           )}
@@ -435,9 +447,12 @@ export function DateFindView({ route }: { route: Route }) {
       )}
 
       {storylineModal && (
-        <Modal title={`把 ${selectedIds.length} 张加入故事线`} onClose={() => setStorylineModal(false)}>
+        <Modal
+          title={t('browse.datefind.storylineModalTitle', { count: selectedIds.length })}
+          onClose={() => setStorylineModal(false)}
+        >
           <div className="field">
-            <span className="field-label">选择已有故事线</span>
+            <span className="field-label">{t('browse.datefind.pickStoryline')}</span>
             <div className="storyline-pick-list">
               {storylines.map((story) => (
                 <button
@@ -445,7 +460,7 @@ export function DateFindView({ route }: { route: Route }) {
                   className="btn btn-ghost btn-sm"
                   onClick={() => {
                     addToStoryline(story.id, selectedIds)
-                    notify(`已加入「${story.title}」`, 'success')
+                    notify(t('browse.datefind.addedToStoryline', { name: story.title }), 'success')
                     setStorylineModal(false)
                     resetSelection()
                   }}
@@ -453,29 +468,32 @@ export function DateFindView({ route }: { route: Route }) {
                   {story.title}
                 </button>
               ))}
-              {!storylines.length && <span className="faint">还没有故事线，可以直接新建。</span>}
+              {!storylines.length && <span className="faint">{t('browse.datefind.noStorylines')}</span>}
             </div>
           </div>
           <div className="field" style={{ marginTop: 14 }}>
-            <span className="field-label">或新建故事线</span>
+            <span className="field-label">{t('browse.datefind.orNewStoryline')}</span>
             <div className="row">
               <input
                 className="input"
-                placeholder="故事线标题"
+                placeholder={t('browse.datefind.storylinePlaceholder')}
                 value={newStoryline}
                 onChange={(e) => setNewStoryline(e.target.value)}
               />
               <button
                 className="btn btn-primary btn-sm"
                 onClick={() => {
-                  const story = addStoryline(newStoryline.trim() || '未命名故事线', selectedIds)
-                  notify(`已创建「${story.title}」并加入 ${selectedIds.length} 张`, 'success')
+                  const story = addStoryline(newStoryline.trim() || t('lib.newStoryline'), selectedIds)
+                  notify(
+                    t('browse.datefind.createdStoryline', { name: story.title, count: selectedIds.length }),
+                    'success',
+                  )
                   setNewStoryline('')
                   setStorylineModal(false)
                   resetSelection()
                 }}
               >
-                创建
+                {t('browse.datefind.create')}
               </button>
             </div>
           </div>
@@ -484,11 +502,11 @@ export function DateFindView({ route }: { route: Route }) {
 
       {tagModal && (
         <Modal
-          title={`为 ${selectedIds.length} 张批量打标签`}
+          title={t('browse.datefind.tagModalTitle', { count: selectedIds.length })}
           onClose={() => setTagModal(false)}
           footer={
             <button className="btn btn-primary" disabled={!pickTags.length} onClick={applySelectionTags}>
-              应用标签
+              {t('browse.datefind.applyTags')}
             </button>
           }
         >

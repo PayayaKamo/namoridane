@@ -7,6 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import { useStore } from '../state/store'
+import { useI18n } from '../i18n'
 import { Icon } from '../components/Icon'
 import { Empty, Modal } from '../components/Modal'
 import { effectiveDate } from '../lib/dates'
@@ -32,6 +33,7 @@ export function CharactersView({ route }: { route: Route }) {
     updateCharacter,
     notify,
   } = useStore()
+  const { t } = useI18n()
   const characterDim = dimensions.find((d) => d.id === 'character')
   const charTags = useMemo(
     () => sortCharacterTags(tags.filter((t) => t.dimensionId === (characterDim?.id ?? 'character'))),
@@ -69,52 +71,60 @@ export function CharactersView({ route }: { route: Route }) {
   const missingCount = CHARACTER_PRESETS.filter((character) => !existingNames.has(character.name)).length
   const addPresets = () => {
     addCharacterPresets()
-    notify(missingCount ? `已补齐 ${missingCount} 位预置角色` : '预置角色已全部就绪', 'success')
+    notify(missingCount ? t('characters.list.addPresetsDone', { count: missingCount }) : t('characters.list.presetsAllReady'), 'success')
   }
   const coverOverrideCount = characters.filter((character) => character.coverItemId || character.coverCrop).length
   const clearCoverOverrides = () => {
     if (!coverOverrideCount) {
-      notify('当前没有封面覆盖，所有角色都是默认显示')
+      notify(t('characters.list.noCoverOverrides'))
       return
     }
-    if (!window.confirm(`将清空 ${coverOverrideCount} 个角色的封面来源与焦点/缩放，全部恢复默认封面。继续？`)) return
+    if (!window.confirm(t('characters.list.clearCoversConfirm', { count: coverOverrideCount }))) return
     for (const character of characters) {
       if (character.coverItemId || character.coverCrop) {
         updateCharacter(character.id, { coverItemId: undefined, coverCrop: undefined })
       }
     }
-    notify(`已恢复 ${coverOverrideCount} 个角色的默认封面`, 'success')
+    notify(t('characters.list.coversRestored', { count: coverOverrideCount }), 'success')
   }
 
   return (
     <div className="characters-view">
       <div className="page-head">
         <div>
-          <div className="page-eyebrow">Character Codex</div>
-          <h2 className="page-title">角色图鉴</h2>
+          <div className="page-eyebrow">{t('characters.eyebrow')}</div>
+          <h2 className="page-title">{t('shell.page.characters.title')}</h2>
           <div className="page-sub">
-            {data.length} 位角色 · 累计 {totalTagged} 次出场 · 名称与颜色来自「{characterDim?.name ?? '人物 / 角色'}」维度
+            {t('characters.list.summary', {
+              count: data.length,
+              total: totalTagged,
+              dimension: characterDim?.name ?? '人物 / 角色',
+            })}
           </div>
         </div>
         <div className="page-actions">
           {!IS_PUBLIC && (
             <button className="btn" onClick={() => setCreating(true)}>
-              <Icon name="plus" size={14} />新建角色
+              <Icon name="plus" size={14} />{t('characters.list.newCharacter')}
             </button>
           )}
           {!IS_PUBLIC && (
             <>
               <button className="btn" onClick={addPresets} disabled={!missingCount}>
                 <Icon name={missingCount ? 'plus' : 'check'} size={14} />
-                {missingCount ? `补齐 ${missingCount} 位角色预置` : `${CHARACTER_PRESETS.length} 位角色已就绪`}
+                {missingCount
+                  ? t('characters.list.addPresets', { count: missingCount })
+                  : t('characters.list.presetsReady', { count: CHARACTER_PRESETS.length })}
               </button>
               <button className="btn" onClick={() => navigate('/tags')}>
                 <Icon name="tag" size={14} />
-                管理人物标签
+                {t('characters.list.manageTags')}
               </button>
               <button className="btn" onClick={clearCoverOverrides}>
                 <Icon name="trash" size={14} />
-                全部恢复默认封面{coverOverrideCount ? `（${coverOverrideCount}）` : ''}
+                {coverOverrideCount
+                  ? t('characters.list.resetCoversCount', { count: coverOverrideCount })
+                  : t('characters.list.resetCovers')}
               </button>
             </>
           )}
@@ -164,14 +174,14 @@ export function CharactersView({ route }: { route: Route }) {
                   ) : (
                     <span className="character-placeholder">{tag.name.slice(0, 1)}</span>
                   )}
-                  <span className="character-count num">{count} 张</span>
+                  <span className="character-count num">{t('common.itemCount', { count })}</span>
                 </button>
                 <div className="character-body">
                   <div className="row" style={{ justifyContent: 'space-between' }}>
                     <div className="character-name">{tag.name}</div>
                     {!IS_PUBLIC && (
                       <button className="btn btn-ghost btn-sm" onClick={() => setEditing(tag)}>
-                        编辑
+                        {t('common.edit')}
                       </button>
                     )}
                   </div>
@@ -183,19 +193,15 @@ export function CharactersView({ route }: { route: Route }) {
       ) : (
         <Empty
           icon="users"
-          title={IS_PUBLIC ? '角色资料正在整理中' : '还没有人物/角色标签'}
-          hint={
-            IS_PUBLIC
-              ? '敬请期待，之后会补上角色介绍与出场作品。'
-              : '可以一键加入《摇曳百合》《大室家》及相关角色，再到作品详情或图库批量整理中人工选择出场人物。'
-          }
+          title={IS_PUBLIC ? t('characters.list.emptyPublicTitle') : t('characters.list.emptyTitle')}
+          hint={IS_PUBLIC ? t('characters.list.emptyPublicHint') : t('characters.list.emptyHint')}
           action={
             IS_PUBLIC ? undefined : (
               <div className="row row-wrap" style={{ justifyContent: 'center', gap: 8, marginTop: 16 }}>
                 <button className="btn btn-primary btn-sm" onClick={addPresets}>
-                  <Icon name="plus" size={14} />加入 {CHARACTER_PRESETS.length} 位预置角色
+                  <Icon name="plus" size={14} />{t('characters.list.joinPresets', { count: CHARACTER_PRESETS.length })}
                 </button>
-                <button className="btn btn-sm" onClick={() => navigate('/tags')}>手动管理角色</button>
+                <button className="btn btn-sm" onClick={() => navigate('/tags')}>{t('characters.list.manageManually')}</button>
               </div>
             )
           }
@@ -206,16 +212,19 @@ export function CharactersView({ route }: { route: Route }) {
         <CharacterEditModal
           tag={editing}
           character={characterMap.get(editing.id)}
-          coverOptions={(editingEntry?.members ?? []).map((item) => ({
-            id: item.id,
-            thumb: `${BASE}${item.thumb}`,
-            label: `${effectiveDate(item, annotations[item.id]).iso || '日期待定'} · ${item.file}`,
-            date: effectiveDate(item, annotations[item.id]).iso || '日期待定',
-          }))}
+          coverOptions={(editingEntry?.members ?? []).map((item) => {
+            const iso = effectiveDate(item, annotations[item.id]).iso || t('common.dateUnknown')
+            return {
+              id: item.id,
+              thumb: `${BASE}${item.thumb}`,
+              label: `${iso} · ${item.file}`,
+              date: iso,
+            }
+          })}
           onClose={() => setEditing(null)}
           onSave={(patch) => {
             updateCharacter(editing.id, patch)
-            notify('封面已保存', 'success')
+            notify(t('characters.list.coverSaved'), 'success')
             setEditing(null)
           }}
         />
@@ -225,7 +234,7 @@ export function CharactersView({ route }: { route: Route }) {
         <CharacterCreateModal
           onCreate={(name, color) => {
             addCharacter(name, color)
-            notify(`已创建角色「${name}」`, 'success')
+            notify(t('characters.list.created', { name }), 'success')
             setCreating(false)
           }}
           onClose={() => setCreating(false)}
@@ -250,6 +259,7 @@ function CharacterEditModal({
   onClose: () => void
   onSave: (patch: Partial<Character>) => void
 }) {
+  const { t } = useI18n()
   const [coverItemId, setCoverItemId] = useState(character?.coverItemId ?? '')
   const [crop, setCrop] = useState(() => ({
     x: character?.coverCrop?.x ?? 50,
@@ -329,12 +339,12 @@ function CharacterEditModal({
 
   return (
     <Modal
-      title={`设置封面 · ${tag.name}`}
+      title={t('characters.editor.title', { name: tag.name })}
       onClose={onClose}
       footer={
         <>
-          <button className="btn" onClick={onClose}>取消</button>
-          <button className="btn btn-primary" onClick={save}>保存</button>
+          <button className="btn" onClick={onClose}>{t('common.cancel')}</button>
+          <button className="btn btn-primary" onClick={save}>{t('common.save')}</button>
         </>
       }
     >
@@ -344,7 +354,7 @@ function CharacterEditModal({
             className="cover-editor-preview"
             style={{ background: tag.color }}
               role="group"
-              aria-label="角色封面预览，可拖动或用方向键调整焦点"
+              aria-label={t('characters.editor.previewAria')}
               tabIndex={0}
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
@@ -357,17 +367,17 @@ function CharacterEditModal({
               ) : (
                 <span className="cover-editor-empty">{tag.name.slice(0, 1)}</span>
               )}
-              <span className="cover-editor-hint">拖动或方向键调整焦点</span>
+              <span className="cover-editor-hint">{t('characters.editor.dragHint')}</span>
             </div>
             <div className="cover-editor-controls">
               <div className="field cover-source">
-                <span className="field-label">封面来源</span>
-                <div className="cover-source-strip" role="listbox" aria-label="封面来源，点击切换预览">
+                <span className="field-label">{t('characters.editor.source')}</span>
+                <div className="cover-source-strip" role="listbox" aria-label={t('characters.editor.sourceAria')}>
                   <button
                     type="button"
                     className={`cover-source-item${coverItemId ? '' : ' active'}`}
                     aria-pressed={!coverItemId}
-                    title="默认：预置头像 / 最近作品"
+                    title={t('characters.editor.defaultSource')}
                     onClick={() => setCoverItemId('')}
                   >
                     {avatarFallback ? (
@@ -375,7 +385,7 @@ function CharacterEditModal({
                     ) : (
                       <span className="cover-source-fallback" style={{ background: tag.color }}>{tag.name.slice(0, 1)}</span>
                     )}
-                    <span className="cover-source-date">默认</span>
+                    <span className="cover-source-date">{t('characters.editor.default')}</span>
                     {!coverItemId && <span className="cover-source-check"><Icon name="check" size={11} /></span>}
                   </button>
                   {coverOptions.map((option) => (
@@ -395,7 +405,7 @@ function CharacterEditModal({
                 </div>
               </div>
               <label className="cover-editor-row">
-                <span>水平</span>
+                <span>{t('characters.editor.horizontal')}</span>
                 <input
                   type="range"
                   min={0}
@@ -407,7 +417,7 @@ function CharacterEditModal({
                 <span className="num">{Math.round(crop.x)}%</span>
               </label>
               <label className="cover-editor-row">
-                <span>垂直</span>
+                <span>{t('characters.editor.vertical')}</span>
                 <input
                   type="range"
                   min={0}
@@ -419,7 +429,7 @@ function CharacterEditModal({
                 <span className="num">{Math.round(crop.y)}%</span>
               </label>
               <label className="cover-editor-row">
-                <span>缩放</span>
+                <span>{t('characters.editor.zoom')}</span>
                 <input
                   type="range"
                   min={1}
@@ -443,7 +453,7 @@ function CharacterEditModal({
               </label>
               <div className="row row-wrap" style={{ gap: 8, alignItems: 'center' }}>
                 <button className="btn btn-sm btn-ghost" onClick={resetCover}>
-                  恢复默认
+                  {t('characters.editor.reset')}
                 </button>
               </div>
             </div>
@@ -460,24 +470,25 @@ function CharacterCreateModal({
   onCreate: (name: string, color: string) => void
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [color, setColor] = useState('#8aa8c8')
   return (
-    <Modal title="新建角色" onClose={onClose}>
+    <Modal title={t('characters.create.title')} onClose={onClose}>
       <div className="character-edit">
         <label className="field">
-          <span className="field-label">名称</span>
-          <input className="input" value={name} placeholder="例如：赤座灯里" onChange={(e) => setName(e.target.value)} />
+          <span className="field-label">{t('common.name')}</span>
+          <input className="input" value={name} placeholder={t('characters.create.namePlaceholder')} onChange={(e) => setName(e.target.value)} />
         </label>
         <label className="field">
-          <span className="field-label">颜色</span>
+          <span className="field-label">{t('common.color')}</span>
           <input type="color" className="input" style={{ height: 36 }} value={color} onChange={(e) => setColor(e.target.value)} />
         </label>
       </div>
       <div className="modal-foot">
-        <button className="btn" onClick={onClose}>取消</button>
+        <button className="btn" onClick={onClose}>{t('common.cancel')}</button>
         <button className="btn btn-primary" disabled={!name.trim()} onClick={() => onCreate(name.trim(), color)}>
-          创建
+          {t('common.create')}
         </button>
       </div>
     </Modal>

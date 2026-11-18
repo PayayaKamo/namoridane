@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
+import { useI18n } from '../i18n'
 import { effectiveDate, formatMonthDay, isValidYmd, publishedParts } from '../lib/dates'
 import { Icon } from '../components/Icon'
 import { Empty, Modal } from '../components/Modal'
@@ -12,6 +13,7 @@ type ReviewFilter = 'pending' | 'rollover' | 'multi' | 'confirmed'
 
 export function ReviewView() {
   const { items, annotations, confirmDate, setManualDate, getDate, notify } = useStore()
+  const { t } = useI18n()
   const [filter, setFilter] = useState<ReviewFilter>('pending')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [limit, setLimit] = useState(36)
@@ -65,11 +67,11 @@ export function ReviewView() {
     const m = Number(month)
     const d = Number(day)
     if (!isValidYmd(y, m, d)) {
-      notify('日期不合法', 'error')
+      notify(t('adminOrg.review.editor.invalid'), 'error')
       return
     }
     setManualDate(editing.id, y, m, d)
-    notify('日期已确认', 'success')
+    notify(t('shell.dateEditor.saved'), 'success')
     setEditing(null)
   }
 
@@ -77,21 +79,25 @@ export function ReviewView() {
     <div className="review-view">
       <div className="page-head">
         <div>
-          <div className="page-eyebrow">Date Review</div>
-          <h2 className="page-title">日期校对</h2>
+          <div className="page-eyebrow">{t('adminOrg.review.eyebrow')}</div>
+          <h2 className="page-title">{t('adminOrg.review.title')}</h2>
           <div className="page-sub">
-            手写日记只有月/日，默认按发布日前一天推断。核对大图上的日期后点确认。
+            {t('adminOrg.review.subtitle')}
           </div>
         </div>
         <div className="page-actions">
-          <span className="badge badge-warn">待校对 {pending.length}</span>
-          <span className="badge badge-sage">已确认 {confirmed.length}</span>
+          <span className="badge badge-warn">
+            {t('adminOrg.review.pendingCount', { count: pending.length })}
+          </span>
+          <span className="badge badge-sage">
+            {t('adminOrg.review.confirmedCount', { count: confirmed.length })}
+          </span>
         </div>
       </div>
 
       <div className="progress-card">
         <div className="progress-head">
-          <span>校对进度</span>
+          <span>{t('adminOrg.review.progress')}</span>
           <span className="num">
             {confirmed.length} / {items.length}
           </span>
@@ -108,10 +114,13 @@ export function ReviewView() {
         <div className="segmented">
           {(
             [
-              ['pending', `待校对 ${pending.length}`],
-              ['rollover', `跨月/跨年 ${pending.filter((i) => i.rollover).length}`],
-              ['multi', `多图帖 ${pending.filter((i) => i.postCount > 1).length}`],
-              ['confirmed', `已确认 ${confirmed.length}`],
+              ['pending', t('adminOrg.review.pendingCount', { count: pending.length })],
+              [
+                'rollover',
+                t('adminOrg.review.filter.rollover', { count: pending.filter((i) => i.rollover).length }),
+              ],
+              ['multi', t('adminOrg.review.filter.multi', { count: pending.filter((i) => i.postCount > 1).length })],
+              ['confirmed', t('adminOrg.review.confirmedCount', { count: confirmed.length })],
             ] as [ReviewFilter, string][]
           ).map(([key, label]) => (
             <button key={key} className={filter === key ? 'active' : ''} onClick={() => { setFilter(key); setLimit(36) }}>
@@ -122,26 +131,26 @@ export function ReviewView() {
         <div className="spacer" />
         {selected.size > 0 && (
           <div className="row" style={{ gap: 6 }}>
-            <span className="faint">已选 {selected.size}</span>
+            <span className="faint">{t('adminOrg.review.selected', { count: selected.size })}</span>
             <button
               className="btn btn-sm"
               onClick={() => {
                 confirmDate(selectedIds, 'published')
-                notify(`已将 ${selectedIds.length} 张标记为发布日`, 'success')
+                notify(t('adminOrg.review.bulk.publishedDone', { count: selectedIds.length }), 'success')
                 setSelected(new Set())
               }}
             >
-              按发布日确认
+              {t('adminOrg.review.bulk.published')}
             </button>
             <button
               className="btn btn-sm btn-primary"
               onClick={() => {
                 confirmDate(selectedIds, 'suggested')
-                notify(`已将 ${selectedIds.length} 张按推断日确认`, 'success')
+                notify(t('adminOrg.review.bulk.suggestedDone', { count: selectedIds.length }), 'success')
                 setSelected(new Set())
               }}
             >
-              按推断日确认
+              {t('adminOrg.review.bulk.suggested')}
             </button>
             <button className="icon-btn" onClick={() => setSelected(new Set())}>
               <Icon name="close" size={14} />
@@ -153,8 +162,12 @@ export function ReviewView() {
       {list.length === 0 ? (
         <Empty
           icon="check"
-          title={filter === 'confirmed' ? '还没有已确认的日期' : '这一组已经全部校对完成'}
-          hint="切换到其他分组继续，或到图库按日期浏览。"
+          title={
+            filter === 'confirmed'
+              ? t('adminOrg.review.empty.confirmedTitle')
+              : t('adminOrg.review.empty.doneTitle')
+          }
+          hint={t('adminOrg.review.empty.hint')}
         />
       ) : (
         <>
@@ -170,20 +183,36 @@ export function ReviewView() {
                   </button>
                   <div className="review-info">
                     <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                      <span className="badge">发布 {pub.month}/{pub.day}</span>
-                      <span className={`badge ${d.confirmed ? 'badge-sage' : 'badge-accent'}`}>
-                        推断 {formatMonthDay(item.inferredMonth, item.inferredDay)}
+                      <span className="badge">
+                        {t('adminOrg.review.card.published', { month: pub.month, day: pub.day })}
                       </span>
-                      {item.rollover === 'year' && <span className="badge badge-warn">跨年</span>}
-                      {item.rollover === 'month' && <span className="badge badge-warn">跨月</span>}
-                      {item.postCount > 1 && <span className="badge">多图 {item.postIndex + 1}/{item.postCount}</span>}
+                      <span className={`badge ${d.confirmed ? 'badge-sage' : 'badge-accent'}`}>
+                        {t('adminOrg.review.card.inferred', {
+                          date: formatMonthDay(item.inferredMonth, item.inferredDay),
+                        })}
+                      </span>
+                      {item.rollover === 'year' && (
+                        <span className="badge badge-warn">{t('adminOrg.review.card.rolloverYear')}</span>
+                      )}
+                      {item.rollover === 'month' && (
+                        <span className="badge badge-warn">{t('adminOrg.review.card.rolloverMonth')}</span>
+                      )}
+                      {item.postCount > 1 && (
+                        <span className="badge">
+                          {t('adminOrg.review.card.multi', { index: item.postIndex + 1, count: item.postCount })}
+                        </span>
+                      )}
                     </div>
                     <div className="review-date hand">
                       {d.year} · {d.month} / {d.day}
                     </div>
                     <div className="faint" style={{ fontSize: 11 }}>
-                      {d.source === 'published' ? '沿用发布日' : d.source === 'manual' ? '手动校对' : '按规律推断'}
-                      {d.confirmed ? ' · 已确认' : ''}
+                      {d.source === 'published'
+                        ? t('adminOrg.review.card.sourcePublished')
+                        : d.source === 'manual'
+                          ? t('adminOrg.review.card.sourceManual')
+                          : t('adminOrg.review.card.sourceInferred')}
+                      {d.confirmed ? t('adminOrg.review.card.confirmedSuffix') : ''}
                     </div>
                     <div className="review-actions">
                       {!d.confirmed && (
@@ -192,31 +221,31 @@ export function ReviewView() {
                             className="btn btn-sm btn-primary"
                             onClick={() => {
                               confirmDate([item.id], 'suggested')
-                              notify('已按推断日确认', 'success')
+                              notify(t('adminOrg.review.card.suggestedDone'), 'success')
                             }}
                           >
-                            沿用推断
+                            {t('adminOrg.review.card.useSuggested')}
                           </button>
                           <button
                             className="btn btn-sm"
                             onClick={() => {
                               confirmDate([item.id], 'published')
-                              notify('已按发布日确认', 'success')
+                              notify(t('adminOrg.review.card.publishedDone'), 'success')
                             }}
                           >
-                            沿用发布
+                            {t('adminOrg.review.card.usePublished')}
                           </button>
                         </>
                       )}
                       <button className="btn btn-sm btn-ghost" onClick={() => openEditor(item)}>
-                        改月/日
+                        {t('adminOrg.review.card.editDate')}
                       </button>
                     </div>
                   </div>
                   <button
                     className={`select-check static${checked ? ' on' : ''}`}
                     onClick={() => toggle(item.id)}
-                    aria-label="选择"
+                    aria-label={t('common.select')}
                   >
                     {checked && <Icon name="check" size={13} strokeWidth={2.4} />}
                   </button>
@@ -227,7 +256,7 @@ export function ReviewView() {
           {limit < list.length && (
             <div className="row" style={{ justifyContent: 'center', marginTop: 18 }}>
               <button className="btn" onClick={() => setLimit((v) => v + 36)}>
-                加载更多（剩余 {list.length - limit}）
+                {t('adminOrg.review.loadMore', { count: list.length - limit })}
               </button>
             </div>
           )}
@@ -236,16 +265,19 @@ export function ReviewView() {
 
       {editing && (
         <Modal
-          title="修改日记日期"
-          subtitle={`${editing.file} · 发布 ${editing.publishedAt}`}
+          title={t('adminOrg.review.editor.title')}
+          subtitle={t('adminOrg.review.editor.subtitle', {
+            file: editing.file,
+            date: editing.publishedAt,
+          })}
           onClose={() => setEditing(null)}
           footer={
             <>
               <button className="btn" onClick={() => setEditing(null)}>
-                取消
+                {t('common.cancel')}
               </button>
               <button className="btn btn-primary" onClick={saveEditor}>
-                保存并确认
+                {t('adminOrg.review.editor.saveAndConfirm')}
               </button>
             </>
           }
@@ -255,14 +287,14 @@ export function ReviewView() {
           </div>
           <div className="row" style={{ gap: 8, marginTop: 14, justifyContent: 'center' }}>
             <input className="input num" style={{ width: 84 }} value={year} onChange={(e) => setYear(e.target.value.replace(/\D/g, '').slice(0, 4))} />
-            <span className="faint">年</span>
+            <span className="faint">{t('common.year')}</span>
             <input className="input num" style={{ width: 64 }} value={month} onChange={(e) => setMonth(e.target.value.replace(/\D/g, '').slice(0, 2))} />
-            <span className="faint">月</span>
+            <span className="faint">{t('common.month')}</span>
             <input className="input num" style={{ width: 64 }} value={day} onChange={(e) => setDay(e.target.value.replace(/\D/g, '').slice(0, 2))} />
-            <span className="faint">日</span>
+            <span className="faint">{t('common.day')}</span>
           </div>
           <p className="faint" style={{ textAlign: 'center', marginTop: 8 }}>
-            年份默认沿用发布年，跨年作品可在这里修正。
+            {t('adminOrg.review.editor.hint')}
           </p>
         </Modal>
       )}

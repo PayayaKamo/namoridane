@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
 import { CharacterAvatar } from '../components/CharacterAvatar'
-import { MONTHS_CN, effectiveDate } from '../lib/dates'
+import { monthNames, effectiveDate } from '../lib/dates'
 import { IS_PUBLIC } from '../lib/appMode'
 import { navigate } from '../lib/router'
+import { useI18n } from '../i18n'
 
 export function StatsView() {
   const {
@@ -19,6 +20,7 @@ export function StatsView() {
     data,
     getDate,
   } = useStore()
+  const { t } = useI18n()
   const [openDims, setOpenDims] = useState<Record<string, boolean>>({ character: true })
   const [castTab, setCastTab] = useState<'single' | 'double' | 'multi'>(() => {
     const saved = localStorage.getItem('namori.stats.castTab')
@@ -183,6 +185,7 @@ export function StatsView() {
   const characterTotal = characterRank.reduce((sum, row) => sum + row.count, 0)
 
   const pct = (count: number, total: number) => (total ? `${Math.round((count / total) * 100)}%` : '0%')
+  const months = monthNames()
 
   const openCharacter = (id: string) => navigate(`/characters?char=${encodeURIComponent(id)}`)
 
@@ -192,7 +195,7 @@ export function StatsView() {
       type="button"
       className="cast-avatar-btn"
       onClick={() => openCharacter(id)}
-      title={`查看「${tagMap.get(id)?.name ?? id}」的角色图鉴`}
+      title={t('stats.characterTooltip', { name: tagMap.get(id)?.name ?? id })}
     >
       {castAvatar(id)}
     </button>
@@ -214,10 +217,15 @@ export function StatsView() {
     <div className="stats-view">
       <div className="page-head">
         <div>
-          <div className="page-eyebrow">Insights</div>
-          <h2 className="page-title">统计</h2>
+          <div className="page-eyebrow">{t('shell.page.stats.eyebrow')}</div>
+          <h2 className="page-title">{t('shell.page.stats.title')}</h2>
           <div className="page-sub">
-            {summary.minDate} — {summary.maxDate} · 共 {items.length} 张（{summary.posts} 个帖子）
+            {t('stats.overview.subtitle', {
+              from: summary.minDate,
+              to: summary.maxDate,
+              count: items.length,
+              posts: summary.posts,
+            })}
           </div>
         </div>
       </div>
@@ -226,55 +234,57 @@ export function StatsView() {
         <div className="stat-card">
           <div className="stat-top">
             <span className="stat-icon"><Icon name="gallery" size={16} /></span>
-            <span className="stat-label">作品</span>
+            <span className="stat-label">{t('stats.cards.works')}</span>
           </div>
           <div className="stat-value num">{items.length}</div>
-          <div className="stat-hint">其中多图帖 {summary.multi} 张</div>
+          <div className="stat-hint">{t('stats.cards.multiPosts', { count: summary.multi })}</div>
         </div>
         <div className="stat-card">
           <div className="stat-top">
             <span className="stat-icon"><Icon name="calendar" size={16} /></span>
-            <span className="stat-label">有画的日子</span>
+            <span className="stat-label">{t('stats.cards.drawingDays')}</span>
           </div>
           <div className="stat-value num">{summary.days}</div>
-          <div className="stat-hint">最长连续 {summary.longest} 天</div>
+          <div className="stat-hint">{t('stats.cards.longestStreak', { count: summary.longest })}</div>
         </div>
         <div className="stat-card">
           <div className="stat-top">
             <span className="stat-icon"><Icon name="tag" size={16} /></span>
-            <span className="stat-label">已归类</span>
+            <span className="stat-label">{t('stats.cards.tagged')}</span>
           </div>
           <div className="stat-value num">{summary.tagged}</div>
           <div className="stat-hint">
-            {tags.length} 个标签{IS_PUBLIC ? '' : ` · ${collections.length} 个合集`}
+            {IS_PUBLIC
+              ? t('stats.cards.tagsCount', { count: tags.length })
+              : t('stats.cards.tagsAndCollections', { tags: tags.length, collections: collections.length })}
           </div>
         </div>
         {IS_PUBLIC ? (
           <div className="stat-card">
             <div className="stat-top">
               <span className="stat-icon"><Icon name="users" size={16} /></span>
-              <span className="stat-label">人物出场</span>
+              <span className="stat-label">{t('stats.cards.characters')}</span>
             </div>
             <div className="stat-value num">{characterTotal}</div>
-            <div className="stat-hint">{characterRank.length} 位角色有出场记录</div>
+            <div className="stat-hint">{t('stats.cards.charactersHint', { count: characterRank.length })}</div>
           </div>
         ) : (
           <>
             <div className="stat-card">
               <div className="stat-top">
                 <span className="stat-icon"><Icon name="check" size={16} /></span>
-                <span className="stat-label">日期已确认</span>
+                <span className="stat-label">{t('stats.cards.confirmedDates')}</span>
               </div>
               <div className="stat-value num">{summary.confirmed}</div>
-              <div className="stat-hint">待校对 {items.length - summary.confirmed}</div>
+              <div className="stat-hint">{t('stats.cards.pendingReview', { count: items.length - summary.confirmed })}</div>
             </div>
             <div className="stat-card">
               <div className="stat-top">
                 <span className="stat-icon"><Icon name="heart" size={16} /></span>
-                <span className="stat-label">收藏 / 笔记</span>
+                <span className="stat-label">{t('stats.cards.favorites')}</span>
               </div>
               <div className="stat-value num">{summary.favorites}</div>
-              <div className="stat-hint">拆解或备注 {summary.withNotes} 张</div>
+              <div className="stat-hint">{t('stats.cards.favoritesHint', { count: summary.withNotes })}</div>
             </div>
           </>
         )}
@@ -283,18 +293,22 @@ export function StatsView() {
       <div className="stats-two">
         <section className="panel">
           <div className="panel-head">
-            <h3>月度张数</h3>
+            <h3>{t('stats.monthly.title')}</h3>
             <select className="select select-mini" value={year} onChange={(e) => setYear(Number(e.target.value))}>
               {yearCounts.map(([y]) => (
                 <option key={y} value={y}>
-                  {y} 年
+                  {t('common.yearLabel', { year: y })}
                 </option>
               ))}
             </select>
           </div>
           <div className="bar-chart">
             {monthCounts.map((count, idx) => (
-              <div key={idx} className="bar-col" title={`${MONTHS_CN[idx]} · ${count} 张 · ${monthDays[idx]} 天`}>
+              <div
+                key={idx}
+                className="bar-col"
+                title={t('stats.monthly.barTooltip', { month: months[idx], count, days: monthDays[idx] })}
+              >
                 <span className="bar-value num">{count || ''}</span>
                 <div className="bar-track">
                   <div className="bar-fill" style={{ height: `${(count / maxMonth) * 100}%` }} />
@@ -304,13 +318,13 @@ export function StatsView() {
             ))}
           </div>
           <div className="faint" style={{ fontSize: 11.5, marginTop: 8 }}>
-            深色柱为作品数，悬停可看当月有画的天数。
+            {t('stats.monthly.hint')}
           </div>
         </section>
 
         <section className="panel">
           <div className="panel-head">
-            <h3>年度概览</h3>
+            <h3>{t('stats.yearly.title')}</h3>
           </div>
           <div className="year-table">
             {yearCounts.map(([y, count]) => (
@@ -326,17 +340,17 @@ export function StatsView() {
           <div className="divider" />
           <div className="meta-list">
             <div className="meta-row">
-              <span>平均每天</span>
-              <span className="num">{(items.length / Math.max(1, summary.days)).toFixed(2)} 张</span>
+              <span>{t('stats.yearly.average')}</span>
+              <span className="num">{t('common.itemCount', { count: (items.length / Math.max(1, summary.days)).toFixed(2) })}</span>
             </div>
             <div className="meta-row">
-              <span>覆盖跨度</span>
+              <span>{t('stats.yearly.span')}</span>
               <span className="num">{summary.minDate} → {summary.maxDate}</span>
             </div>
             {!IS_PUBLIC && (
               <div className="meta-row">
-                <span>本地标注</span>
-                <span className="num">{Object.keys(data.items).length} 条记录</span>
+                <span>{t('stats.yearly.localNotes')}</span>
+                <span className="num">{t('stats.yearly.records', { count: Object.keys(data.items).length })}</span>
               </div>
             )}
           </div>
@@ -345,8 +359,8 @@ export function StatsView() {
 
       <section className="panel">
         <div className="panel-head">
-          <h3>标签分布</h3>
-          <span className="faint">按维度分组 · 全部标签</span>
+          <h3>{t('stats.tags.title')}</h3>
+          <span className="faint">{t('stats.tags.subtitle')}</span>
         </div>
         {tagGroups.length ? (
           <div className="tag-dist-grid">
@@ -362,7 +376,7 @@ export function StatsView() {
                     aria-expanded={open}
                   >
                     <span className="field-label">{dim.name}</span>
-                    <span className="num faint">{groupTags.length} 项 · {groupTotal} 次</span>
+                    <span className="num faint">{t('stats.tags.groupCount', { items: groupTags.length, uses: groupTotal })}</span>
                     <span className="tag-dist-caret" aria-hidden>
                       {open ? '▾' : '▸'}
                     </span>
@@ -376,7 +390,7 @@ export function StatsView() {
                             key={tag.id}
                             type="button"
                             className="tag-bar"
-                            title={`${tag.name} · ${count} 次 · 点击查看相关作品`}
+                            title={t('stats.tags.barTooltip', { name: tag.name, count })}
                             onClick={() => navigate(`/gallery?tag=${encodeURIComponent(tag.id)}`)}
                           >
                             <span className="tag-bar-track">
@@ -399,9 +413,7 @@ export function StatsView() {
           </div>
         ) : (
           <p className="faint">
-            {IS_PUBLIC
-              ? '目前还没有可展示的标签分布。'
-              : '还没有使用标签。去图库多选作品批量打标签后，这里会出现分布。'}
+            {IS_PUBLIC ? t('stats.tags.emptyPublic') : t('stats.tags.empty')}
           </p>
         )}
       </section>
@@ -409,9 +421,9 @@ export function StatsView() {
       {IS_PUBLIC && (
         <section className="panel">
           <div className="panel-head">
-            <h3>角色出场榜</h3>
+            <h3>{t('stats.castRank.title')}</h3>
             <span className="faint">
-              {characterRank.length} 位角色 · 累计 {characterTotal} 次出场
+              {t('stats.castRank.subtitle', { characters: characterRank.length, count: characterTotal })}
             </span>
           </div>
           {characterRank.length ? (
@@ -422,7 +434,7 @@ export function StatsView() {
                   type="button"
                   className="rank-row"
                   onClick={() => openCharacter(row.id)}
-                  title={`查看「${tagMap.get(row.id)?.name ?? row.id}」的角色图鉴`}
+                  title={t('stats.characterTooltip', { name: tagMap.get(row.id)?.name ?? row.id })}
                 >
                   <span className="cast-avatar-btn">{castAvatar(row.id)}</span>
                   <span className="rank-name">{tagMap.get(row.id)?.name ?? row.id}</span>
@@ -433,30 +445,32 @@ export function StatsView() {
                     />
                   </span>
                   <span className="num cast-pair-count">
-                    {row.count} 次 · {pct(row.count, characterTotal)}
+                    {t('stats.castRank.count', { count: row.count, percent: pct(row.count, characterTotal) })}
                   </span>
                 </button>
               ))}
             </div>
           ) : (
-            <p className="faint">目前还没有公开的角色出场记录。</p>
+            <p className="faint">{t('stats.castRank.empty')}</p>
           )}
         </section>
       )}
 
       <section className="panel">
         <div className="panel-head">
-          <h3>人物组合</h3>
+          <h3>{t('stats.cast.title')}</h3>
           <span className="faint">
-            仅统计{IS_PUBLIC ? '公开的' : '已确认的'}绘日记 · 共 {cast.total} 张有人物标注
+            {IS_PUBLIC
+              ? t('stats.cast.subtitlePublic', { count: cast.total })
+              : t('stats.cast.subtitle', { count: cast.total })}
           </span>
         </div>
-        <div className="cast-tabs" role="tablist" aria-label="人物组合">
+        <div className="cast-tabs" role="tablist" aria-label={t('stats.cast.title')}>
           {(
             [
-              { key: 'single', label: '单人', count: cast.single, hint: '仅一人出镜' },
-              { key: 'double', label: '双人', count: cast.double, hint: 'CP 两两配对' },
-              { key: 'multi', label: '多人', count: cast.multi, hint: '3 人及以上' },
+              { key: 'single', label: t('stats.cast.single'), count: cast.single, hint: t('stats.cast.singleHint') },
+              { key: 'double', label: t('stats.cast.double'), count: cast.double, hint: t('stats.cast.doubleHint') },
+              { key: 'multi', label: t('stats.cast.multi'), count: cast.multi, hint: t('stats.cast.multiHint') },
             ] as const
           ).map((tabItem) => (
             <button
@@ -470,7 +484,7 @@ export function StatsView() {
                 {tabItem.label} <span className="faint">{tabItem.hint}</span>
               </span>
               <span className="num cast-tab-count">
-                {tabItem.count} 张 · {pct(tabItem.count, cast.total)}
+                {t('stats.cast.countPercent', { count: tabItem.count, percent: pct(tabItem.count, cast.total) })}
               </span>
             </button>
           ))}
@@ -479,10 +493,7 @@ export function StatsView() {
         {castTab === 'single' &&
           (cast.singles.length ? (
             <>
-              <p className="cast-note">
-                口径：按角色统计「该图仅此一人出镜」的张数，每张图只计一次；与双人、多人合计等于 {cast.total}{' '}
-                张有人物标注的绘日记。
-              </p>
+              <p className="cast-note">{t('stats.cast.singleNote', { total: cast.total })}</p>
               <div className="cast-pairs">
                 {cast.singles.map((row) => (
                   <div key={row.ids[0]} className="cast-pair-row">
@@ -495,7 +506,7 @@ export function StatsView() {
                       />
                     </span>
                     <span className="num cast-pair-count">
-                      {row.count} 张 · {pct(row.count, cast.single)}
+                      {t('stats.cast.countPercent', { count: row.count, percent: pct(row.count, cast.single) })}
                     </span>
                   </div>
                 ))}
@@ -503,19 +514,14 @@ export function StatsView() {
             </>
           ) : (
             <p className="faint">
-              {IS_PUBLIC
-                ? '目前还没有单人出镜的公开标注。'
-                : '还没有「单人出镜」的标注。给只有一位角色的绘日记标上人物后，这里会按角色排名。'}
+              {IS_PUBLIC ? t('stats.cast.singleEmptyPublic') : t('stats.cast.singleEmpty')}
             </p>
           ))}
 
         {castTab === 'double' &&
           (cast.pairs.length ? (
             <>
-              <p className="cast-note">
-                口径：同一张图内的角色两两配对，3 人及以上会拆成多组（如 3 人 = 3
-                组），所以占比以「有 2 人及以上标注的 {cast.pairImages} 张」为分母，合计可能超过 100%。完整群像请切到「多人」。
-              </p>
+              <p className="cast-note">{t('stats.cast.doubleNote', { count: cast.pairImages })}</p>
               <div className="cast-pairs">
                 {cast.pairs.map((pair) => (
                   <div key={pair.ids.join('|')} className="cast-pair-row">
@@ -531,7 +537,7 @@ export function StatsView() {
                       />
                     </span>
                     <span className="num cast-pair-count">
-                      {pair.count} 张 · {pct(pair.count, cast.pairImages)}
+                      {t('stats.cast.countPercent', { count: pair.count, percent: pct(pair.count, cast.pairImages) })}
                     </span>
                   </div>
                 ))}
@@ -539,19 +545,14 @@ export function StatsView() {
             </>
           ) : (
             <p className="faint">
-              {IS_PUBLIC
-                ? '目前还没有可展示的双人组合。'
-                : '暂时没有可配对的出场标注。至少需要一张已确认绘日记标注了 2 位及以上角色，组合才会出现在这里。'}
+              {IS_PUBLIC ? t('stats.cast.doubleEmptyPublic') : t('stats.cast.doubleEmpty')}
             </p>
           ))}
 
         {castTab === 'multi' &&
           (cast.groups.length ? (
             <>
-              <p className="cast-note">
-                口径：按整组统计（如 A × B × C 记为一组，一张图只计一次），与「双人」页签里把 3
-                人拆成 3 组的两两配对不同。
-              </p>
+              <p className="cast-note">{t('stats.cast.multiNote')}</p>
               <div className="cast-pairs">
                 {cast.groups.map((group) => (
                   <div key={group.ids.join('|')} className="cast-pair-row is-group">
@@ -566,7 +567,7 @@ export function StatsView() {
                       />
                     </span>
                     <span className="num cast-pair-count">
-                      {group.count} 张 · {pct(group.count, cast.multi)}
+                      {t('stats.cast.countPercent', { count: group.count, percent: pct(group.count, cast.multi) })}
                     </span>
                   </div>
                 ))}
@@ -574,9 +575,7 @@ export function StatsView() {
             </>
           ) : (
             <p className="faint">
-              {IS_PUBLIC
-                ? '目前还没有 3 人及以上的公开群像。'
-                : '还没有 3 人及以上的群像标注。标注多位角色后，完整组合会按张数排在这里。'}
+              {IS_PUBLIC ? t('stats.cast.multiEmptyPublic') : t('stats.cast.multiEmpty')}
             </p>
           ))}
       </section>

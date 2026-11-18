@@ -124,7 +124,10 @@ export function DetailView({ itemId }: { itemId: string }) {
     }
     const url = extractShareUrl(value, kind)
     if (!url) {
-      notify(kind === 'xiaohongshu' ? '未识别到小红书链接，请粘贴分享链接' : '未识别到公众号链接，请粘贴文章链接', 'error')
+      notify(
+        kind === 'xiaohongshu' ? t('detail.links.xiaohongshuInvalid') : t('detail.links.wechatInvalid'),
+        'error',
+      )
       return
     }
     setItemLink(item.id, kind, url)
@@ -159,9 +162,9 @@ export function DetailView({ itemId }: { itemId: string }) {
     return (
       <div className="detail-overlay">
         <div className="detail-missing">
-          <p>找不到这张作品。</p>
+          <p>{t('detail.missing.title')}</p>
           <button className="btn" onClick={closeItem}>
-            返回
+            {t('common.back')}
           </button>
         </div>
       </div>
@@ -172,9 +175,9 @@ export function DetailView({ itemId }: { itemId: string }) {
     const url = `${window.location.origin}${siteHref(`/item/${item.id}/`)}`
     try {
       await navigator.clipboard.writeText(url)
-      notify('分享链接已复制（含作品标签信息）', 'success')
+      notify(t('detail.share.copied'), 'success')
     } catch {
-      notify(`链接：${url}`, 'default')
+      notify(t('detail.share.link', { url }), 'default')
     }
   }
 
@@ -198,47 +201,47 @@ export function DetailView({ itemId }: { itemId: string }) {
         <div className="detail-topbar">
           <button className="btn btn-ghost btn-sm" onClick={closeItem}>
             <Icon name="close" size={15} />
-            关闭
+            {t('common.close')}
           </button>
           <span className="detail-position num">
             {index + 1} / {ordered.length}
           </span>
           <div className="row" style={{ gap: 4 }}>
-            <button className="icon-btn" onClick={() => prevItem && navigate(`/item/${prevItem.id}`)} disabled={!prevItem} title="上一张（←）">
+            <button className="icon-btn" onClick={() => prevItem && navigate(`/item/${prevItem.id}`)} disabled={!prevItem} title={t('detail.topbar.prev')}>
               <Icon name="left" />
             </button>
-            <button className="icon-btn" onClick={() => nextItem && navigate(`/item/${nextItem.id}`)} disabled={!nextItem} title="下一张（→）">
+            <button className="icon-btn" onClick={() => nextItem && navigate(`/item/${nextItem.id}`)} disabled={!nextItem} title={t('detail.topbar.next')}>
               <Icon name="right" />
             </button>
           </div>
           <div className="spacer" />
-          <a className="btn btn-sm btn-primary" href={originalUrl(item)} download={item.file} title="下载未经压缩的原始 JPG">
+          <a className="btn btn-sm btn-primary" href={originalUrl(item)} download={item.file} title={t('detail.topbar.downloadTitle')}>
             <Icon name="download" size={14} />
-            下载原图
+            {t('detail.topbar.download')}
           </a>
           <button className="btn btn-sm btn-ghost" onClick={share}>
             <Icon name="share" size={14} />
-            分享链接
+            {t('detail.topbar.share')}
           </button>
           <button className="btn btn-sm" onClick={() => navigate(`/reader?start=${item.id}`)}>
             <Icon name="book" size={14} />
-            翻阅模式
+            {t('detail.topbar.reader')}
           </button>
         </div>
 
         <div className="detail-body">
           <div className="detail-media">
             <div className="media-toolbar">
-              <button className={`icon-btn${grid ? ' active' : ''}`} onClick={() => setGrid((v) => !v)} title="网格参考线">
+              <button className={`icon-btn${grid ? ' active' : ''}`} onClick={() => setGrid((v) => !v)} title={t('detail.media.grid')}>
                 <Icon name="grid" size={16} />
               </button>
-              <button className={`icon-btn${gray ? ' active' : ''}`} onClick={() => setGray((v) => !v)} title="灰度查看">
+              <button className={`icon-btn${gray ? ' active' : ''}`} onClick={() => setGray((v) => !v)} title={t('detail.media.gray')}>
                 <Icon name="contrast" size={16} />
               </button>
-              <button className={`icon-btn${mirror ? ' active' : ''}`} onClick={() => setMirror((v) => !v)} title="水平镜像">
+              <button className={`icon-btn${mirror ? ' active' : ''}`} onClick={() => setMirror((v) => !v)} title={t('detail.media.mirror')}>
                 <Icon name="mirror" size={16} />
               </button>
-              <button className="icon-btn" onClick={() => setCompareOpen(true)} title="并排对比">
+              <button className="icon-btn" onClick={() => setCompareOpen(true)} title={t('detail.media.compare')}>
                 <Icon name="compare" size={16} />
               </button>
             </div>
@@ -248,7 +251,7 @@ export function DetailView({ itemId }: { itemId: string }) {
                 key={item.id}
                 className={`detail-img${gray ? ' gray' : ''}${mirror ? ' mirror' : ''}`}
                 src={`${BASE}${item.large}`}
-                alt={`Namori 水母绘日记 ${date.iso} 手绘插画`}
+                alt={t('detail.media.imageAlt', { date: date.iso })}
                 onLoad={() => setLoaded(true)}
                 style={{ opacity: loaded ? 1 : 0 }}
               />
@@ -258,14 +261,12 @@ export function DetailView({ itemId }: { itemId: string }) {
 
           <aside className="detail-side">
             {!IS_PUBLIC && annotation?.excluded && (
-              <div className="excluded-notice">
-                这张已确认为「非绘日记」，默认不会出现在图库、日历和统计中；原始 JPG 仍完整保留。
-              </div>
+              <div className="excluded-notice">{t('detail.excluded.notice')}</div>
             )}
             <div className="detail-date-block">
               {IS_PUBLIC && !date.confirmed ? (
                 <div className="detail-date-main">
-                  <span className="faint">日期未标注</span>
+                  <span className="faint">{t('detail.date.unmarked')}</span>
                 </div>
               ) : (
                 <>
@@ -278,19 +279,27 @@ export function DetailView({ itemId }: { itemId: string }) {
                   <div className="detail-date-sub">
                     <span>{weekdayLabel(date.iso)}</span>
                     <span className={`badge ${date.confirmed ? 'badge-sage' : 'badge-warn'}`}>
-                      {date.confirmed ? '日期已确认' : '日期待校对'}
+                      {date.confirmed ? t('detail.date.confirmed') : t('detail.date.pending')}
                     </span>
                     {!IS_PUBLIC && (
                       <span className={`badge ${reviewStatus === 'diary' ? 'badge-sage' : reviewStatus === 'not_diary' ? 'badge-warn' : 'badge-accent'}`}>
-                        {reviewStatus === 'diary' ? '已确认绘日记' : reviewStatus === 'not_diary' ? '非绘日记' : '类型待确认'}
+                        {reviewStatus === 'diary'
+                          ? t('detail.review.confirmed')
+                          : reviewStatus === 'not_diary'
+                            ? t('detail.review.notDiary')
+                            : t('detail.review.pending')}
                       </span>
                     )}
                   </div>
                 </>
               )}
               <div className="detail-published faint">
-                发布于 {formatFullDate(item.publishedAt)}
-                {item.postCount > 1 && ` · 第 ${item.postIndex + 1}/${item.postCount} 张`}
+                {t('detail.date.published', { date: formatFullDate(item.publishedAt) })}
+                {item.postCount > 1 &&
+                  ` · ${t('detail.date.postPosition', {
+                    index: item.postIndex + 1,
+                    count: item.postCount,
+                  })}`}
               </div>
             </div>
 
@@ -302,15 +311,15 @@ export function DetailView({ itemId }: { itemId: string }) {
                     onClick={() => toggleFavorite([item.id])}
                   >
                     <Icon name={annotation?.favorite ? 'heartFill' : 'heart'} size={15} />
-                    {annotation?.favorite ? '已收藏' : '收藏'}
+                    {annotation?.favorite ? t('detail.actions.favorited') : t('detail.actions.favorite')}
                   </button>
                   <button className="btn" onClick={() => setCollectionOpen(true)}>
                     <Icon name="folder" size={15} />
-                    加入合集
+                    {t('detail.actions.addToCollection')}
                   </button>
                   <button className="btn btn-danger-ghost" onClick={() => setDeleteOpen(true)}>
                     <Icon name="trash" size={15} />
-                    删除
+                    {t('common.delete')}
                   </button>
                 </>
               )}
@@ -321,22 +330,27 @@ export function DetailView({ itemId }: { itemId: string }) {
                     disabled={reviewStatus === 'diary'}
                     onClick={() => {
                       setReviewStatus([item.id], 'diary')
-                      notify('已确认为绘日记，原始图片保持不变', 'success')
+                      notify(t('detail.review.confirmedNotice'), 'success')
                     }}
                   >
                     <Icon name="check" size={15} />
-                    {reviewStatus === 'diary' ? '已确认绘日记' : '是绘日记'}
+                    {reviewStatus === 'diary' ? t('detail.review.confirmed') : t('detail.review.markDiary')}
                   </button>
                   <button
                     className={`btn${reviewStatus === 'not_diary' ? '' : ' btn-danger-ghost'}`}
                     onClick={() => {
                       const nextStatus = reviewStatus === 'not_diary' ? 'pending' : 'not_diary'
                       setReviewStatus([item.id], nextStatus)
-                      notify(nextStatus === 'pending' ? '已移回待确认，图片重新显示' : '已确认为非绘日记，原始图片仍保留', 'success')
+                      notify(
+                        nextStatus === 'pending'
+                          ? t('detail.review.restoreNotice')
+                          : t('detail.review.notDiaryNotice'),
+                        'success',
+                      )
                     }}
                   >
                     <Icon name={reviewStatus === 'not_diary' ? 'right' : 'close'} size={15} />
-                    {reviewStatus === 'not_diary' ? '移回待确认' : '非绘日记'}
+                    {reviewStatus === 'not_diary' ? t('detail.review.restore') : t('detail.review.notDiary')}
                   </button>
                 </>
               )}
@@ -344,15 +358,15 @@ export function DetailView({ itemId }: { itemId: string }) {
 
             <div className="detail-tabs">
               <button className={tab === 'info' ? 'active' : ''} onClick={() => setTab('info')}>
-                信息
+                {t('detail.tabs.info')}
               </button>
               <button className={tab === 'translate' ? 'active' : ''} onClick={() => setTab('translate')}>
-                翻译
+                {t('detail.tabs.translation')}
                 {annotation?.translation?.slots?.some((s) => s.text.trim()) && <span className="tab-dot" />}
               </button>
               {!IS_PUBLIC && (
                 <button className={tab === 'study' ? 'active' : ''} onClick={() => setTab('study')}>
-                  拆解笔记
+                  {t('detail.tabs.study')}
                 </button>
               )}
             </div>
@@ -362,7 +376,7 @@ export function DetailView({ itemId }: { itemId: string }) {
                 <>
                   <section className="detail-section">
                     <div className="section-head">
-                      <h4>原文案</h4>
+                      <h4>{t('detail.caption.title')}</h4>
                       <span className="faint">Instagram</span>
                     </div>
                     {item.caption ? (
@@ -370,8 +384,8 @@ export function DetailView({ itemId }: { itemId: string }) {
                     ) : (
                       <span className="faint">
                         {item.caption === ''
-                          ? '这条帖子没有文案。'
-                          : '未找到这条帖子的原文案（导入时可能缺少元数据）。'}
+                          ? t('detail.caption.empty')
+                          : t('detail.caption.missing')}
                       </span>
                     )}
                     {item.permalink && (
@@ -381,7 +395,7 @@ export function DetailView({ itemId }: { itemId: string }) {
                         target="_blank"
                         rel="noreferrer"
                       >
-                        在 Instagram 查看原帖<Icon name="right" size={12} />
+                        {t('detail.caption.openOriginal')}<Icon name="right" size={12} />
                       </a>
                     )}
                   </section>
@@ -389,7 +403,7 @@ export function DetailView({ itemId }: { itemId: string }) {
                   {(annotation?.xiaohongshu || annotation?.wechat) && (
                     <section className="detail-section">
                       <div className="section-head">
-                        <h4>其他平台</h4>
+                        <h4>{t('detail.otherPlatforms.title')}</h4>
                       </div>
                       <div className="row row-wrap" style={{ gap: 6 }}>
                         {annotation?.xiaohongshu && (
@@ -399,7 +413,7 @@ export function DetailView({ itemId }: { itemId: string }) {
                             target="_blank"
                             rel="noreferrer"
                           >
-                            小红书<Icon name="right" size={12} />
+                            {t('detail.otherPlatforms.xiaohongshu')}<Icon name="right" size={12} />
                           </a>
                         )}
                         {annotation?.wechat && (
@@ -409,7 +423,7 @@ export function DetailView({ itemId }: { itemId: string }) {
                             target="_blank"
                             rel="noreferrer"
                           >
-                            微信公众号<Icon name="right" size={12} />
+                            {t('detail.otherPlatforms.wechat')}<Icon name="right" size={12} />
                           </a>
                         )}
                       </div>
@@ -418,10 +432,10 @@ export function DetailView({ itemId }: { itemId: string }) {
 
                   <section className="detail-section">
                     <div className="section-head">
-                      <h4>标签</h4>
+                      <h4>{t('common.tags')}</h4>
                       {!IS_PUBLIC && (
                         <button className="btn btn-ghost btn-sm" onClick={() => setTagOpen((v) => !v)}>
-                          {tagOpen ? '收起' : '编辑'}
+                          {tagOpen ? t('common.collapse') : t('common.edit')}
                         </button>
                       )}
                     </div>
@@ -433,7 +447,7 @@ export function DetailView({ itemId }: { itemId: string }) {
                           onRemove={IS_PUBLIC ? undefined : () => toggleTagOnItem(item.id, tag!.id)}
                         />
                       ))}
-                      {!itemTags.length && <span className="faint">还没有标签</span>}
+                      {!itemTags.length && <span className="faint">{t('detail.tags.empty')}</span>}
                     </div>
                     {!IS_PUBLIC && tagOpen && (
                       <div className="tag-picker-wrap">
@@ -447,8 +461,12 @@ export function DetailView({ itemId }: { itemId: string }) {
 
                   <section className="detail-section">
                     <div className="section-head">
-                      <h4>出场人物</h4>
-                      {itemCharacters.length > 0 && <span className="faint">{itemCharacters.length} 位</span>}
+                      <h4>{t('detail.characters.title')}</h4>
+                      {itemCharacters.length > 0 && (
+                        <span className="faint">
+                          {t('detail.characters.count', { count: itemCharacters.length })}
+                        </span>
+                      )}
                     </div>
                     {itemCharacters.length ? (
                       <div className="character-strip">
@@ -457,7 +475,7 @@ export function DetailView({ itemId }: { itemId: string }) {
                             key={tag!.id}
                             className="character-chip"
                             onClick={() => navigate(`/gallery?tag=${tag!.id}`)}
-                            title={`查看 ${tag!.name} 的全部作品`}
+                            title={t('detail.characters.viewAll', { name: tag!.name })}
                           >
                             <CharacterAvatar tagId={tag!.id} />
                             <span>{tag!.name}</span>
@@ -466,7 +484,9 @@ export function DetailView({ itemId }: { itemId: string }) {
                       </div>
                     ) : (
                       <span className="faint">
-                        {IS_PUBLIC ? '这张图还没有标注出场人物。' : '还没有标注人物，在下方点选角色即可。'}
+                        {IS_PUBLIC
+                          ? t('detail.characters.emptyPublic')
+                          : t('detail.characters.emptyLocal')}
                       </span>
                     )}
                     {!IS_PUBLIC && (
@@ -483,19 +503,19 @@ export function DetailView({ itemId }: { itemId: string }) {
                     <>
                       <section className="detail-section">
                         <div className="section-head">
-                          <h4>日期校对</h4>
+                          <h4>{t('detail.dateReview.title')}</h4>
                         </div>
                         <DateEditor item={item} compact />
                       </section>
 
                       <section className="detail-section">
                         <div className="section-head">
-                          <h4>备注</h4>
-                          <span className="faint">自动保存</span>
+                          <h4>{t('common.note')}</h4>
+                          <span className="faint">{t('detail.note.autoSave')}</span>
                         </div>
                         <textarea
                           className="textarea"
-                          placeholder="记录这张画的心情、出处或临时想法…"
+                          placeholder={t('detail.note.placeholder')}
                           value={noteDraft}
                           onChange={(e) => setNoteDraft(e.target.value)}
                           onBlur={() => setNote(item.id, noteDraft)}
@@ -504,16 +524,16 @@ export function DetailView({ itemId }: { itemId: string }) {
 
                       <section className="detail-section">
                         <div className="section-head">
-                          <h4>同步链接</h4>
-                          <span className="faint">粘贴分享文案即可自动提取</span>
+                          <h4>{t('detail.links.title')}</h4>
+                          <span className="faint">{t('detail.links.hint')}</span>
                         </div>
                         <div className="link-field">
-                          <span className="field-label">小红书链接</span>
+                          <span className="field-label">{t('detail.links.xiaohongshuLabel')}</span>
                           <div className="link-input-row">
                             <input
                               className="input"
                               value={linkDrafts.xiaohongshu}
-                              placeholder="粘贴小红书分享文案或链接"
+                              placeholder={t('detail.links.xiaohongshuPlaceholder')}
                               onChange={(e) =>
                                 setLinkDrafts((drafts) => ({ ...drafts, xiaohongshu: e.target.value }))
                               }
@@ -528,18 +548,18 @@ export function DetailView({ itemId }: { itemId: string }) {
                             />
                             {linkDrafts.xiaohongshu && (
                               <button className="btn btn-ghost btn-sm" onClick={() => saveLink('xiaohongshu', '')}>
-                                清空
+                                {t('common.clear')}
                               </button>
                             )}
                           </div>
                         </div>
                         <div className="link-field">
-                          <span className="field-label">公众号链接</span>
+                          <span className="field-label">{t('detail.links.wechatLabel')}</span>
                           <div className="link-input-row">
                             <input
                               className="input"
                               value={linkDrafts.wechat}
-                              placeholder="粘贴公众号文章链接"
+                              placeholder={t('detail.links.wechatPlaceholder')}
                               onChange={(e) => setLinkDrafts((drafts) => ({ ...drafts, wechat: e.target.value }))}
                               onPaste={(e) => {
                                 const text = e.clipboardData.getData('text')
@@ -552,7 +572,7 @@ export function DetailView({ itemId }: { itemId: string }) {
                             />
                             {linkDrafts.wechat && (
                               <button className="btn btn-ghost btn-sm" onClick={() => saveLink('wechat', '')}>
-                                清空
+                                {t('common.clear')}
                               </button>
                             )}
                           </div>
@@ -563,8 +583,8 @@ export function DetailView({ itemId }: { itemId: string }) {
 
                   <section className="detail-section">
                     <div className="section-head">
-                      <h4>主色板</h4>
-                      <span className="faint">点击复制</span>
+                      <h4>{t('detail.palette.title')}</h4>
+                      <span className="faint">{t('detail.palette.hint')}</span>
                     </div>
                     <div className="palette-row">
                       {item.palette.map((hex) => (
@@ -575,7 +595,7 @@ export function DetailView({ itemId }: { itemId: string }) {
                           title={hex}
                           onClick={() => {
                             navigator.clipboard?.writeText(hex)
-                            notify(`已复制 ${hex}`, 'success')
+                            notify(t('detail.palette.copied', { color: hex }), 'success')
                           }}
                         />
                       ))}
@@ -592,14 +612,18 @@ export function DetailView({ itemId }: { itemId: string }) {
                   {similar.length > 0 && (
                     <section className="detail-section">
                       <div className="section-head">
-                        <h4>相似作品</h4>
-                        <span className="faint">标签 + 色板</span>
+                        <h4>{t('detail.similar.title')}</h4>
+                        <span className="faint">{t('detail.similar.hint')}</span>
                       </div>
                       <div className="similar-grid">
                         {similar.map(({ item: s, shared }) => (
                           <button key={s.id} className="similar-item" onClick={() => navigate(`/item/${s.id}`)}>
                             <img src={`${BASE}${s.thumb}`} alt="" loading="lazy" />
-                            {shared > 0 && <span className="similar-badge num">{shared} 标签</span>}
+                            {shared > 0 && (
+                              <span className="similar-badge num">
+                                {t('detail.similar.sharedTags', { count: shared })}
+                              </span>
+                            )}
                           </button>
                         ))}
                       </div>
@@ -608,19 +632,21 @@ export function DetailView({ itemId }: { itemId: string }) {
 
                   <section className="detail-section">
                     <div className="section-head">
-                      <h4>原图与出处</h4>
-                      <span className="faint">原始 JPG · {formatBytes(item.bytes)}</span>
+                      <h4>{t('detail.original.title')}</h4>
+                      <span className="faint">
+                        {t('detail.original.size', { size: formatBytes(item.bytes) })}
+                      </span>
                     </div>
                     <div className="original-actions">
                       <a className="btn btn-primary btn-sm" href={originalUrl(item)} download={item.file}>
-                        <Icon name="download" size={14} />下载原图
+                        <Icon name="download" size={14} />{t('detail.original.download')}
                       </a>
                       <a className="btn btn-sm" href={originalUrl(item)} target="_blank" rel="noreferrer">
-                        <Icon name="expand" size={14} />查看原图
+                        <Icon name="expand" size={14} />{t('detail.original.view')}
                       </a>
                       {item.permalink && (
                         <a className="btn btn-sm btn-ghost" href={item.permalink} target="_blank" rel="noreferrer">
-                          Instagram 原帖<Icon name="right" size={12} />
+                          {t('detail.original.instagram')}<Icon name="right" size={12} />
                         </a>
                       )}
                     </div>
@@ -628,52 +654,63 @@ export function DetailView({ itemId }: { itemId: string }) {
 
                   <section className="detail-section meta-list">
                     <div className="section-head">
-                      <h4>图片信息</h4>
+                      <h4>{t('detail.meta.title')}</h4>
                       <span className={`badge ${date.confirmed ? 'badge-sage' : 'badge-warn'}`}>
-                        {date.source === 'manual' ? '手动日期' : date.source === 'published' ? '沿用发布日' : '推断日期'}
+                        {date.source === 'manual'
+                          ? t('detail.meta.sourceManual')
+                          : date.source === 'published'
+                            ? t('detail.meta.sourcePublished')
+                            : t('detail.meta.sourceInferred')}
                       </span>
                     </div>
                     <div className="meta-row">
-                      <span>日记日期</span>
+                      <span>{t('detail.meta.diaryDate')}</span>
                       <span className="num">{date.iso} · {weekdayLabel(date.iso)}</span>
                     </div>
                     <div className="meta-row">
-                      <span>发布日期</span>
+                      <span>{t('detail.meta.publishedDate')}</span>
                       <span className="num">{item.publishedAt}</span>
                     </div>
                     <div className="meta-row">
-                      <span>原图尺寸</span>
+                      <span>{t('detail.meta.dimensions')}</span>
                       <span className="num">{item.w} × {item.h} px</span>
                     </div>
                     <div className="meta-row">
-                      <span>文件大小</span>
+                      <span>{t('detail.meta.fileSize')}</span>
                       <span className="num">{formatBytes(item.bytes)}</span>
                     </div>
                     <div className="meta-row">
-                      <span>同帖图片</span>
-                      <span className="num">第 {item.postIndex + 1} / {item.postCount} 张</span>
+                      <span>{t('detail.meta.postImages')}</span>
+                      <span className="num">
+                        {t('detail.meta.postImagesValue', {
+                          index: item.postIndex + 1,
+                          count: item.postCount,
+                        })}
+                      </span>
                     </div>
                     <div className="meta-row">
                       <span>Shortcode</span>
                       <span className="num">{item.shortcode}</span>
                     </div>
                     <div className="meta-row">
-                      <span>原始文件名</span>
-                      <span className="num meta-file">{item.sourceFile ?? '未记录'}</span>
+                      <span>{t('detail.meta.sourceFile')}</span>
+                      <span className="num meta-file">
+                        {item.sourceFile ?? t('detail.meta.notRecorded')}
+                      </span>
                     </div>
                     <div className="meta-row">
-                      <span>导入后文件名</span>
+                      <span>{t('detail.meta.fileName')}</span>
                       <span className="num meta-file">{item.file}</span>
                     </div>
                     <div className="meta-row">
-                      <span>推断日记日</span>
+                      <span>{t('detail.meta.inferredDate')}</span>
                       <span className="num">
                         {item.inferredYear}-{String(item.inferredMonth).padStart(2, '0')}-
                         {String(item.inferredDay).padStart(2, '0')}
                       </span>
                     </div>
                     <div className="faint" style={{ fontSize: 12, marginTop: 6 }}>
-                      发布日期来自帖子元数据；文件名是导入时按发布日期重命名的，原始 CDN 文件名保留在上方。
+                      {t('detail.meta.footnote')}
                     </div>
                   </section>
                 </>
@@ -691,9 +728,7 @@ export function DetailView({ itemId }: { itemId: string }) {
 
               {tab === 'study' && (
                 <>
-                  <div className="study-intro">
-                    把这张画拆成可模仿的步骤，记下构图、配色与线条的处理方式。
-                  </div>
+                  <div className="study-intro">{t('detail.study.intro')}</div>
                   {studyFields().map((field) => (
                     <label key={field.key} className="study-field">
                       <span className="study-label">{field.label}</span>
@@ -708,12 +743,12 @@ export function DetailView({ itemId }: { itemId: string }) {
                   ))}
                   <div className="row" style={{ justifyContent: 'flex-end' }}>
                     <button className="btn btn-primary btn-sm" onClick={saveStudy}>
-                      保存笔记
+                      {t('detail.study.save')}
                     </button>
                   </div>
                   <section className="detail-section">
                     <div className="section-head">
-                      <h4>配色参考</h4>
+                      <h4>{t('detail.study.palette')}</h4>
                     </div>
                     <div className="palette-row">
                       {item.palette.map((hex) => (
@@ -726,7 +761,7 @@ export function DetailView({ itemId }: { itemId: string }) {
                   {similar.length > 0 && (
                     <section className="detail-section">
                       <div className="section-head">
-                        <h4>适合对照临摹</h4>
+                        <h4>{t('detail.study.similar')}</h4>
                       </div>
                       <div className="similar-grid">
                         {similar.slice(0, 6).map(({ item: s }) => (
@@ -745,16 +780,19 @@ export function DetailView({ itemId }: { itemId: string }) {
       </div>
 
       {!IS_PUBLIC && deleteOpen && (
-        <Modal title="删除这张图？" onClose={() => setDeleteOpen(false)}>
+        <Modal title={t('detail.delete.title')} onClose={() => setDeleteOpen(false)}>
           <div className="muted" style={{ lineHeight: 1.7 }}>
-            确认后会立即从图库、索引和公开数据中移除，并把原图移入
-            <code> images/_trash/</code> 保留恢复入口。底部提示条可短时间撤销；
-            彻底清理需在本地管理端执行（<code>npm run dev</code> 的「待清理」或 <code>npm run purge</code>），
-            清理后不可恢复。
+            {t('detail.delete.bodyBefore')}
+            <code> images/_trash/</code>
+            {t('detail.delete.bodyAfterTrash')}
+            <code>npm run dev</code>
+            {t('detail.delete.bodyAfterDev')}
+            <code>npm run purge</code>
+            {t('detail.delete.bodyAfterPurge')}
           </div>
           <div className="modal-foot">
             <button className="btn" onClick={() => setDeleteOpen(false)}>
-              取消
+              {t('common.cancel')}
             </button>
             <button
               className="btn btn-danger-ghost"
@@ -762,23 +800,21 @@ export function DetailView({ itemId }: { itemId: string }) {
                 const moved = await moveFilesToTrash([item.file])
                 deleteItems([item.id])
                 notify(
-                  moved
-                    ? '已移入回收站，可在底部提示条撤销'
-                    : '已从所有视图移除；原图清理需在本地管理端执行（npm run dev）',
+                  moved ? t('detail.delete.moved') : t('detail.delete.removed'),
                   'success',
                 )
                 setDeleteOpen(false)
                 closeItem()
               }}
             >
-              确认删除
+              {t('detail.delete.confirm')}
             </button>
           </div>
         </Modal>
       )}
 
       {collectionOpen && (
-        <Modal title="加入合集" onClose={() => setCollectionOpen(false)}>
+        <Modal title={t('detail.actions.addToCollection')} onClose={() => setCollectionOpen(false)}>
           {collections.length ? (
             <div className="collection-pick-list">
               {collections.map((col) => {
@@ -789,13 +825,15 @@ export function DetailView({ itemId }: { itemId: string }) {
                     className="collection-pick"
                     onClick={() => {
                       addToCollection(col.id, [item.id])
-                      notify(`已加入「${col.name}」`, 'success')
+                      notify(t('detail.collections.added', { name: col.name }), 'success')
                       setCollectionOpen(false)
                     }}
                   >
                     <Icon name="folder" size={16} />
                     <span>{col.name}</span>
-                    <span className="faint">{col.itemIds.length} 张</span>
+                    <span className="faint">
+                      {t('common.itemCount', { count: col.itemIds.length })}
+                    </span>
                     {inCol && <Icon name="check" size={14} />}
                   </button>
                 )
@@ -803,23 +841,25 @@ export function DetailView({ itemId }: { itemId: string }) {
             </div>
           ) : (
             <div className="muted" style={{ padding: '12px 0' }}>
-              还没有合集，去
-              <a href="#/collections" style={{ color: 'var(--accent)' }}> 合集页 </a>
-              创建一个，比如「临摹参考」「场景分组」。
+              {t('detail.collections.emptyBefore')}
+              <a href="#/collections" style={{ color: 'var(--accent)' }}>
+                {t('detail.collections.emptyLink')}
+              </a>
+              {t('detail.collections.emptyAfter')}
             </div>
           )}
           <div className="modal-foot" style={{ padding: '14px 0 0', background: 'none' }}>
             <a className="btn btn-sm" href="#/collections">
-              管理合集
+              {t('detail.collections.manage')}
             </a>
           </div>
         </Modal>
       )}
 
       {compareOpen && (
-        <Modal title="并排对比" onClose={() => setCompareOpen(false)} wide>
+        <Modal title={t('detail.compare.title')} onClose={() => setCompareOpen(false)} wide>
           <div className="compare-pick">
-            <span className="faint">选择另一张（按相似度推荐）</span>
+            <span className="faint">{t('detail.compare.pickHint')}</span>
             <div className="similar-grid">
               {similar.map(({ item: s }) => (
                 <button
@@ -836,41 +876,43 @@ export function DetailView({ itemId }: { itemId: string }) {
                   onClick={() => setCompareId(prevItem.id)}
                 >
                   <img src={`${BASE}${prevItem.thumb}`} alt="" />
-                  <span className="similar-badge">上一张</span>
+                  <span className="similar-badge">{t('common.previous')}</span>
                 </button>
               )}
             </div>
           </div>
           <div className="compare-stage">
             <figure>
-              <img src={`${BASE}${item.large}`} alt="当前作品" className={mirror ? 'mirror' : ''} />
-              <figcaption>当前 · {formatMonthDay(date.month, date.day)}</figcaption>
+              <img src={`${BASE}${item.large}`} alt={t('detail.compare.currentAlt')} className={mirror ? 'mirror' : ''} />
+              <figcaption>
+                {t('detail.compare.current', { date: formatMonthDay(date.month, date.day) })}
+              </figcaption>
             </figure>
             <figure>
               {compareItem ? (
                 <img
                   src={`${BASE}${compareItem.large}`}
-                  alt="对比作品"
+                  alt={t('detail.compare.otherAlt')}
                   className={mirror ? 'mirror' : ''}
                 />
               ) : (
-                <div className="compare-empty">从上方选择一张作品</div>
+                <div className="compare-empty">{t('detail.compare.empty')}</div>
               )}
               <figcaption>
                 {compareItem
                   ? `${formatMonthDay(getDate(compareItem).month, getDate(compareItem).day)} · ${getDate(compareItem).year}`
-                  : '对比'}
+                  : t('detail.compare.other')}
               </figcaption>
             </figure>
           </div>
           <div className="row" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
             <label className="toggle-row">
               <input type="checkbox" checked={gray} onChange={(e) => setGray(e.target.checked)} />
-              灰度
+              {t('detail.compare.gray')}
             </label>
             <label className="toggle-row">
               <input type="checkbox" checked={mirror} onChange={(e) => setMirror(e.target.checked)} />
-              镜像
+              {t('detail.compare.mirror')}
             </label>
           </div>
         </Modal>
@@ -897,6 +939,7 @@ function TranslationPanel({
   onNotify: (text: string, tone?: 'default' | 'success' | 'error') => void
   readOnly?: boolean
 }) {
+  const { t } = useI18n()
   const [source, setSource] = useState(value?.source ?? '')
   const [slots, setSlots] = useState(
     value?.slots?.length ? value.slots : DEFAULT_TRANSLATION_SLOTS.map((s) => ({ ...s, text: '' })),
@@ -916,11 +959,11 @@ function TranslationPanel({
   const save = () => {
     if (!source.trim() && !translated) {
       onChange(null)
-      onNotify('已清空这张图的翻译', 'success')
+      onNotify(t('detail.translation.cleared'), 'success')
       return
     }
     onChange({ source, slots, sourceDraft: draft || undefined, updatedAt: new Date().toISOString() })
-    onNotify('翻译已保存', 'success')
+    onNotify(t('detail.translation.saved'), 'success')
   }
 
   const addSlot = () => {
@@ -934,20 +977,20 @@ function TranslationPanel({
     <div className="translation-panel">
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <span className={`badge ${translated ? 'badge-sage' : 'badge-accent'}`}>
-          {translated ? '已翻译' : '未翻译'}
+          {translated ? t('detail.translation.translated') : t('detail.translation.untranslated')}
         </span>
         {!readOnly && (
           <button className="btn btn-primary btn-sm" onClick={save}>
-            保存翻译
+            {t('detail.translation.save')}
           </button>
         )}
       </div>
 
       <label className="translation-field">
-        <span className="field-label">原文（日文）</span>
+        <span className="field-label">{t('detail.translation.sourceLabel')}</span>
         <textarea
           className="textarea"
-          placeholder="录入图上的日文原文；也可以从下方草稿填入后再校对"
+          placeholder={t('detail.translation.sourcePlaceholder')}
           value={source}
           readOnly={readOnly}
           onChange={(e) => setSource(e.target.value)}
@@ -957,7 +1000,7 @@ function TranslationPanel({
       {!readOnly && draft && (
         <div className="translation-draft">
           <button className="btn btn-ghost btn-sm" onClick={() => setDraftOpen((v) => !v)}>
-            {draftOpen ? '收起' : '查看'}原文草稿
+            {draftOpen ? t('detail.translation.hideDraft') : t('detail.translation.showDraft')}
           </button>
           {draftOpen && (
             <>
@@ -966,7 +1009,7 @@ function TranslationPanel({
                 className="btn btn-ghost btn-sm"
                 onClick={() => setSource((prev) => (prev ? `${prev}\n${draft}` : draft))}
               >
-                填入原文
+                {t('detail.translation.fillSource')}
               </button>
             </>
           )}
@@ -983,13 +1026,13 @@ function TranslationPanel({
                 onClick={() => setSlots((prev) => prev.filter((_, i) => i !== index))}
                 type="button"
               >
-                移除语言
+                {t('detail.translation.removeLanguage')}
               </button>
             )}
           </span>
           <textarea
             className="textarea"
-            placeholder={`${slot.label}译文`}
+            placeholder={t('detail.translation.slotPlaceholder', { label: slot.label })}
             value={slot.text}
             readOnly={readOnly}
             onChange={(e) =>
@@ -1001,7 +1044,7 @@ function TranslationPanel({
 
       {!readOnly && (
         <button className="btn btn-sm" onClick={addSlot}>
-          <Icon name="plus" size={13} />添加语言
+          <Icon name="plus" size={13} />{t('detail.translation.addLanguage')}
         </button>
       )}
     </div>

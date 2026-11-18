@@ -319,7 +319,12 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
           </button>
         </header>
         <div className="content" role="main">
-          {route.name !== 'home' && <h1 className="sr-only">水母绘日记 · Namori Diary · {meta.title}</h1>}
+          {route.name !== 'home' && (
+            <h1 className="sr-only">
+              {t('shell.siteName')} · {t('shell.brandSub')} · {meta.title}
+            </h1>
+          )}
+
           {children}
           <footer className="site-footer">
             <span className="site-footer-copy">{t('shell.footerCopy')}</span>
