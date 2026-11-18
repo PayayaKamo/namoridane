@@ -17,6 +17,9 @@ const COOC_COMPACT_AT = 10
 const COOC_MODES = ['major', 'all'] as const
 type CoocMode = (typeof COOC_MODES)[number]
 const TOP_PAIR_LIMIT = 4
+const HASHTAG_RE = /[#＃][^\s#＃]+/gu
+// 分词器容易拆开的已知复合词，仅在原文字符紧邻时合并
+const COMPOUND_WORDS = new Set(['ゆるゆり', '絵日記'])
 const TEXT_BUCKET_KEYS = [
   'stats.text.bucket.none',
   'stats.text.bucket.short',
@@ -452,7 +455,7 @@ export function StatsView() {
   // 文本画像：文案长度、高频词与 emoji（基于原始 caption，不做翻译）
   const textProfile = useMemo(() => {
     type SegmenterLike = {
-      segment: (input: string) => Iterable<{ segment: string; isWordLike?: boolean }>
+      segment: (input: string) => Iterable<{ segment: string; index: number; isWordLike?: boolean }>
     }
     const SegmenterCtor = (
       Intl as unknown as {
@@ -462,6 +465,7 @@ export function StatsView() {
     const segmenter = SegmenterCtor ? new SegmenterCtor(undefined, { granularity: 'word' }) : null
     const buckets = [0, 0, 0, 0, 0]
     const wordCounts = new Map<string, number>()
+    const hashtagCounts = new Map<string, number>()
     const emojiCounts = new Map<string, number>()
     const stopWords = new Set([
       'です', 'ます', 'ました', 'して', 'から', 'まで', 'より', 'など', 'よう', 'こと', 'もの',
@@ -484,18 +488,36 @@ export function StatsView() {
       for (const emoji of caption.match(/\p{Extended_Pictographic}\uFE0F?/gu) ?? []) {
         emojiCounts.set(emoji, (emojiCounts.get(emoji) ?? 0) + 1)
       }
+      // hashtag 单独统计，不参与正文高频词
+      for (const hashtag of caption.match(HASHTAG_RE) ?? []) {
+        const tag = hashtag.replace(/^[#＃]/, '')
+        if (tag) hashtagCounts.set(tag, (hashtagCounts.get(tag) ?? 0) + 1)
+      }
+      const body = caption.replace(HASHTAG_RE, ' ')
       const addWord = (raw: string) => {
         const word = raw.trim()
         if (word.length < 2 || stopWords.has(word.toLowerCase())) return
         wordCounts.set(word, (wordCounts.get(word) ?? 0) + 1)
       }
       if (segmenter) {
-        for (const part of segmenter.segment(caption)) {
-          if (part.isWordLike) addWord(part.segment)
+        const parts: { text: string; index: number }[] = []
+        for (const part of segmenter.segment(body)) {
+          if (part.isWordLike) parts.push({ text: part.segment, index: part.index })
+        }
+        for (let i = 0; i < parts.length; i += 1) {
+          const current = parts[i]
+          const next = parts[i + 1]
+          const merged = current.text + (next?.text ?? '')
+          // 只有原文中紧邻的片段才允许合并，避免把用空格断开的正常词并在一起
+          if (next && next.index === current.index + current.text.length && COMPOUND_WORDS.has(merged)) {
+            addWord(merged)
+            i += 1
+          } else {
+            addWord(current.text)
+          }
         }
       } else {
-        const fallback =
-          caption.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]{2,}|[A-Za-z][A-Za-z']{2,}/gu) ?? []
+        const fallback = body.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]{2,}|[A-Za-z][A-Za-z']{2,}/gu) ?? []
         for (const word of fallback) addWord(word)
       }
     }
@@ -508,6 +530,7 @@ export function StatsView() {
       buckets,
       captions,
       words: top(wordCounts, 16),
+      hashtags: top(hashtagCounts, 12),
       emojis: top(emojiCounts, 12),
     }
   }, [items])
@@ -1467,6 +1490,16 @@ export function StatsView() {
                 </div>
               ) : (
                 <p className="faint">{t('stats.text.emptyWords')}</p>
+              )}
+              {textProfile.hashtags.length > 0 && (
+                <div className="word-cloud hashtag-cloud">
+                  {textProfile.hashtags.map((tag) => (
+                    <span className="word-pill is-hashtag" key={tag.text}>
+                      #{tag.text}
+                      <i className="num">{tag.count}</i>
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
             <div className="text-profile-block">
