@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
 import { CharacterAvatar } from '../components/CharacterAvatar'
@@ -20,6 +20,155 @@ const TOP_PAIR_LIMIT = 4
 const HASHTAG_RE = /[#＃][^\s#＃]+/gu
 // 分词器容易拆开的已知复合词，仅在原文字符紧邻时合并
 const COMPOUND_WORDS = new Set(['ゆるゆり', '絵日記'])
+const RELATION_LAYOUTS = ['ring', 'planet'] as const
+type RelationLayout = (typeof RELATION_LAYOUTS)[number]
+
+interface PlanetNode {
+  id: string
+  r: number
+  x: number
+  y: number
+  vx: number
+  vy: number
+}
+
+interface PlanetSim {
+  start: () => void
+  stop: () => void
+  move: (id: string, x: number, y: number) => void
+  release: () => void
+}
+
+/**
+ * 轻量力导向模拟：节点互相排斥、连线当弹簧，阻尼衰减后自动停住。
+ * 初始位置由固定种子生成，保证每次打开的顺序与起势一致。
+ */
+function createPlanetSimulation(
+  nodes: { id: string; r: number }[],
+  edges: { a: string; b: string; count: number }[],
+  maxCount: number,
+  emit: (positions: Record<string, { x: number; y: number }>) => void,
+): PlanetSim {
+  const CENTER = 260
+  let seed = 17
+  const rand = () => {
+    seed = (seed * 16807) % 2147483647
+    return seed / 2147483647
+  }
+  const state: PlanetNode[] = nodes.map((node, i) => {
+    const angle = (i / Math.max(1, nodes.length)) * Math.PI * 2 + (rand() - 0.5) * 0.6
+    const radius = 70 + rand() * 90
+    return {
+      id: node.id,
+      r: node.r,
+      x: CENTER + Math.cos(angle) * radius,
+      y: CENTER + Math.sin(angle) * radius,
+      vx: 0,
+      vy: 0,
+    }
+  })
+  const index = new Map(state.map((node, i) => [node.id, i]))
+  const springs = edges.map((edge) => ({
+    a: index.get(edge.a) ?? 0,
+    b: index.get(edge.b) ?? 0,
+    weight: Math.min(1, edge.count / Math.max(1, maxCount)),
+  }))
+  let raf: number | null = null
+  let frame = 0
+  let dragging = -1
+
+  const emitNow = () => {
+    const snapshot: Record<string, { x: number; y: number }> = {}
+    for (const node of state) snapshot[node.id] = { x: node.x, y: node.y }
+    emit(snapshot)
+  }
+
+  const tick = () => {
+    raf = null
+    for (let i = 0; i < state.length; i += 1) {
+      for (let j = i + 1; j < state.length; j += 1) {
+        const a = state[i]
+        const b = state[j]
+        let dx = a.x - b.x
+        let dy = a.y - b.y
+        let dist2 = dx * dx + dy * dy
+        if (dist2 < 1) {
+          dx = rand() - 0.5
+          dy = rand() - 0.5
+          dist2 = dx * dx + dy * dy || 1
+        }
+        const dist = Math.sqrt(dist2)
+        const force = 2200 / dist2
+        a.vx += (dx / dist) * force
+        a.vy += (dy / dist) * force
+        b.vx -= (dx / dist) * force
+        b.vy -= (dy / dist) * force
+      }
+    }
+    for (const spring of springs) {
+      const a = state[spring.a]
+      const b = state[spring.b]
+      const dx = b.x - a.x
+      const dy = b.y - a.y
+      const dist = Math.hypot(dx, dy) || 1
+      const rest = 130 - 70 * spring.weight
+      const force = (dist - rest) * 0.012 * (0.5 + spring.weight)
+      a.vx += (dx / dist) * force
+      a.vy += (dy / dist) * force
+      b.vx -= (dx / dist) * force
+      b.vy -= (dy / dist) * force
+    }
+    let energy = 0
+    for (let i = 0; i < state.length; i += 1) {
+      const node = state[i]
+      if (i === dragging) continue
+      node.vx += (CENTER - node.x) * 0.008
+      node.vy += (CENTER - node.y) * 0.008
+      node.vx *= 0.84
+      node.vy *= 0.84
+      const speed = Math.hypot(node.vx, node.vy)
+      if (speed > 8) {
+        node.vx = (node.vx / speed) * 8
+        node.vy = (node.vy / speed) * 8
+      }
+      node.x = Math.min(520 - node.r - 4, Math.max(node.r + 4, node.x + node.vx))
+      node.y = Math.min(520 - node.r - 4, Math.max(node.r + 4, node.y + node.vy))
+      energy += node.vx * node.vx + node.vy * node.vy
+    }
+    emitNow()
+    frame += 1
+    if (frame < 900 && (frame < 40 || energy > 0.05)) raf = requestAnimationFrame(tick)
+  }
+
+  return {
+    start() {
+      frame = 0
+      if (raf === null) raf = requestAnimationFrame(tick)
+    },
+    stop() {
+      if (raf !== null) {
+        cancelAnimationFrame(raf)
+        raf = null
+      }
+    },
+    move(id, x, y) {
+      const i = index.get(id)
+      if (i === undefined) return
+      const node = state[i]
+      node.x = x
+      node.y = y
+      node.vx = 0
+      node.vy = 0
+      dragging = i
+      emitNow()
+    },
+    release() {
+      dragging = -1
+      frame = 0
+      if (raf === null) raf = requestAnimationFrame(tick)
+    },
+  }
+}
 const TEXT_BUCKET_KEYS = [
   'stats.text.bucket.none',
   'stats.text.bucket.short',
@@ -47,6 +196,18 @@ export function StatsView() {
   const [hoveredCast, setHoveredCast] = useState<'single' | 'double' | 'multi' | null>(null)
   const [evoDim, setEvoDim] = useState('')
   const [hoverNode, setHoverNode] = useState<string | null>(null)
+  const [relationLayout, setRelationLayout] = useState<RelationLayout>(() =>
+    localStorage.getItem('namori.stats.relationLayout') === 'planet' ? 'planet' : 'ring',
+  )
+  const [planetPositions, setPlanetPositions] = useState<Record<string, { x: number; y: number }>>({})
+  const planetRef = useRef<PlanetSim | null>(null)
+  const relationSvgRef = useRef<SVGSVGElement | null>(null)
+  const dragRef = useRef<{ id: string; moved: boolean } | null>(null)
+  const dragMovedRef = useRef(false)
+  const changeRelationLayout = (layout: RelationLayout) => {
+    setRelationLayout(layout)
+    localStorage.setItem('namori.stats.relationLayout', layout)
+  }
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 760px)').matches,
   )
@@ -355,29 +516,48 @@ export function StatsView() {
         r: 12 + 13 * Math.sqrt(cooc.totals[i] / totalMax),
       }
     })
-    const edges: { a: string; b: string; count: number; x1: number; y1: number; x2: number; y2: number }[] = []
+    const edges: { a: string; b: string; count: number }[] = []
     for (let i = 0; i < nodes.length; i += 1) {
       for (let j = i + 1; j < nodes.length; j += 1) {
         const count = cooc.matrix[i][j]
-        if (!count) continue
-        const from = nodes[i]
-        const to = nodes[j]
-        const dx = to.x - from.x
-        const dy = to.y - from.y
-        const len = Math.hypot(dx, dy) || 1
-        edges.push({
-          a: from.id,
-          b: to.id,
-          count,
-          x1: from.x + (dx / len) * (from.r + 2),
-          y1: from.y + (dy / len) * (from.r + 2),
-          x2: to.x - (dx / len) * (to.r + 2),
-          y2: to.y - (dy / len) * (to.r + 2),
-        })
+        if (count) edges.push({ a: nodes[i].id, b: nodes[j].id, count })
       }
     }
     return { nodes, edges, max: Math.max(1, cooc.max) }
   }, [cooc])
+
+  const relationNodesById = useMemo(() => {
+    const map = new Map<string, { id: string; count: number; x: number; y: number; r: number }>()
+    if (relation) for (const node of relation.nodes) map.set(node.id, node)
+    return map
+  }, [relation])
+
+  // 星球布局：切入时启动轻量力导向模拟，停稳后不再占用帧
+  useEffect(() => {
+    if (relationLayout !== 'planet' || !relation) {
+      planetRef.current = null
+      setPlanetPositions({})
+      return
+    }
+    const sim = createPlanetSimulation(relation.nodes, relation.edges, relation.max, setPlanetPositions)
+    planetRef.current = sim
+    sim.start()
+    return () => {
+      sim.stop()
+      if (planetRef.current === sim) planetRef.current = null
+    }
+  }, [relationLayout, relation])
+
+  const toSvgPoint = (event: ReactPointerEvent<SVGGElement>) => {
+    const svg = relationSvgRef.current
+    if (!svg) return null
+    const rect = svg.getBoundingClientRect()
+    if (!rect.width || !rect.height) return null
+    return {
+      x: ((event.clientX - rect.left) / rect.width) * 520,
+      y: ((event.clientY - rect.top) / rect.height) * 520,
+    }
+  }
 
   const relationNeighbors = useMemo(() => {
     const set = new Set<string>()
@@ -1233,23 +1413,42 @@ export function StatsView() {
         <section className="panel relation-panel">
           <div className="panel-head">
             <h3>{t('stats.relation.title')}</h3>
-            <span className="faint">{t('stats.relation.subtitle')}</span>
+            <div className="relation-head-tools">
+              <span className="faint">{t('stats.relation.subtitle')}</span>
+              <div className="cooc-limit-switch" role="group" aria-label={t('stats.relation.layoutLabel')}>
+                {RELATION_LAYOUTS.map((layout) => (
+                  <button
+                    key={layout}
+                    type="button"
+                    className={`cooc-limit-btn${relationLayout === layout ? ' active' : ''}`}
+                    aria-pressed={relationLayout === layout}
+                    onClick={() => changeRelationLayout(layout)}
+                  >
+                    {t(layout === 'ring' ? 'stats.relation.layoutRing' : 'stats.relation.layoutPlanet')}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="relation-chart">
-            <svg viewBox="0 0 520 520" role="img" aria-label={t('stats.relation.aria')}>
+          <div className={`relation-chart${relationLayout === 'planet' ? ' is-planet' : ''}`}>
+            <svg ref={relationSvgRef} viewBox="0 0 520 520" role="img" aria-label={t('stats.relation.aria')}>
               <g>
                 {relation.edges.map((edge) => {
                   const ratio = edge.count / relation.max
                   const active = hoverNode === edge.a || hoverNode === edge.b
                   const dim = hoverNode !== null && !active
+                  const from = relationNodesById.get(edge.a)!
+                  const to = relationNodesById.get(edge.b)!
+                  const fromPoint = relationLayout === 'planet' ? planetPositions[edge.a] ?? from : from
+                  const toPoint = relationLayout === 'planet' ? planetPositions[edge.b] ?? to : to
                   return (
                     <line
                       key={`${edge.a}-${edge.b}`}
                       className={`relation-edge${active ? ' is-active' : ''}`}
-                      x1={edge.x1}
-                      y1={edge.y1}
-                      x2={edge.x2}
-                      y2={edge.y2}
+                      x1={fromPoint.x}
+                      y1={fromPoint.y}
+                      x2={toPoint.x}
+                      y2={toPoint.y}
                       strokeWidth={0.8 + 4.5 * ratio}
                       opacity={dim ? 0.03 : active ? 0.95 : 0.05 + 0.6 * ratio * ratio}
                     >
@@ -1268,12 +1467,13 @@ export function StatsView() {
                 const cover = characterCovers.get(node.id)
                 const hovered = hoverNode === node.id
                 const dimmed = hoverNode !== null && hoverNode !== node.id && !relationNeighbors.has(node.id)
+                const point = relationLayout === 'planet' ? planetPositions[node.id] ?? node : node
                 const open = () => navigate(`/gallery?tags=${encodeURIComponent(node.id)}`)
                 return (
                   <g
                     key={node.id}
                     className={`relation-node${hovered ? ' is-active' : ''}${dimmed ? ' is-dim' : ''}`}
-                    transform={`translate(${node.x} ${node.y})`}
+                    transform={`translate(${point.x} ${point.y})`}
                     role="button"
                     tabIndex={0}
                     aria-label={charName(node.id)}
@@ -1281,7 +1481,50 @@ export function StatsView() {
                     onMouseLeave={() => setHoverNode(null)}
                     onFocus={() => setHoverNode(node.id)}
                     onBlur={() => setHoverNode(null)}
-                    onClick={open}
+                    onPointerDown={(event) => {
+                      if (relationLayout !== 'planet') return
+                      const next = toSvgPoint(event)
+                      if (!next) return
+                      event.preventDefault()
+                      event.currentTarget.setPointerCapture(event.pointerId)
+                      dragMovedRef.current = false
+                      dragRef.current = { id: node.id, moved: false }
+                      planetRef.current?.move(node.id, next.x, next.y)
+                    }}
+                    onPointerMove={(event) => {
+                      const drag = dragRef.current
+                      if (!drag || drag.id !== node.id || relationLayout !== 'planet') return
+                      const next = toSvgPoint(event)
+                      if (!next) return
+                      drag.moved = true
+                      dragMovedRef.current = true
+                      planetRef.current?.move(node.id, next.x, next.y)
+                    }}
+                    onPointerUp={(event) => {
+                      const drag = dragRef.current
+                      if (!drag || drag.id !== node.id) return
+                      dragRef.current = null
+                      planetRef.current?.release()
+                      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                        event.currentTarget.releasePointerCapture(event.pointerId)
+                      }
+                    }}
+                    onPointerCancel={(event) => {
+                      const drag = dragRef.current
+                      if (!drag || drag.id !== node.id) return
+                      dragRef.current = null
+                      planetRef.current?.release()
+                      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                        event.currentTarget.releasePointerCapture(event.pointerId)
+                      }
+                    }}
+                    onClick={() => {
+                      if (dragMovedRef.current) {
+                        dragMovedRef.current = false
+                        return
+                      }
+                      open()
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault()

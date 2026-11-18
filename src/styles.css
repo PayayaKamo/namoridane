@@ -1603,6 +1603,13 @@ hr {
   flex-wrap: wrap;
 }
 
+.relation-head-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .cooc-limit-switch {
   display: inline-flex;
   padding: 2px;
@@ -1780,6 +1787,15 @@ hr {
   cursor: pointer;
 }
 
+.relation-chart.is-planet .relation-node {
+  cursor: grab;
+  touch-action: none;
+}
+
+.relation-chart.is-planet .relation-node:active {
+  cursor: grabbing;
+}
+
 .relation-node-bg {
   stroke: var(--surface);
   stroke-width: 2;
@@ -1826,7 +1842,7 @@ hr {
 }
 
 @media (max-width: 760px) {
-  .cooc-limit-switch {
+  .cooc-panel .cooc-limit-switch {
     display: none;
   }
 
