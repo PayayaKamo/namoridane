@@ -1647,6 +1647,12 @@ hr {
   table-layout: fixed;
 }
 
+.cooc-panel .cooc-table th,
+.cooc-panel .cooc-table td {
+  padding: 0;
+  vertical-align: middle;
+}
+
 .cooc-panel .cooc-table th:first-child {
   width: 108px;
 }
@@ -1662,20 +1668,29 @@ hr {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-end;
   gap: 1px;
-  padding: 0 2px;
+  width: 100%;
+  height: 100%;
+  padding: 0;
 }
 
 .cooc-panel .cooc-row-head {
+  display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
   padding-right: 1px;
 }
 
 .cooc-panel .cooc-cell {
   width: 100%;
+  height: auto;
+  aspect-ratio: 1;
 }
 
 .cooc-head-name {
@@ -1718,7 +1733,8 @@ hr {
 
 .cooc-table.is-dense .cooc-cell {
   width: 100%;
-  height: 24px;
+  height: auto;
+  aspect-ratio: 1;
   font-size: 9px;
 }
 
