@@ -411,3 +411,7 @@ Make sure `data/public.json` is committed before pushing; the public build has n
 ## Copyright
 
 All illustrations belong to Namori. This repository is for personal browsing, study and drawing reference only. Do not use it commercially or redistribute the originals.
+
+## License
+
+The source code in this repository is released under the [MIT License](LICENSE). The illustrations and original images are the property of Namori and are **not** covered by that license; the originals must not be redistributed.
