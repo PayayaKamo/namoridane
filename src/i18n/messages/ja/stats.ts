@@ -97,6 +97,9 @@ export const stats: StatsMessages = {
     cellTooltip: '{a} × {b} · {count} 枚 · クリックで絞り込み',
     diagTooltip: '{name} · 累計 {count} 回登場 · クリックでキャラクターを見る',
     topPair: '最多共演：{a} × {b} · {count} 枚',
+    topPairTied: '最多共演 {count} 枚：{pairs}（同率）',
+    topPairMany: '{count} 枚 · {pairs} 組が同率',
+    pairSeparator: '、',
     empty: '共演マトリクスを作るには、2 人以上のキャラクター登場記録が必要です。',
   },
   debut: {

@@ -97,6 +97,9 @@ export const stats: StatsMessages = {
     cellTooltip: '{a} × {b} · {count} images · click to filter',
     diagTooltip: '{name} · {count} appearances in total · click to view the character',
     topPair: 'Top pair: {a} × {b} · {count} images',
+    topPairTied: 'Top co-appearance {count} images: {pairs} (tied)',
+    topPairMany: '{count} images · {pairs} pairs tied',
+    pairSeparator: ', ',
     empty: 'At least two characters with appearances are needed to build the co-appearance matrix.',
   },
   debut: {

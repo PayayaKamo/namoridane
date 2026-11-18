@@ -12,6 +12,7 @@ const BASE = import.meta.env.BASE_URL
 const CAST_RADIUS = 62
 const CAST_CIRC = 2 * Math.PI * CAST_RADIUS
 const COOC_LIMIT = 10
+const TOP_PAIR_LIMIT = 4
 const TEXT_BUCKET_KEYS = [
   'stats.text.bucket.none',
   'stats.text.bucket.short',
@@ -280,16 +281,23 @@ export function StatsView() {
         }
       }
     }
-    let max = 1
-    let topPair: { a: string; b: string; count: number } | null = null
+    let max = 0
+    const pairs: { a: string; b: string; count: number }[] = []
     for (let i = 0; i < ids.length; i += 1) {
       for (let j = i + 1; j < ids.length; j += 1) {
         const count = matrix[i][j]
+        if (!count) continue
+        pairs.push({ a: ids[i], b: ids[j], count })
         if (count > max) max = count
-        if (count && (!topPair || count > topPair.count)) topPair = { a: ids[i], b: ids[j], count }
       }
     }
-    return { ids, matrix, totals, max, topPair }
+    return {
+      ids,
+      matrix,
+      totals,
+      max: Math.max(1, max),
+      topPairs: pairs.filter((pair) => pair.count === max),
+    }
   }, [castItems, annotations, tags])
 
   // 首末登场：按角色记录最早与最晚的作品
@@ -1044,22 +1052,40 @@ export function StatsView() {
             </div>
             <div className="cooc-foot">
               <span className="faint">{t('stats.cooc.hint', { count: cooc.ids.length })}</span>
-              {cooc.topPair && (
+              {cooc.topPairs.length === 1 && (
                 <button
                   type="button"
                   className="cooc-top"
                   onClick={() =>
                     navigate(
-                      `/gallery?tags=${encodeURIComponent(cooc.topPair!.a)},${encodeURIComponent(cooc.topPair!.b)}&tagMode=all`,
+                      `/gallery?tags=${encodeURIComponent(cooc.topPairs[0].a)},${encodeURIComponent(cooc.topPairs[0].b)}&tagMode=all`,
                     )
                   }
                 >
                   {t('stats.cooc.topPair', {
-                    a: charName(cooc.topPair.a),
-                    b: charName(cooc.topPair.b),
-                    count: cooc.topPair.count,
+                    a: charName(cooc.topPairs[0].a),
+                    b: charName(cooc.topPairs[0].b),
+                    count: cooc.topPairs[0].count,
                   })}
                 </button>
+              )}
+              {cooc.topPairs.length > 1 && cooc.topPairs.length <= TOP_PAIR_LIMIT && (
+                <span className="cooc-top" style={{ cursor: 'default' }}>
+                  {t('stats.cooc.topPairTied', {
+                    count: cooc.topPairs[0].count,
+                    pairs: cooc.topPairs
+                      .map((pair) => `${charName(pair.a)} × ${charName(pair.b)}`)
+                      .join(t('stats.cooc.pairSeparator')),
+                  })}
+                </span>
+              )}
+              {cooc.topPairs.length > TOP_PAIR_LIMIT && (
+                <span className="cooc-top" style={{ cursor: 'default' }}>
+                  {t('stats.cooc.topPairMany', {
+                    count: cooc.topPairs[0].count,
+                    pairs: cooc.topPairs.length,
+                  })}
+                </span>
               )}
             </div>
           </>

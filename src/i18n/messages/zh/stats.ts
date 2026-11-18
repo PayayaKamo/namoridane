@@ -95,6 +95,9 @@ export const stats = {
     cellTooltip: '{a} × {b} · {count} 张 · 点击筛选',
     diagTooltip: '{name} · 累计出场 {count} 次 · 点击查看角色',
     topPair: '最高同框：{a} × {b} · {count} 张',
+    topPairTied: '最高同框 {count} 张：{pairs}（并列）',
+    topPairMany: '{count} 张 · {pairs} 对并列',
+    pairSeparator: '、',
     empty: '至少需要 2 位角色的出场记录才能生成共现矩阵。',
   },
   debut: {
