@@ -7,8 +7,8 @@ export const about = {
   links: {
     github: { label: 'GitHub 主页', desc: '账号主页与日常更新' },
     repository: { label: '站点仓库', desc: '本站源码与数据管线' },
-    xiaohongshu: { label: '小红书 · @PayaYa', desc: '速写、手帐与站点动态' },
-    xiaohongshuAlt: { label: '小红书 · @PayayaKamo', desc: '绘日记原作与整理记录' },
+    xiaohongshu: { label: '小红书 · @PayaYa', desc: '绘日记归档与资源分享' },
+    xiaohongshuAlt: { label: '小红书 · @PayayaKamo', desc: '网站开发、科技与绘画' },
     wechat: {
       label: '微信公众号 · @PayapayaYa',
       desc: '更新提醒与幕后记录',

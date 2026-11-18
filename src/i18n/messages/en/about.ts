@@ -8,8 +8,8 @@ export const about: AboutMessages = {
   links: {
     github: { label: 'GitHub profile', desc: 'Account and day-to-day updates' },
     repository: { label: 'Site repository', desc: 'Source code and data pipeline' },
-    xiaohongshu: { label: 'Xiaohongshu · @PayaYa', desc: 'Sketches, journals and site news' },
-    xiaohongshuAlt: { label: 'Xiaohongshu · @PayayaKamo', desc: 'Diary artwork and archiving notes' },
+    xiaohongshu: { label: 'Xiaohongshu · @PayaYa', desc: 'Diary archive and shared resources' },
+    xiaohongshuAlt: { label: 'Xiaohongshu · @PayayaKamo', desc: 'Web development, tech and illustration' },
     wechat: {
       label: 'WeChat official account · @PayapayaYa',
       desc: 'Update notices and behind-the-scenes notes',

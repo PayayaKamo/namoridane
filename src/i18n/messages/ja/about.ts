@@ -8,8 +8,8 @@ export const about: AboutMessages = {
   links: {
     github: { label: 'GitHub プロフィール', desc: 'アカウントと日々の更新' },
     repository: { label: 'サイトのリポジトリ', desc: 'このサイトのソースとデータ処理' },
-    xiaohongshu: { label: '小红书 · @PayaYa', desc: 'スケッチ・手帳・サイトの近況' },
-    xiaohongshuAlt: { label: '小红书 · @PayayaKamo', desc: '絵日記の作品と整理記録' },
+    xiaohongshu: { label: '小红书 · @PayaYa', desc: '絵日記のアーカイブと素材共有' },
+    xiaohongshuAlt: { label: '小红书 · @PayayaKamo', desc: 'Web 制作・テック・イラスト' },
     wechat: {
       label: 'WeChat 公式アカウント · @PayapayaYa',
       desc: '更新のお知らせと制作の裏側',
