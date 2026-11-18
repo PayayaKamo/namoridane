@@ -29,6 +29,6 @@ export async function restoreFilesFromTrash(files: string[]): Promise<boolean> {
 
 /** 彻底删除 images/_trash 里的文件；返回删除数量，接口不可用时为 null */
 export async function purgeTrashFiles(): Promise<number | null> {
-  const result = await post('/__admin/purge', {})
+  const result = await post('/__admin/purge', { confirm: 'purge' })
   return typeof result?.removed === 'number' ? result.removed : null
 }

@@ -9,6 +9,83 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const MAX_BODY_BYTES = 100 * 1024 * 1024
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')) as { version?: string }
 
+/** 管理接口只接受来自本机回环地址的请求 */
+const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
+
+const sendJson = (res: import('node:http').ServerResponse, status: number, payload: unknown) => {
+  res.statusCode = status
+  res.setHeader('Content-Type', 'application/json; charset=utf-8')
+  res.end(JSON.stringify(payload))
+}
+
+function requestHostname(req: import('node:http').IncomingMessage): string | null {
+  const header = req.headers.host
+  if (!header) return null
+  try {
+    return new URL(`http://${header}`).hostname.toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+function isLoopbackRequest(req: import('node:http').IncomingMessage): boolean {
+  const hostname = requestHostname(req)
+  if (!hostname) return false
+  return LOOPBACK_HOSTNAMES.has(hostname) || hostname.endsWith('.localhost')
+}
+
+/**
+ * 同源校验：浏览器发起的管理请求必须与 Host 一致。
+ * 没有 Origin 的请求（本机脚本 / curl）退回到 Sec-Fetch-Site 判断。
+ */
+function isSameOriginRequest(req: import('node:http').IncomingMessage): boolean {
+  const origin = req.headers.origin
+  if (typeof origin === 'string' && origin) {
+    const host = req.headers.host
+    if (!host) return false
+    try {
+      const parsed = new URL(origin)
+      return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && parsed.host === host
+    } catch {
+      return false
+    }
+  }
+  const site = req.headers['sec-fetch-site']
+  if (typeof site === 'string' && site && site !== 'same-origin' && site !== 'none') return false
+  return true
+}
+
+function hasJsonContentType(req: import('node:http').IncomingMessage): boolean {
+  const header = req.headers['content-type']
+  const value = Array.isArray(header) ? header[0] : header
+  return typeof value === 'string' && /^application\/json(?:\s*;|$)/i.test(value.trim())
+}
+
+/**
+ * 四个管理端写的统一守卫：Host 必须是回环地址；非 GET 请求必须同源且声明 JSON 请求体。
+ * 返回 true 表示放行，false 表示已经写出拒绝响应。
+ */
+function guardAdminRequest(
+  req: import('node:http').IncomingMessage,
+  res: import('node:http').ServerResponse,
+): boolean {
+  if (!isLoopbackRequest(req)) {
+    sendJson(res, 403, { ok: false, error: '仅允许从本机回环地址访问管理接口' })
+    return false
+  }
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    if (!isSameOriginRequest(req)) {
+      sendJson(res, 403, { ok: false, error: '拒绝跨站请求' })
+      return false
+    }
+    if (!hasJsonContentType(req)) {
+      sendJson(res, 415, { ok: false, error: 'Content-Type 必须是 application/json' })
+      return false
+    }
+  }
+  return true
+}
+
 /**
  * 本地管理端专用：把当前浏览器里的数据写回仓库 JSON。
  * 仅在 admin 模式的 dev server 中注册；公开构建与公开 dev 模式都没有该接口。
@@ -21,12 +98,6 @@ function adminDataWritePlugin(): Plugin {
     review: { file: path.join(dataDir, 'userdata.json'), label: 'userdata' },
   } as const
   type Target = keyof typeof targets
-
-  const send = (res: import('node:http').ServerResponse, status: number, payload: unknown) => {
-    res.statusCode = status
-    res.setHeader('Content-Type', 'application/json; charset=utf-8')
-    res.end(JSON.stringify(payload))
-  }
 
   const readBody = async (req: import('node:http').IncomingMessage) => {
     const chunks: Buffer[] = []
@@ -60,22 +131,23 @@ function adminDataWritePlugin(): Plugin {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         if (!req.url?.startsWith('/__admin/write-data')) return next()
-        if (req.method !== 'POST') return send(res, 405, { ok: false, error: '仅支持 POST' })
+        if (!guardAdminRequest(req, res)) return
+        if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '仅支持 POST' })
         const target = new URL(req.url, 'http://localhost').searchParams.get('target')
         if (target !== 'public' && target !== 'review') {
-          return send(res, 400, { ok: false, error: 'target 必须是 public 或 review' })
+          return sendJson(res, 400, { ok: false, error: 'target 必须是 public 或 review' })
         }
         const spec = targets[target as Target]
         const relative = path.relative(dataDir, spec.file)
         if (relative.startsWith('..') || path.isAbsolute(relative)) {
-          return send(res, 400, { ok: false, error: '拒绝写入 data 目录之外的文件' })
+          return sendJson(res, 400, { ok: false, error: '拒绝写入 data 目录之外的文件' })
         }
 
         let body: unknown
         try {
           body = await readBody(req)
         } catch (error) {
-          return send(res, 400, { ok: false, error: (error as Error).message || '请求体不是合法 JSON' })
+          return sendJson(res, 400, { ok: false, error: (error as Error).message || '请求体不是合法 JSON' })
         }
 
         try {
@@ -94,7 +166,7 @@ function adminDataWritePlugin(): Plugin {
           const text = `${JSON.stringify(payload, null, 2)}\n`
           const backupPath = backup(spec.file, spec.label)
           writeAtomic(spec.file, text)
-          send(res, 200, {
+          sendJson(res, 200, {
             ok: true,
             target,
             path: `data/${path.basename(spec.file)}`,
@@ -104,7 +176,7 @@ function adminDataWritePlugin(): Plugin {
             items: Object.keys((payload as { items?: Record<string, unknown> }).items ?? {}).length,
           })
         } catch (error) {
-          send(res, 400, { ok: false, error: (error as Error).message || '数据校验失败' })
+          sendJson(res, 400, { ok: false, error: (error as Error).message || '数据校验失败' })
         }
       })
     },
@@ -129,16 +201,12 @@ function adminTrashPlugin(): Plugin {
   const readBody = async (req: import('node:http').IncomingMessage) => {
     const chunks: Buffer[] = []
     for await (const chunk of req) chunks.push(Buffer.from(chunk))
+    const text = Buffer.concat(chunks).toString('utf8')
     try {
-      return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')
+      return JSON.parse(text || '{}')
     } catch {
-      return {}
+      throw new Error('请求体不是合法 JSON')
     }
-  }
-  const send = (res: import('node:http').ServerResponse, status: number, payload: unknown) => {
-    res.statusCode = status
-    res.setHeader('Content-Type', 'application/json; charset=utf-8')
-    res.end(JSON.stringify(payload))
   }
 
   return {
@@ -147,9 +215,16 @@ function adminTrashPlugin(): Plugin {
       server.middlewares.use(async (req, res, next) => {
         if (!req.url?.startsWith('/__admin/')) return next()
         const url = req.url.split('?')[0]
+        const guarded = ['/__admin/trash', '/__admin/restore', '/__admin/purge']
+        if (guarded.includes(url) && !guardAdminRequest(req, res)) return
 
         if (url === '/__admin/trash' && req.method === 'POST') {
-          const body = await readBody(req)
+          let body: { files?: unknown }
+          try {
+            body = await readBody(req)
+          } catch (error) {
+            return sendJson(res, 400, { ok: false, error: (error as Error).message })
+          }
           const files: string[] = Array.isArray(body.files) ? body.files.map(safeName) : []
           fs.mkdirSync(trashDir, { recursive: true })
           const moved: string[] = []
@@ -167,12 +242,17 @@ function adminTrashPlugin(): Plugin {
             }
             moved.push(file)
           }
-          send(res, 200, { ok: true, moved, missing })
+          sendJson(res, 200, { ok: true, moved, missing })
           return
         }
 
         if (url === '/__admin/restore' && req.method === 'POST') {
-          const body = await readBody(req)
+          let body: { files?: unknown }
+          try {
+            body = await readBody(req)
+          } catch (error) {
+            return sendJson(res, 400, { ok: false, error: (error as Error).message })
+          }
           const files: string[] = Array.isArray(body.files) ? body.files.map(safeName) : []
           fs.mkdirSync(originalDir, { recursive: true })
           const restored: string[] = []
@@ -182,22 +262,32 @@ function adminTrashPlugin(): Plugin {
             fs.renameSync(from, path.join(originalDir, file))
             restored.push(file)
           }
-          send(res, 200, { ok: true, restored })
+          sendJson(res, 200, { ok: true, restored })
           return
         }
 
         if (url === '/__admin/purge' && req.method === 'POST') {
-          if (!fs.existsSync(trashDir)) return send(res, 200, { ok: true, removed: 0 })
+          let body: { confirm?: unknown }
+          try {
+            body = await readBody(req)
+          } catch (error) {
+            return sendJson(res, 400, { ok: false, error: (error as Error).message })
+          }
+          // 清空回收站不可撤销，必须带显式确认参数
+          if (body.confirm !== 'purge') {
+            return sendJson(res, 400, { ok: false, error: '缺少确认参数 confirm=purge' })
+          }
+          if (!fs.existsSync(trashDir)) return sendJson(res, 200, { ok: true, removed: 0 })
           const files = fs.readdirSync(trashDir)
           for (const file of files) {
             const target = path.join(trashDir, file)
             if (fs.statSync(target).isFile()) fs.unlinkSync(target)
           }
-          send(res, 200, { ok: true, removed: files.length })
+          sendJson(res, 200, { ok: true, removed: files.length })
           return
         }
 
-        send(res, 404, { ok: false })
+        sendJson(res, 404, { ok: false })
       })
     },
   }
