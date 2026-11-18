@@ -24,6 +24,10 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # 质量闸门：任何一步失败都不部署
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
       - run: npm run build:public
       - uses: actions/upload-pages-artifact@v3
         with:
