@@ -202,11 +202,11 @@ function adminTrashPlugin(): Plugin {
   }
 }
 
-// base 使用相对路径，产物可直接放到 GitHub Pages 的任意子路径下。
-// 站点内部跳转全部走 hash 路由，不依赖服务器 rewrite。
-// 构建模式：--mode public 生成粉丝只读站；默认 admin 生成本地管理站。
+// 公开构建部署在 GitHub Pages 子路径 /namoridane/，使用绝对 base，
+// 保证深链（/item/xxx/）直接打开或刷新时资源仍然从站点根加载。
+// 本地管理端与开发服务器仍使用根路径。
 export default defineConfig(({ command, mode }) => ({
-  base: './',
+  base: mode === 'public' ? '/namoridane/' : '/',
   plugins: [
     react(),
     command === 'serve' && mode !== 'public' ? adminDataWritePlugin() : null,

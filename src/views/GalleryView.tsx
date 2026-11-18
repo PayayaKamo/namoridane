@@ -12,6 +12,7 @@ import { CharacterPicker } from '../components/CharacterPicker'
 import { downloadBlob, downloadOriginalsZip } from '../lib/image'
 import { IS_PUBLIC } from '../lib/appMode'
 import { moveFilesToTrash } from '../lib/trash'
+import { applyItemSeo } from '../lib/seo'
 import type { FilterState } from '../types'
 
 export function GalleryView({ route }: { route: Route }) {
@@ -36,6 +37,8 @@ export function GalleryView({ route }: { route: Route }) {
     addStoryline,
     addToStoryline,
     deleteItems,
+    getDate,
+    tagMap,
     notify,
   } = useStore()
 
@@ -81,6 +84,17 @@ export function GalleryView({ route }: { route: Route }) {
     setFilter((f) => (f.tagIds.length === 1 && f.tagIds[0] === queryTag ? f : { ...f, tagIds: [queryTag] }))
     setTagFilterOpen(true)
   }, [queryTag])
+
+  // 作品详情使用独立地址：同步标题、描述与分享卡
+  const itemForSeo = route.name === 'item' ? itemMap.get(route.param) : undefined
+  useEffect(() => {
+    if (!itemForSeo) return
+    const tagNames = (annotations[itemForSeo.id]?.tags ?? []).flatMap((id) => {
+      const tag = tagMap.get(id)
+      return tag ? [tag.name] : []
+    })
+    applyItemSeo(itemForSeo, getDate(itemForSeo), tagNames)
+  }, [itemForSeo, annotations, tagMap, getDate])
 
   const activeFilterCount = [
     filter.keyword !== DEFAULT_FILTER.keyword,

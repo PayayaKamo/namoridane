@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../state/store'
-import { navigate, closeItem } from '../lib/router'
+import { navigate, closeItem, siteHref } from '../lib/router'
 import { formatFullDate, formatMonthDay, weekdayLabel } from '../lib/dates'
 import { similarItems } from '../lib/filtering'
 import { studyFields, EMPTY_STUDY } from '../lib/constants'
@@ -14,6 +14,7 @@ import { formatBytes, originalUrl } from '../lib/image'
 import { extractShareUrl } from '../lib/utils'
 import { IS_PUBLIC } from '../lib/appMode'
 import { moveFilesToTrash } from '../lib/trash'
+import { useI18n } from '../i18n'
 import type { DiaryItem, ExternalLinkKind, StudyNotes, Translation } from '../types'
 
 const BASE = import.meta.env.BASE_URL
@@ -21,6 +22,7 @@ const BASE = import.meta.env.BASE_URL
 type Tab = 'info' | 'translate' | 'study'
 
 export function DetailView({ itemId }: { itemId: string }) {
+  const { t } = useI18n()
   const {
     itemMap,
     items,
@@ -167,7 +169,7 @@ export function DetailView({ itemId }: { itemId: string }) {
   }
 
   const share = async () => {
-    const url = `${window.location.origin}${window.location.pathname}#/item/${item.id}`
+    const url = `${window.location.origin}${siteHref(`/item/${item.id}/`)}`
     try {
       await navigator.clipboard.writeText(url)
       notify('分享链接已复制（含作品标签信息）', 'success')

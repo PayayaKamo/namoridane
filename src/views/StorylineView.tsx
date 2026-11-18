@@ -4,9 +4,10 @@ import { Empty, Modal } from '../components/Modal'
 import { effectiveDate, formatShortDate } from '../lib/dates'
 import { downloadBlob } from '../lib/image'
 import { IS_PUBLIC } from '../lib/appMode'
-import { navigate, useRoute } from '../lib/router'
+import { navigate, siteHref, useRoute } from '../lib/router'
 import { downloadJson } from '../lib/storage'
 import { useStore } from '../state/store'
+import { useI18n } from '../i18n'
 import type { DiaryItem, Storyline, StorylineBlock } from '../types'
 
 const BASE = import.meta.env.BASE_URL
@@ -46,6 +47,7 @@ export function StorylineView() {
 
 function StorylineList() {
   const { storylines, allItems, addStoryline, notify } = useStore()
+  const { t } = useI18n()
   const itemMap = useMemo(() => new Map(allItems.map((item) => [item.id, item])), [allItems])
   const [title, setTitle] = useState('')
   const [builderOpen, setBuilderOpen] = useState(false)
@@ -64,9 +66,9 @@ function StorylineList() {
   }, [storylines, itemMap])
 
   const create = (itemIds: string[] = []) => {
-    const story = addStoryline(title.trim() || '未命名故事线', itemIds)
+    const story = addStoryline(title.trim() || t('lib.newStoryline'), itemIds)
     setTitle('')
-    notify('故事线已创建', 'success')
+    notify(t('storylines.list.created'), 'success')
     navigate(`/storyline/${story.id}`)
   }
 
@@ -74,9 +76,9 @@ function StorylineList() {
     <div className="storyline-view">
       <div className="page-head">
         <div>
-          <div className="page-eyebrow">Storyline</div>
-          <h2 className="page-title">故事线</h2>
-          <div className="page-sub">把零散的画串成连续的故事。同一张图可以属于多条故事线，删除故事线不会影响图片本身。</div>
+          <div className="page-eyebrow">{t('shell.page.storylines.eyebrow')}</div>
+          <h2 className="page-title">{t('shell.page.storylines.title')}</h2>
+          <div className="page-sub">{t('storylines.list.sub')}</div>
         </div>
         <div className="page-actions">
           {!IS_PUBLIC && (
@@ -84,7 +86,7 @@ function StorylineList() {
               <input
                 className="input"
                 style={{ width: 200 }}
-                placeholder="新故事线标题"
+                placeholder={t('storylines.list.titlePlaceholder')}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 onKeyDown={(e) => {
@@ -92,10 +94,10 @@ function StorylineList() {
                 }}
               />
               <button className="btn btn-primary" onClick={() => create()}>
-                <Icon name="plus" size={14} />新建空故事线
+                <Icon name="plus" size={14} />{t('storylines.list.createEmpty')}
               </button>
               <button className="btn" onClick={() => setBuilderOpen(true)}>
-                <Icon name="book" size={14} />按 shortcode 建线
+                <Icon name="book" size={14} />{t('storylines.list.buildByShortcode')}
               </button>
             </>
           )}
@@ -116,13 +118,13 @@ function StorylineList() {
                       <Icon name="book" size={26} />
                     </span>
                   )}
-                  <span className="storyline-count num">{count} 张</span>
+                  <span className="storyline-count num">{t('common.itemCount', { count })}</span>
                 </div>
                 <div className="storyline-body">
                   <div className="storyline-title">{story.title}</div>
-                  <div className="faint storyline-desc">{story.description || '还没有简介'}</div>
+                  <div className="faint storyline-desc">{story.description || t('storylines.list.noDescription')}</div>
                   <div className="faint storyline-meta">
-                    {range || '暂无日期'} · 更新于 {formatShortDate(story.updatedAt.slice(0, 10))}
+                    {range || t('storylines.list.noDate')} · {t('storylines.list.updatedAt', { date: formatShortDate(story.updatedAt.slice(0, 10)) })}
                   </div>
                   {story.tags.length > 0 && (
                     <div className="row row-wrap" style={{ gap: 4, marginTop: 6 }}>
@@ -139,16 +141,16 @@ function StorylineList() {
       ) : (
         <Empty
           icon="book"
-          title={IS_PUBLIC ? '故事线正在整理中' : '还没有故事线'}
+          title={IS_PUBLIC ? t('storylines.list.emptyPublicTitle') : t('storylines.list.emptyTitle')}
           hint={
             IS_PUBLIC
-              ? '敬请期待，之后会按主题整理成可以连续翻阅的小故事。'
-              : '在图库多选图片，点「加入故事线」即可开始；也可以先建一条空故事线，再往里加图和章节备注。'
+              ? t('storylines.list.emptyPublicHint')
+              : t('storylines.list.emptyHint')
           }
           action={
             IS_PUBLIC ? undefined : (
               <button className="btn btn-primary btn-sm" style={{ marginTop: 16 }} onClick={() => navigate('/gallery')}>
-                去图库选图
+                {t('storylines.list.goGallery')}
               </button>
             )
           }
@@ -163,8 +165,8 @@ function StorylineList() {
             setBuilderOpen(false)
             notify(
               skipped
-                ? `已创建故事线，共 ${itemIds.length} 张；跳过 ${skipped} 个未匹配 shortcode`
-                : `已创建故事线，共 ${itemIds.length} 张`,
+                ? t('storylines.list.createdCountSkipped', { count: itemIds.length, skipped })
+                : t('storylines.list.createdCount', { count: itemIds.length }),
               'success',
             )
             navigate(`/storyline/${story.id}`)
@@ -183,6 +185,7 @@ function ShortcodeBuilder({
   onCreate: (title: string, itemIds: string[], skipped: number) => void
 }) {
   const { items, annotations } = useStore()
+  const { t, locale } = useI18n()
   const [title, setTitle] = useState('')
   const [input, setInput] = useState('')
 
@@ -213,37 +216,37 @@ function ShortcodeBuilder({
 
   return (
     <Modal
-      title="按 shortcode 建线"
-      subtitle="按粘贴顺序排列；支持每行一个、空格 / 逗号 / 顿号分隔，也可直接粘贴 instagram.com/p/<shortcode>/ 链接或分享文本。"
+      title={t('storylines.builder.title')}
+      subtitle={t('storylines.builder.subtitle')}
       wide
       onClose={onClose}
       footer={
         <>
           <button className="btn" onClick={onClose}>
-            取消
+            {t('common.cancel')}
           </button>
           <button
             className="btn btn-primary"
             disabled={!ordered.length}
-            onClick={() => onCreate(title.trim() || '未命名故事线', ordered.map((item) => item.id), missing.length)}
+            onClick={() => onCreate(title.trim() || t('lib.newStoryline'), ordered.map((item) => item.id), missing.length)}
           >
-            创建故事线（{ordered.length} 张）
+            {t('storylines.builder.create', { count: ordered.length })}
           </button>
         </>
       }
     >
       <div className="shortcode-builder">
         <label className="field">
-          <span className="field-label">故事线标题</span>
+          <span className="field-label">{t('storylines.builder.titleLabel')}</span>
           <input
             className="input"
-            placeholder="例如：樱花季节的一周"
+            placeholder={t('storylines.builder.titlePlaceholder')}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
         </label>
         <label className="field">
-          <span className="field-label">Shortcode / 帖子链接</span>
+          <span className="field-label">{t('storylines.builder.inputLabel')}</span>
           <textarea
             className="textarea"
             rows={5}
@@ -254,27 +257,37 @@ function ShortcodeBuilder({
         </label>
 
         <div className="shortcode-summary">
-          可匹配 <strong>{matchedRows.length}</strong> 个 shortcode · 共 <strong>{ordered.length}</strong> 张图
+          {t('storylines.builder.matchedPrefix')} <strong>{matchedRows.length}</strong>{' '}
+          {t('storylines.builder.matchedSuffix')} · {t('storylines.builder.totalPrefix')}{' '}
+          <strong>{ordered.length}</strong> {t('storylines.builder.totalSuffix')}
           {missing.length > 0 && (
             <>
               {' '}
-              · <span className="shortcode-danger">未匹配 {missing.length} 个</span>
+              · <span className="shortcode-danger">{t('storylines.builder.missingCount', { count: missing.length })}</span>
             </>
           )}
         </div>
 
         {parsed.duplicates.length > 0 && (
-          <div className="shortcode-warning">重复的 shortcode 已忽略：{parsed.duplicates.join('、')}</div>
+          <div className="shortcode-warning">
+            {t('storylines.builder.duplicates', {
+              codes: parsed.duplicates.join(locale === 'en' ? ', ' : '、'),
+            })}
+          </div>
         )}
 
         {missing.length > 0 && (
           <div className="shortcode-missing">
-            <span>以下 shortcode 在图库中找不到，可点 × 删除后再创建：</span>
+            <span>{t('storylines.builder.missingHint')}</span>
             <div className="row row-wrap" style={{ gap: 6 }}>
               {missing.map((code) => (
                 <span key={code} className="shortcode-missing-chip">
                   {code}
-                  <button onClick={() => removeCode(code)} aria-label={`删除 ${code}`} title="从输入中删除">
+                  <button
+                    onClick={() => removeCode(code)}
+                    aria-label={t('storylines.builder.removeCode', { code })}
+                    title={t('storylines.builder.removeCodeTitle')}
+                  >
                     <Icon name="close" size={11} />
                   </button>
                 </span>
@@ -294,7 +307,7 @@ function ShortcodeBuilder({
                     <span className="shortcode-order num">{order}</span>
                     <img src={`${BASE}${item.thumb}`} alt="" loading="lazy" />
                     <div className="shortcode-preview-meta">
-                      <span className="num">{date.iso || '日期待定'}</span>
+                      <span className="num">{date.iso || t('common.dateUnknown')}</span>
                       <span className="faint">{row.code}</span>
                     </div>
                   </div>
@@ -334,6 +347,7 @@ function StorylineDetail({ id, readMode }: { id: string; readMode: boolean }) {
     addStorylineNote,
     notify,
   } = useStore()
+  const { t } = useI18n()
   const story = storylines.find((s) => s.id === id)
   const itemMap = useMemo(() => new Map(allItems.map((item) => [item.id, item])), [allItems])
   const [dragging, setDragging] = useState<string | null>(null)
@@ -364,11 +378,11 @@ function StorylineDetail({ id, readMode }: { id: string; readMode: boolean }) {
     return (
       <Empty
         icon="book"
-        title="故事线不存在"
-        hint="它可能已被删除，或链接里的 id 不正确。"
+        title={t('storylines.detail.notFoundTitle')}
+        hint={t('storylines.detail.notFoundHint')}
         action={
           <button className="btn btn-sm" style={{ marginTop: 16 }} onClick={() => navigate('/storylines')}>
-            返回故事线列表
+            {t('storylines.detail.backToList')}
           </button>
         }
       />
@@ -429,7 +443,7 @@ function StorylineDetail({ id, readMode }: { id: string; readMode: boolean }) {
     reorderStorylineBlocks(story.id, next)
   }
 
-  const shareUrl = `${location.origin}${location.pathname}#/storyline/${story.id}?read=1`
+  const shareUrl = `${location.origin}${siteHref(`/storyline/${story.id}?read=1`)}`
   const copyShare = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl)
@@ -577,7 +591,7 @@ function StorylineDetail({ id, readMode }: { id: string; readMode: boolean }) {
                   <div className="storyline-image-block">
                     <img src={`${BASE}${item.thumb}`} alt={item.file} loading="lazy" />
                     <div className="storyline-image-meta">
-                      <span className="num">{date.iso || '日期待定'}</span>
+                      <span className="num">{date.iso || t('common.dateUnknown')}</span>
                       <div className="row" style={{ gap: 4 }}>
                         {!IS_PUBLIC && (
                           <button className="btn btn-ghost btn-sm" onClick={() => updateStoryline(story.id, { coverItemId: item.id })}>

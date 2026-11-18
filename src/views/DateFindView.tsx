@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Route } from '../lib/router'
-import { navigate } from '../lib/router'
+import { navigate, siteHref } from '../lib/router'
 import { useStore } from '../state/store'
 import { effectiveDate, formatMonthDayCN, isoOf, weekdayLabel } from '../lib/dates'
 import { Icon } from '../components/Icon'
@@ -144,7 +144,7 @@ export function DateFindView({ route }: { route: Route }) {
     if (focusYear) params.set('y', String(focusYear))
     if (includeInferred) params.set('infer', '1')
     if (tagIds.length) params.set('tags', tagIds.join(','))
-    const url = `${location.origin}${location.pathname}#/datefind?${params.toString()}`
+    const url = `${location.origin}${siteHref(`/datefind?${params.toString()}`)}`
     try {
       await navigator.clipboard.writeText(url)
       notify('日期查询链接已复制', 'success')
