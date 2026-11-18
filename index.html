@@ -3,8 +3,107 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Namori 老师「水母绘日记」插画浏览、搜索、整理与临摹辅助" />
-    <title>水母绘日记 · Namori Diary</title>
+    <title>水母绘日记 · Namori Diary — Namori 手绘绘日记插画集</title>
+    <meta
+      name="description"
+      content="收录 Namori（@namoridane）发布在 Instagram 的 1,000+ 张手绘「水母绘日记」插画。可按日历、日期、角色与标签浏览检索，查看原文案、临摹拆解与翻译整理，纯静态站点，无需登录。"
+    />
+    <meta
+      name="keywords"
+      content="Namori, namoridane, 水母绘日记, Namori Diary, 绘日记, 手绘日记, 插画集, 插画整理, 临摹参考, 角色图鉴, 摇曳百合"
+    />
+    <meta name="author" content="PayaYa" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="theme-color" content="#171614" />
+    <link rel="canonical" href="https://payayakamo.github.io/namoridane/" />
+
+    <!-- Open Graph：分享到社交平台时的卡片信息 -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="水母绘日记 · Namori Diary" />
+    <meta property="og:title" content="水母绘日记 · Namori Diary — Namori 手绘绘日记插画集" />
+    <meta
+      property="og:description"
+      content="收录 Namori（@namoridane）的 1,000+ 张手绘「水母绘日记」。按日历、日期、角色与标签翻阅检索，附原文案与临摹拆解。"
+    />
+    <meta property="og:url" content="https://payayakamo.github.io/namoridane/" />
+    <meta property="og:image" content="https://payayakamo.github.io/namoridane/og-cover.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="三张 Namori 水母绘日记手绘插画拼贴" />
+    <meta property="og:locale" content="zh_CN" />
+
+    <!-- Twitter / X 卡片 -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="水母绘日记 · Namori Diary" />
+    <meta
+      name="twitter:description"
+      content="收录 Namori（@namoridane）的 1,000+ 张手绘「水母绘日记」，可按日历、日期、角色与标签翻阅检索。"
+    />
+    <meta name="twitter:image" content="https://payayakamo.github.io/namoridane/og-cover.jpg" />
+    <meta name="twitter:image:alt" content="三张 Namori 水母绘日记手绘插画拼贴" />
+
+    <!-- 结构化数据：站点、作者、画集与分享封面 -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://payayakamo.github.io/namoridane/#website",
+            "url": "https://payayakamo.github.io/namoridane/",
+            "name": "水母绘日记 · Namori Diary",
+            "alternateName": ["Namori Diary", "Namori 水母绘日记"],
+            "description": "收录 Namori 在 Instagram 发布的每日手绘「绘日记」的浏览与整理站点。",
+            "inLanguage": "zh-CN",
+            "publisher": { "@id": "https://payayakamo.github.io/namoridane/#publisher" }
+          },
+          {
+            "@type": "Person",
+            "@id": "https://payayakamo.github.io/namoridane/#publisher",
+            "name": "PayaYa",
+            "url": "https://github.com/payayakamo",
+            "sameAs": ["https://github.com/PayayaKamo/namoridane"]
+          },
+          {
+            "@type": "Person",
+            "@id": "https://payayakamo.github.io/namoridane/#namori",
+            "name": "Namori",
+            "alternateName": ["namoridane"],
+            "description": "日本插画师，持续在 Instagram 发布手绘「水母绘日记」。",
+            "sameAs": ["https://www.instagram.com/namoridane"]
+          },
+          {
+            "@type": "CollectionPage",
+            "@id": "https://payayakamo.github.io/namoridane/#webpage",
+            "url": "https://payayakamo.github.io/namoridane/",
+            "name": "水母绘日记 · Namori Diary — Namori 手绘绘日记插画集",
+            "description": "按日历、日期、角色与标签浏览 Namori 的手绘绘日记，附原文案、临摹拆解与翻译整理。",
+            "inLanguage": "zh-CN",
+            "isPartOf": { "@id": "https://payayakamo.github.io/namoridane/#website" },
+            "primaryImageOfPage": { "@id": "https://payayakamo.github.io/namoridane/#cover" },
+            "about": {
+              "@type": "ImageGallery",
+              "name": "Namori 水母绘日记插画集",
+              "description": "Namori 自 2021 年起在 Instagram 发布的每日手绘绘日记合集。",
+              "about": { "@id": "https://payayakamo.github.io/namoridane/#namori" }
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "@id": "https://payayakamo.github.io/namoridane/#cover",
+            "contentUrl": "https://payayakamo.github.io/namoridane/og-cover.jpg",
+            "url": "https://payayakamo.github.io/namoridane/",
+            "name": "Namori 水母绘日记分享封面",
+            "caption": "三张 Namori 水母绘日记手绘插画拼贴",
+            "width": 1200,
+            "height": 630,
+            "creator": { "@id": "https://payayakamo.github.io/namoridane/#namori" }
+          }
+        ]
+      }
+    </script>
+
     <link rel="icon" type="image/webp" href="./namori_icon.webp" />
     <link rel="icon" type="image/png" sizes="32x32" href="./namori_icon-32.png" />
     <link rel="icon" type="image/png" sizes="48x48" href="./namori_icon-48.png" />
@@ -25,6 +124,16 @@
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <div style="max-width: 720px; margin: 48px auto; padding: 0 20px; font-family: system-ui, sans-serif; line-height: 1.8">
+        <h1>水母绘日记 · Namori Diary</h1>
+        <p>
+          收录 Namori（@namoridane）发布在 Instagram 的 1,000+ 张手绘「水母绘日记」，可按日历、日期、角色与标签浏览检索，
+          并查看每张作品的原文案与临摹拆解。
+        </p>
+        <p>本站的浏览与检索需要启用 JavaScript，请开启后重新打开页面。</p>
+      </div>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
