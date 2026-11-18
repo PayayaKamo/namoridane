@@ -196,7 +196,7 @@ export function ReaderView({ route }: { route: Route }) {
           <img
             key={item.id}
             src={`${BASE}${item.large}`}
-            alt={`绘日记 ${date.iso}`}
+            alt={`Namori 水母绘日记 ${date.iso} 手绘插画`}
             onLoad={() => setLoadedId(item.id)}
             style={{ opacity: loaded ? 1 : 0 }}
             loading="eager"

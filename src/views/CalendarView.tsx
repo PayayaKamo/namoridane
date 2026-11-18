@@ -347,9 +347,14 @@ export function CalendarView({ route }: { route: Route }) {
                 {list.length > 3 && <span className="cal-count num">{list.length}</span>}
               </div>
               <div className="cal-thumbs">
-                {visible.slice(0, 3).map((item) => (
+                {visible.slice(0, 3).map((item, thumbIndex) => (
                   <div key={item.id} className="cal-thumb" style={{ background: item.color }}>
-                    <img src={`${BASE}${item.thumb}`} alt="" loading="lazy" decoding="async" />
+                    <img
+                      src={`${BASE}${item.thumb}`}
+                      alt={`Namori 水母绘日记 ${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} 第 ${thumbIndex + 1} 张`}
+                      loading="lazy"
+                      decoding="async"
+                    />
                   </div>
                 ))}
                 {list.length > 3 && <div className="cal-more">+{list.length - 3}</div>}
