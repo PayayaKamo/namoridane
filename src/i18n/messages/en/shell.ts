@@ -94,6 +94,15 @@ export const shell: ShellMessages = {
     noIndexHintBefore: 'Run',
     noIndexHintAfter: 'in the project directory to generate the index and derivatives, then reload the page. ({error})',
   },
+  error: {
+    boundaryTitle: 'This page failed to render',
+    boundaryHint: 'Something went wrong while rendering this page. Retry, or go back to the overview.',
+    retry: 'Retry',
+    goHome: 'Go to overview',
+    unhandled: 'Unhandled error: {message}',
+    unknown: 'Unknown error',
+    dismiss: 'Dismiss',
+  },
   modal: {
     close: 'Close',
   },

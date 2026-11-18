@@ -1033,6 +1033,55 @@ hr {
   font-size: 13px;
 }
 
+/* 页面渲染失败降级 */
+.render-error {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  max-width: 520px;
+  margin: 40px auto;
+  padding: 28px 24px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 14px;
+  background: var(--surface);
+  text-align: center;
+}
+
+.render-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* 未处理的 Promise 拒绝提示条 */
+.global-error-banner {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(720px, calc(100vw - 32px));
+  padding: 9px 10px 9px 14px;
+  border: 1px solid var(--danger);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--danger);
+  box-shadow: var(--shadow-md);
+  font-size: 12.5px;
+  transform: translateX(-50%);
+  animation: toast-in 0.25s var(--ease);
+}
+
+.global-error-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .spinner {
   width: 26px;
   height: 26px;

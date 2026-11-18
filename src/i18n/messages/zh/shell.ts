@@ -92,6 +92,15 @@ export const shell = {
     noIndexHintBefore: '请在项目目录运行',
     noIndexHintAfter: '生成索引与衍生图，然后刷新页面。（{error}）',
   },
+  error: {
+    boundaryTitle: '该页渲染失败',
+    boundaryHint: '页面渲染时出现异常，可以重试，或先回到首页继续浏览。',
+    retry: '重试',
+    goHome: '回到首页',
+    unhandled: '出现未处理的错误：{message}',
+    unknown: '未知错误',
+    dismiss: '关闭提示',
+  },
   modal: {
     close: '关闭',
   },

@@ -6,6 +6,7 @@ import { useI18n } from './i18n'
 import { Layout } from './components/Layout'
 import { Modal, Toasts } from './components/Modal'
 import { Icon } from './components/Icon'
+import { ErrorBoundary, UnhandledRejectionBanner } from './components/ErrorBoundary'
 import { HomeView } from './views/HomeView'
 import { CalendarView } from './views/CalendarView'
 import { GalleryView } from './views/GalleryView'
@@ -146,11 +147,18 @@ export default function App() {
   return (
     <>
       <Layout route={route}>
-        <CurrentView route={route} />
+        <ErrorBoundary key={`${route.name}:${route.param}`}>
+          <CurrentView route={route} />
+        </ErrorBoundary>
       </Layout>
-      {route.name === 'item' && route.param && <DetailView itemId={route.param} />}
+      {route.name === 'item' && route.param && (
+        <ErrorBoundary key={`detail:${route.param}`}>
+          <DetailView itemId={route.param} />
+        </ErrorBoundary>
+      )}
       {shortcutsOpen && <ShortcutPanel onClose={() => setShortcutsOpen(false)} />}
       <Toasts toasts={toasts} onDismiss={dismissToast} />
+      <UnhandledRejectionBanner />
     </>
   )
 }

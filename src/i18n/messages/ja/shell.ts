@@ -94,6 +94,15 @@ export const shell: ShellMessages = {
     noIndexHintBefore: 'プロジェクトのディレクトリで',
     noIndexHintAfter: 'を実行してインデックスと派生画像を生成し、ページを再読み込みしてください。（{error}）',
   },
+  error: {
+    boundaryTitle: 'このページの描画に失敗しました',
+    boundaryHint: 'ページの描画中にエラーが発生しました。再試行するか、概要に戻ってください。',
+    retry: '再試行',
+    goHome: '概要に戻る',
+    unhandled: '未処理のエラーが発生しました：{message}',
+    unknown: '不明なエラー',
+    dismiss: '閉じる',
+  },
   modal: {
     close: '閉じる',
   },
