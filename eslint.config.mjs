@@ -25,10 +25,10 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended.map((config) => ({
     ...config,
-    files: ['src/**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}', 'tests/**/*.ts'],
   })),
   {
-    files: ['src/**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}', 'tests/**/*.ts'],
     languageOptions: {
       globals: { ...globals.browser },
       parserOptions: { ecmaFeatures: { jsx: true } },
@@ -55,6 +55,13 @@ export default tseslint.config(
     rules: {
       'no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrors: 'none' }],
       'no-empty': ['error', { allowEmptyCatch: true }],
+    },
+  },
+  {
+    // 测试同时运行在 Node 环境，补齐 Buffer / process 等全局
+    files: ['tests/**/*.{ts,mjs}'],
+    languageOptions: {
+      globals: { ...globals.node },
     },
   },
 )

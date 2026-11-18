@@ -6,7 +6,10 @@
   "type": "module",
   "description": "Namori 老师「绘日记」插画浏览、搜索与整理工具（纯前端静态站点）",
   "scripts": {
-    "lint": "eslint src scripts",
+    "lint": "eslint src scripts tests",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.mjs\"",
     "data": "node scripts/build-index.mjs",
     "data:force": "node scripts/build-index.mjs --force",

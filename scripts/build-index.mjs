@@ -20,6 +20,7 @@ import crypto from 'node:crypto'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
+import { inferDiaryDate, parseName } from './lib/index-dates.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
@@ -63,50 +64,7 @@ const CACHE_VERSION = 4
 const INDEX_VERSION = 9
 const CONCURRENCY = 6
 
-const NAME_RE = /^(\d{4})-(\d{2})-(\d{2})-([A-Za-z0-9_-]{11})(?:-(\d+))?\.jpe?g$/i
-const UNKNOWN_RE = /^unknown-(.+)\.jpe?g$/i
-
 const log = (...m) => console.log('[data]', ...m)
-
-function parseName(fileName) {
-  const m = NAME_RE.exec(fileName)
-  if (m) {
-    const [, y, mo, d, shortcode, idx] = m
-    return {
-      publishedAt: `${y}-${mo}-${d}`,
-      year: Number(y),
-      month: Number(mo),
-      day: Number(d),
-      shortcode,
-      postIndex: idx === undefined ? 0 : Number(idx),
-      dateKnown: true,
-    }
-  }
-  // 拿不到发布日期的图片：文件名保留原始来源，日期留待人工审核
-  const u = UNKNOWN_RE.exec(fileName)
-  if (u) {
-    return {
-      publishedAt: '',
-      year: 0,
-      month: 0,
-      day: 0,
-      shortcode: `unknown-${u[1]}`,
-      postIndex: 0,
-      dateKnown: false,
-    }
-  }
-  return null
-}
-
-function shiftDay({ year, month, day }, delta) {
-  const t = new Date(Date.UTC(year, month - 1, day))
-  t.setUTCDate(t.getUTCDate() + delta)
-  return {
-    year: t.getUTCFullYear(),
-    month: t.getUTCMonth() + 1,
-    day: t.getUTCDate(),
-  }
-}
 
 /** 白底手绘图的平均亮度，用于骨架屏占位色 */
 function toHex(r, g, b) {
@@ -512,11 +470,7 @@ async function main() {
     // 日记日期的默认值：OCR 候选优先，没有 OCR 时用发布日期前一天（明确标注为推测）
     const ocrEntry = ocrFiles[e.name]
     const ocrBest = ocrEntry?.best ?? null
-    const inferred = ocrBest
-      ? { year: ocrBest.year, month: ocrBest.month, day: ocrBest.day }
-      : e.parsed.dateKnown
-        ? shiftDay(e.parsed, -1)
-        : { year: 0, month: 0, day: 0 }
+    const { inferred, rollover } = inferDiaryDate(e.parsed, ocrBest)
     const isPublic = MODE === 'public'
     const isOther = excludedIds.has(id)
     const meta = postMeta[e.name] ?? null
@@ -544,13 +498,7 @@ async function main() {
       inferredMonth: isPublic ? 0 : inferred.month,
       inferredDay: isPublic ? 0 : inferred.day,
       inferredYear: isPublic ? 0 : inferred.year,
-      rollover: e.parsed.dateKnown
-        ? inferred.year !== e.parsed.year
-          ? 'year'
-          : inferred.month !== e.parsed.month
-            ? 'month'
-            : ''
-        : '',
+      rollover,
       ocr: isPublic
         ? null
         : ocrEntry

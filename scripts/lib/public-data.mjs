@@ -93,12 +93,13 @@ export function sanitizePublicData(raw) {
     }
     items[id] = next
   }
-  const result = { ...raw }
-  delete result.datasetId
+  // 明确白名单输出，避免把调用方混入的未知顶层字段带进公开数据
   return {
-    ...result,
     version: 2,
     updatedAt: now,
+    dimensions: Array.isArray(raw.dimensions) ? raw.dimensions : [],
+    tags: Array.isArray(raw.tags) ? raw.tags : [],
+    characters: Array.isArray(raw.characters) ? raw.characters : [],
     items,
     excludedIds,
     collections: [],
