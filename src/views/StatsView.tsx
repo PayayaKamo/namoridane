@@ -2,13 +2,16 @@ import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
 import { CharacterAvatar } from '../components/CharacterAvatar'
-import { monthNames, effectiveDate } from '../lib/dates'
+import { formatFullDate, formatShortDate, monthNames, weekdayNames, effectiveDate } from '../lib/dates'
 import { IS_PUBLIC } from '../lib/appMode'
 import { navigate } from '../lib/router'
+import type { DiaryItem } from '../types'
 import { useI18n } from '../i18n'
 
+const BASE = import.meta.env.BASE_URL
 const CAST_RADIUS = 62
 const CAST_CIRC = 2 * Math.PI * CAST_RADIUS
+const COOC_LIMIT = 10
 
 export function StatsView() {
   const {
@@ -192,8 +195,125 @@ export function StatsView() {
 
   const pct = (count: number, total: number) => (total ? `${Math.round((count / total) * 100)}%` : '0%')
   const months = monthNames()
+  const weekdays = weekdayNames()
+
+  // 时间轴：星期分布、最活跃月份/年份、最长断更区间
+  const timeline = useMemo(() => {
+    const weekday = Array.from({ length: 7 }, () => 0)
+    const monthTotals = Array.from({ length: 12 }, () => 0)
+    const yearTotals = new Map<number, number>()
+    const drawingDays = new Set<string>()
+    let inferredItems = 0
+    for (const item of items) {
+      const d = getDate(item)
+      if (!d.iso) continue
+      if (!d.confirmed) inferredItems++
+      drawingDays.add(d.iso)
+      weekday[new Date(`${d.iso}T00:00:00`).getDay()]++
+      if (d.month >= 1 && d.month <= 12) monthTotals[d.month - 1]++
+      if (d.year) yearTotals.set(d.year, (yearTotals.get(d.year) ?? 0) + 1)
+    }
+    const sortedDays = [...drawingDays].sort()
+    let gapDays = 0
+    let gapFrom = ''
+    let gapTo = ''
+    for (let i = 1; i < sortedDays.length; i += 1) {
+      const diff =
+        Math.round(
+          (Date.parse(`${sortedDays[i]}T00:00:00`) - Date.parse(`${sortedDays[i - 1]}T00:00:00`)) / 86400000,
+        ) - 1
+      if (diff > gapDays) {
+        gapDays = diff
+        gapFrom = sortedDays[i - 1]
+        gapTo = sortedDays[i]
+      }
+    }
+    const topMonthIndex = monthTotals.reduce((best, count, idx) => (count > monthTotals[best] ? idx : best), 0)
+    const topYearEntry = [...yearTotals.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0]
+    return {
+      weekday,
+      drawingDays: drawingDays.size,
+      inferredItems,
+      gapDays,
+      gapFrom,
+      gapTo,
+      topMonth: monthTotals[topMonthIndex] ? { index: topMonthIndex, count: monthTotals[topMonthIndex] } : null,
+      topYear: topYearEntry ? { year: topYearEntry[0], count: topYearEntry[1] } : null,
+    }
+  }, [items, getDate])
+
+  // 角色共现矩阵：取出场最多的若干角色，统计两两同框张数
+  const cooc = useMemo(() => {
+    const charTagIds = new Set(tags.filter((tag) => tag.dimensionId === 'character').map((tag) => tag.id))
+    const itemCharacters = new Map<string, string[]>()
+    const appearances = new Map<string, number>()
+    for (const item of castItems) {
+      const ids = [...new Set((annotations[item.id]?.tags ?? []).filter((id) => charTagIds.has(id)))]
+      if (!ids.length) continue
+      itemCharacters.set(item.id, ids)
+      for (const id of ids) appearances.set(id, (appearances.get(id) ?? 0) + 1)
+    }
+    const ids = [...appearances.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, COOC_LIMIT)
+      .map(([id]) => id)
+    if (ids.length < 2) return null
+    const index = new Map(ids.map((id, i) => [id, i]))
+    const matrix = ids.map(() => ids.map(() => 0))
+    const totals = ids.map(() => 0)
+    for (const itemIds of itemCharacters.values()) {
+      const present = itemIds.filter((id) => index.has(id))
+      for (const id of present) {
+        const row = index.get(id)!
+        totals[row]++
+        for (const other of present) {
+          if (other === id) continue
+          matrix[row][index.get(other)!]++
+        }
+      }
+    }
+    let max = 1
+    let topPair: { a: string; b: string; count: number } | null = null
+    for (let i = 0; i < ids.length; i += 1) {
+      for (let j = i + 1; j < ids.length; j += 1) {
+        const count = matrix[i][j]
+        if (count > max) max = count
+        if (count && (!topPair || count > topPair.count)) topPair = { a: ids[i], b: ids[j], count }
+      }
+    }
+    return { ids, matrix, totals, max, topPair }
+  }, [castItems, annotations, tags])
+
+  // 首末登场：按角色记录最早与最晚的作品
+  const debuts = useMemo(() => {
+    const charTagIds = new Set(tags.filter((tag) => tag.dimensionId === 'character').map((tag) => tag.id))
+    const map = new Map<
+      string,
+      { count: number; first: { item: DiaryItem; date: string }; last: { item: DiaryItem; date: string } }
+    >()
+    for (const item of castItems) {
+      const d = getDate(item)
+      if (!d.iso) continue
+      const ids = [...new Set((annotations[item.id]?.tags ?? []).filter((id) => charTagIds.has(id)))]
+      for (const id of ids) {
+        const entry = map.get(id)
+        if (!entry) {
+          map.set(id, { count: 1, first: { item, date: d.iso }, last: { item, date: d.iso } })
+          continue
+        }
+        entry.count++
+        if (d.iso < entry.first.date) entry.first = { item, date: d.iso }
+        if (d.iso > entry.last.date) entry.last = { item, date: d.iso }
+      }
+    }
+    return characterRank.flatMap((row) => {
+      const entry = map.get(row.id)
+      return entry ? [{ id: row.id, ...entry }] : []
+    })
+  }, [characterRank, castItems, annotations, tags, getDate])
 
   const openCharacter = (id: string) => navigate(`/characters?char=${encodeURIComponent(id)}`)
+  const charName = (id: string) => tagMap.get(id)?.name ?? id
 
   const castAvatarLink = (id: string) => (
     <button
@@ -362,6 +482,68 @@ export function StatsView() {
           </div>
         </section>
       </div>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h3>{t('stats.timeline.title')}</h3>
+          <span className="faint">
+            {t('stats.timeline.subtitle', { days: timeline.drawingDays, years: yearCounts.length })}
+          </span>
+        </div>
+        <div className="timeline-highlights">
+          <div className="timeline-highlight">
+            <span className="timeline-highlight-label">{t('stats.timeline.topMonth')}</span>
+            <strong>{timeline.topMonth ? months[timeline.topMonth.index] : '—'}</strong>
+            <span className="num">
+              {timeline.topMonth
+                ? t('stats.timeline.monthValue', { count: timeline.topMonth.count })
+                : t('stats.timeline.noData')}
+            </span>
+          </div>
+          <div className="timeline-highlight">
+            <span className="timeline-highlight-label">{t('stats.timeline.topYear')}</span>
+            <strong>{timeline.topYear ? t('common.yearLabel', { year: timeline.topYear.year }) : '—'}</strong>
+            <span className="num">
+              {timeline.topYear ? t('common.itemCount', { count: timeline.topYear.count }) : t('stats.timeline.noData')}
+            </span>
+          </div>
+          <div className="timeline-highlight">
+            <span className="timeline-highlight-label">{t('stats.timeline.longestGap')}</span>
+            <strong>{timeline.gapDays ? t('stats.timeline.gapValue', { days: timeline.gapDays }) : '—'}</strong>
+            <span className="num">
+              {timeline.gapDays
+                ? t('stats.timeline.gapRange', {
+                    from: formatShortDate(timeline.gapFrom),
+                    to: formatShortDate(timeline.gapTo),
+                  })
+                : t('stats.timeline.gapNone')}
+            </span>
+          </div>
+        </div>
+        <div className="weekday-chart">
+          {timeline.weekday.map((count, idx) => (
+            <div
+              key={idx}
+              className="weekday-col"
+              title={t('stats.timeline.weekdayTooltip', { weekday: weekdays[idx], count })}
+            >
+              <span className="weekday-value num">{count || ''}</span>
+              <div className="weekday-track">
+                <div
+                  className="weekday-fill"
+                  style={{ height: `${(count / Math.max(1, ...timeline.weekday)) * 100}%` }}
+                />
+              </div>
+              <span className="weekday-label">{weekdays[idx]}</span>
+            </div>
+          ))}
+        </div>
+        <p className="stats-note">
+          {IS_PUBLIC
+            ? t('stats.dateBasis.public')
+            : t('stats.dateBasis.inferred', { count: timeline.inferredItems })}
+        </p>
+      </section>
 
       <section className="panel">
         <div className="panel-head">
@@ -646,6 +828,172 @@ export function StatsView() {
               {IS_PUBLIC ? t('stats.cast.multiEmptyPublic') : t('stats.cast.multiEmpty')}
             </p>
           ))}
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h3>{t('stats.cooc.title')}</h3>
+          <span className="faint">{t('stats.cooc.subtitle')}</span>
+        </div>
+        {cooc ? (
+          <>
+            <div className="cooc-scroll">
+              <table className="cooc-table">
+                <thead>
+                  <tr>
+                    <th aria-hidden="true" />
+                    {cooc.ids.map((id) => (
+                      <th key={id}>
+                        <button
+                          type="button"
+                          className="cooc-head-btn"
+                          onClick={() => openCharacter(id)}
+                          title={t('stats.characterTooltip', { name: charName(id) })}
+                        >
+                          {castAvatar(id)}
+                        </button>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {cooc.ids.map((rowId, rowIndex) => (
+                    <tr key={rowId}>
+                      <th scope="row">
+                        <span className="cooc-row-head">
+                          {castAvatarLink(rowId)}
+                          <button type="button" className="cast-name-link cooc-row-name" onClick={() => openCharacter(rowId)}>
+                            {charName(rowId)}
+                          </button>
+                        </span>
+                      </th>
+                      {cooc.ids.map((colId, colIndex) => {
+                        const count = cooc.matrix[rowIndex][colIndex]
+                        if (rowIndex === colIndex) {
+                          return (
+                            <td key={colId}>
+                              <button
+                                type="button"
+                                className="cooc-cell is-diag"
+                                onClick={() => openCharacter(rowId)}
+                                title={t('stats.cooc.diagTooltip', { name: charName(rowId), count: cooc.totals[rowIndex] })}
+                              >
+                                {cooc.totals[rowIndex]}
+                              </button>
+                            </td>
+                          )
+                        }
+                        const strength = count ? 10 + Math.round((count / cooc.max) * 65) : 0
+                        return (
+                          <td key={colId}>
+                            <button
+                              type="button"
+                              className={`cooc-cell${count ? '' : ' is-empty'}`}
+                              disabled={!count}
+                              style={
+                                count
+                                  ? {
+                                      background: `color-mix(in srgb, var(--accent) ${strength}%, transparent)`,
+                                      color: strength > 45 ? '#fff' : undefined,
+                                    }
+                                  : undefined
+                              }
+                              onClick={() =>
+                                navigate(
+                                  `/gallery?tags=${encodeURIComponent(rowId)},${encodeURIComponent(colId)}&tagMode=all`,
+                                )
+                              }
+                              title={t('stats.cooc.cellTooltip', {
+                                a: charName(rowId),
+                                b: charName(colId),
+                                count,
+                              })}
+                            >
+                              {count || '·'}
+                            </button>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="cooc-foot">
+              <span className="faint">{t('stats.cooc.hint', { count: cooc.ids.length })}</span>
+              {cooc.topPair && (
+                <button
+                  type="button"
+                  className="cooc-top"
+                  onClick={() =>
+                    navigate(
+                      `/gallery?tags=${encodeURIComponent(cooc.topPair!.a)},${encodeURIComponent(cooc.topPair!.b)}&tagMode=all`,
+                    )
+                  }
+                >
+                  {t('stats.cooc.topPair', {
+                    a: charName(cooc.topPair.a),
+                    b: charName(cooc.topPair.b),
+                    count: cooc.topPair.count,
+                  })}
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <p className="faint">{t('stats.cooc.empty')}</p>
+        )}
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h3>{t('stats.debut.title')}</h3>
+          <span className="faint">{t('stats.debut.subtitle')}</span>
+        </div>
+        {debuts.length ? (
+          <>
+            <div className="debut-list">
+              {debuts.map((entry) => (
+                <div key={entry.id} className="debut-row">
+                  <span className="debut-who">
+                    {castAvatarLink(entry.id)}
+                    <button type="button" className="cast-name-link debut-name" onClick={() => openCharacter(entry.id)}>
+                      {charName(entry.id)}
+                    </button>
+                  </span>
+                  <span className="debut-count num faint">
+                    {t('stats.debut.occurrences', { count: entry.count })}
+                  </span>
+                  {(['first', 'last'] as const).map((kind) => {
+                    const shot = kind === 'first' ? entry.first : entry.last
+                    return (
+                      <button
+                        key={kind}
+                        type="button"
+                        className="debut-shot"
+                        onClick={() => navigate(`/item/${shot.item.id}`)}
+                        title={t('stats.debut.open', { date: formatFullDate(shot.date) })}
+                      >
+                        <img src={`${BASE}${shot.item.thumb}`} alt="" loading="lazy" decoding="async" />
+                        <span className="debut-shot-text">
+                          <i>{t(kind === 'first' ? 'stats.debut.first' : 'stats.debut.last')}</i>
+                          <b>{formatShortDate(shot.date)}</b>
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+            <p className="stats-note">
+              {IS_PUBLIC
+                ? t('stats.dateBasis.public')
+                : t('stats.dateBasis.inferred', { count: timeline.inferredItems })}
+            </p>
+          </>
+        ) : (
+          <p className="faint">{IS_PUBLIC ? t('stats.debut.emptyPublic') : t('stats.debut.empty')}</p>
+        )}
       </section>
     </div>
   )

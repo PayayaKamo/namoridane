@@ -48,12 +48,14 @@ export function GalleryView({ route }: { route: Route }) {
   const [filter, setFilter] = useState<FilterState>(() => {
     const q = route.query
     const tag = q.get('tag')
+    const tagList = q.get('tags')
     return {
       ...DEFAULT_FILTER,
       year: q.get('year') ?? '',
       month: q.get('month') ?? '',
       keyword: q.get('q') ?? '',
-      tagIds: tag ? [tag] : [],
+      tagIds: tagList ? tagList.split(',').filter(Boolean) : tag ? [tag] : [],
+      tagMode: q.get('tagMode') === 'all' ? 'all' : DEFAULT_FILTER.tagMode,
       favoriteOnly: q.get('fav') === '1',
       unconfirmedOnly: q.get('pending') === '1',
       collectionId: q.get('collection') ?? '',
@@ -76,7 +78,9 @@ export function GalleryView({ route }: { route: Route }) {
   const [storylineIds, setStorylineIds] = useState<string[] | null>(null)
   const [newStoryline, setNewStoryline] = useState('')
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [tagFilterOpen, setTagFilterOpen] = useState(route.query.get('tag') !== null)
+  const [tagFilterOpen, setTagFilterOpen] = useState(
+    route.query.get('tag') !== null || route.query.get('tags') !== null,
+  )
   // 手机端顶部控件默认收起，只留一行紧凑入口
   const [filtersOpen, setFiltersOpen] = useState(false)
 
@@ -87,6 +91,19 @@ export function GalleryView({ route }: { route: Route }) {
     setFilter((f) => (f.tagIds.length === 1 && f.tagIds[0] === queryTag ? f : { ...f, tagIds: [queryTag] }))
     setTagFilterOpen(true)
   }, [queryTag])
+
+  // 支持 #/gallery?tags=a,b&tagMode=all 多标签筛选（角色共现等入口使用）
+  const queryTags = route.query.get('tags') ?? ''
+  useEffect(() => {
+    if (!queryTags) return
+    const ids = queryTags.split(',').filter(Boolean)
+    setFilter((f) =>
+      ids.length === f.tagIds.length && ids.every((id, index) => f.tagIds[index] === id)
+        ? f
+        : { ...f, tagIds: ids, tagMode: 'all' },
+    )
+    setTagFilterOpen(true)
+  }, [queryTags])
 
   // 作品详情使用独立地址：同步标题、描述与分享卡
   const itemForSeo = route.name === 'item' ? itemMap.get(route.param) : undefined
