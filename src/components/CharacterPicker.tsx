@@ -3,6 +3,7 @@ import { useStore } from '../state/store'
 import { Icon } from './Icon'
 import { CharacterAvatar } from './CharacterAvatar'
 import { TAG_COLORS, sortCharacterTags } from '../lib/constants'
+import { useI18n } from '../i18n'
 
 /**
  * 出场人物选择器：复用 character 维度标签，点选即标记、再点取消。
@@ -19,6 +20,7 @@ export function CharacterPicker({
   onClose?: () => void
 }) {
   const { tags, addCharacter, notify } = useStore()
+  const { t } = useI18n()
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -52,7 +54,7 @@ export function CharacterPicker({
     const tag = addCharacter(name, TAG_COLORS[characterTags.length % TAG_COLORS.length])
     onChange([...selected, tag.id])
     setQuery('')
-    notify(`已新建角色「${name}」`, 'success')
+    notify(t('shell.characterPicker.created', { name }), 'success')
   }
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -88,14 +90,14 @@ export function CharacterPicker({
         <input
           ref={inputRef}
           value={query}
-          placeholder="搜索或新建角色，Enter 添加…"
+          placeholder={t('shell.characterPicker.placeholder')}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={onKeyDown}
         />
         {query.trim() && (
           <button className="btn btn-ghost btn-sm" onClick={create}>
             <Icon name={canCreate ? 'plus' : 'check'} size={12} />
-            {canCreate ? '新建并选上' : '选上'}
+            {canCreate ? t('shell.characterPicker.createAndSelect') : t('shell.characterPicker.select')}
           </button>
         )}
       </div>
@@ -113,7 +115,7 @@ export function CharacterPicker({
                 setActive(-1)
                 toggle(tag.id)
               }}
-              title={isSelected ? `取消标记 ${tag.name}` : `标记 ${tag.name}`}
+              title={isSelected ? t('shell.characterPicker.unmark', { name: tag.name }) : t('shell.characterPicker.mark', { name: tag.name })}
             >
               <CharacterAvatar tagId={tag.id} />
               <span>{tag.name}</span>
@@ -123,7 +125,7 @@ export function CharacterPicker({
         })}
         {!ordered.length && (
           <span className="faint" style={{ fontSize: 12 }}>
-            没有匹配的角色，输入名字后按 Enter 即可新建。
+            {t('shell.characterPicker.noMatch')}
           </span>
         )}
       </div>

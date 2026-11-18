@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import type { DiaryItem } from '../types'
 import { useStore } from '../state/store'
 import { formatMonthDay, isValidYmd, parseISO, suggestedDate } from '../lib/dates'
+import { useI18n } from '../i18n'
 import { Icon } from './Icon'
 
 export function DateEditor({ item, compact }: { item: DiaryItem; compact?: boolean }) {
   const { annotations, getDate, setManualDate, confirmDate, setDateOverride, notify } = useStore()
+  const { t } = useI18n()
   const annotation = annotations[item.id]
   const current = getDate(item)
   const [month, setMonth] = useState(String(current.month))
@@ -26,19 +28,19 @@ export function DateEditor({ item, compact }: { item: DiaryItem; compact?: boole
     const m = Number(month)
     const d = Number(day)
     if (!isValidYmd(y, m, d)) {
-      notify('日期不合法，请检查月份和天数', 'error')
+      notify(t('shell.dateEditor.invalid'), 'error')
       return
     }
     setManualDate(item.id, y, m, d)
-    notify('日期已确认', 'success')
+    notify(t('shell.dateEditor.saved'), 'success')
   }
 
   return (
     <div className={`date-editor${compact ? ' compact' : ''}`}>
       <div className="row" style={{ justifyContent: 'space-between' }}>
-        <div className="field-label">日记日期</div>
+        <div className="field-label">{t('shell.dateEditor.title')}</div>
         <span className={`badge ${current.confirmed ? 'badge-sage' : 'badge-warn'}`}>
-          {current.confirmed ? '已确认' : '待校对'}
+          {current.confirmed ? t('shell.dateEditor.confirmed') : t('shell.dateEditor.pending')}
         </span>
       </div>
       <div className="date-inputs">
@@ -46,49 +48,49 @@ export function DateEditor({ item, compact }: { item: DiaryItem; compact?: boole
           className="input num"
           value={year}
           onChange={(e) => setYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
-          aria-label="年"
+          aria-label={t('shell.dateEditor.year')}
         />
-          <span className="faint">年</span>
+          <span className="faint">{t('shell.dateEditor.year')}</span>
         <input
           className="input num"
           value={month}
           onChange={(e) => setMonth(e.target.value.replace(/\D/g, '').slice(0, 2))}
-          aria-label="月"
+          aria-label={t('shell.dateEditor.month')}
         />
-        <span className="faint">月</span>
+        <span className="faint">{t('shell.dateEditor.month')}</span>
         <input
           className="input num"
           value={day}
           onChange={(e) => setDay(e.target.value.replace(/\D/g, '').slice(0, 2))}
-          aria-label="日"
+          aria-label={t('shell.dateEditor.day')}
         />
-        <span className="faint">日</span>
+        <span className="faint">{t('shell.dateEditor.day')}</span>
         <button className="btn btn-primary btn-sm" onClick={save}>
-          确认
+          {t('shell.dateEditor.confirm')}
         </button>
       </div>
       <div className="row row-wrap" style={{ gap: 6, marginTop: 8 }}>
         <button className="btn btn-ghost btn-sm" onClick={() => confirmDate([item.id], 'published')}>
-          沿用发布日 {formatMonthDay(parsed.month, parsed.day)}
+          {t('shell.dateEditor.usePublished', { date: formatMonthDay(parsed.month, parsed.day) })}
         </button>
         <button className="btn btn-ghost btn-sm" onClick={() => confirmDate([item.id], 'suggested')}>
-          采用推断 {formatMonthDay(suggestion.month, suggestion.day)}
+          {t('shell.dateEditor.useSuggested', { date: formatMonthDay(suggestion.month, suggestion.day) })}
         </button>
         {annotation?.date && (
           <button
             className="btn btn-ghost btn-sm"
             onClick={() => {
               setDateOverride(item.id, null)
-              notify('已恢复为推断日期')
+              notify(t('shell.dateEditor.restored'))
             }}
           >
             <Icon name="shuffle" size={12} />
-            恢复推断
+            {t('shell.dateEditor.restoreInferred')}
           </button>
         )}
       </div>
       <div className="faint" style={{ fontSize: 11, marginTop: 6 }}>
-        发布日期 {item.publishedAt} · 手写日记通常比发布早一天，年份按发布年推断，可手动调整。
+        {t('shell.dateEditor.hint', { date: item.publishedAt })}
       </div>
     </div>
   )

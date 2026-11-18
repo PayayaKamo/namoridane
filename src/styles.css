@@ -1461,3 +1461,43 @@ hr {
     display: none;
   }
 }
+
+/* 语言切换：侧栏三档分段控件 + 顶部栏紧凑循环按钮 */
+.locale-switch {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--surface-3);
+}
+
+.locale-switch button {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  transition: 0.16s var(--ease);
+}
+
+.locale-switch button:hover {
+  color: var(--ink-2);
+}
+
+.locale-switch button.active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.locale-cycle {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.app-shell.is-collapsed .locale-switch {
+  display: none;
+}

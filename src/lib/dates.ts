@@ -1,5 +1,6 @@
 import type { DateOverride, DiaryItem, EffectiveDate, ItemAnnotation } from '../types'
 import { IS_PUBLIC } from './appMode'
+import { localeTag, translate } from '../i18n/core'
 
 export const WEEKDAYS_CN = ['日', '一', '二', '三', '四', '五', '六']
 export const MONTHS_CN = [
@@ -16,6 +17,31 @@ export const MONTHS_CN = [
   '十一月',
   '十二月',
 ]
+
+const formatterCache = new Map<string, Intl.DateTimeFormat>()
+
+function dateFormatter(options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const tag = localeTag()
+  const key = `${tag}|${JSON.stringify(options)}`
+  let formatter = formatterCache.get(key)
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(tag, options)
+    formatterCache.set(key, formatter)
+  }
+  return formatter
+}
+
+/** 当前语言的月份名（1 月在前），切换语言后重新调用即更新 */
+export function monthNames(): string[] {
+  const formatter = dateFormatter({ month: 'long' })
+  return Array.from({ length: 12 }, (_, index) => formatter.format(new Date(2024, index, 1)))
+}
+
+/** 当前语言的星期名，周日在前，与 Date#getDay 的索引一致 */
+export function weekdayNames(): string[] {
+  const formatter = dateFormatter({ weekday: 'short' })
+  return Array.from({ length: 7 }, (_, index) => formatter.format(new Date(2024, 0, 7 + index)))
+}
 
 export function isoOf(year: number, month: number, day: number): string {
   if (!year || !month || !day) return ''
@@ -90,20 +116,20 @@ export function isoFromOverride(d: DateOverride): string {
 }
 
 export function formatFullDate(iso: string): string {
-  if (!iso) return '日期待定'
+  if (!iso) return translate('common.dateUnknown')
   const { year, month, day } = parseISO(iso)
-  return `${year} 年 ${month} 月 ${day} 日`
+  return dateFormatter({ year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(year, month - 1, day))
 }
 
 export function formatMonthDay(month: number, day: number): string {
-  if (!month || !day) return '日期待定'
-  return `${month} 月 ${day} 日`
+  if (!month || !day) return translate('common.dateUnknown')
+  return dateFormatter({ month: 'long', day: 'numeric' }).format(new Date(2024, month - 1, day))
 }
 
 export function formatShortDate(iso: string): string {
-  if (!iso) return '日期待定'
+  if (!iso) return translate('common.dateUnknown')
   const { year, month, day } = parseISO(iso)
-  return `${year}.${String(month).padStart(2, '0')}.${String(day).padStart(2, '0')}`
+  return dateFormatter({ year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(year, month - 1, day))
 }
 
 export function todayKey(): string {
@@ -112,9 +138,9 @@ export function todayKey(): string {
 }
 
 export function weekdayLabel(iso: string): string {
-  if (!iso) return '日期待定'
+  if (!iso) return translate('common.dateUnknown')
   const { year, month, day } = parseISO(iso)
-  return `周${WEEKDAYS_CN[new Date(year, month - 1, day).getDay()]}`
+  return dateFormatter({ weekday: 'short' }).format(new Date(year, month - 1, day))
 }
 
 /** 该日期在一年中的第几天，出租统计用 */
@@ -125,18 +151,18 @@ export function dayOfYear(year: number, month: number, day: number): number {
 }
 
 export function relativeTime(iso: string): string {
-  const t = new Date(iso).getTime()
-  if (Number.isNaN(t)) return ''
-  const diff = Date.now() - t
+  const time = new Date(iso).getTime()
+  if (Number.isNaN(time)) return ''
+  const diff = Date.now() - time
   const min = Math.floor(diff / 60000)
-  if (min < 1) return '刚刚'
-  if (min < 60) return `${min} 分钟前`
+  if (min < 1) return translate('common.justNow')
+  const formatter = new Intl.RelativeTimeFormat(localeTag(), { numeric: 'auto' })
+  if (min < 60) return formatter.format(-min, 'minute')
   const hour = Math.floor(min / 60)
-  if (hour < 24) return `${hour} 小时前`
+  if (hour < 24) return formatter.format(-hour, 'hour')
   const day = Math.floor(hour / 24)
-  if (day < 30) return `${day} 天前`
-  const d = new Date(t)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  if (day < 30) return formatter.format(-day, 'day')
+  return dateFormatter({ year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(time))
 }
 
 export function isValidYmd(year: number, month: number, day: number): boolean {
@@ -186,5 +212,5 @@ export function dayQueryOf(query: DateQuery): string {
 }
 
 export function formatMonthDayCN(month: number, day: number): string {
-  return `${month} 月 ${day} 日`
+  return formatMonthDay(month, day)
 }

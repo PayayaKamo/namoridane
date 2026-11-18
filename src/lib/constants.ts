@@ -1,4 +1,5 @@
 import type { CharacterProfile, Dimension, StudyNotes, Tag } from '../types'
+import { translate } from '../i18n/core'
 
 /** 内置标签维度，可在界面里改名或新增自定义维度 */
 export const BUILTIN_DIMENSIONS: Dimension[] = [
@@ -138,13 +139,35 @@ export function presetAvatarPath(tagId: string): string | null {
   return PRESET_AVATAR_IDS.has(tagId) ? `characters/${tagId}.webp` : null
 }
 
-export const STUDY_FIELDS: { key: keyof StudyNotes; label: string; hint: string }[] = [
-  { key: 'composition', label: '构图', hint: '主体位置、留白、视线引导、视角' },
-  { key: 'palette', label: '配色', hint: '主色、辅助色、冷暖对比' },
-  { key: 'linework', label: '线条', hint: '粗细变化、笔触、收尾方式' },
-  { key: 'expression', label: '表情 / 神态', hint: '五官比例、情绪、动态' },
-  { key: 'memo', label: '自由备注', hint: '其他想记下的点' },
-]
+export function studyFields(): { key: keyof StudyNotes; label: string; hint: string }[] {
+  return [
+    {
+      key: 'composition',
+      label: translate('lib.studyFields.composition.label'),
+      hint: translate('lib.studyFields.composition.hint'),
+    },
+    {
+      key: 'palette',
+      label: translate('lib.studyFields.palette.label'),
+      hint: translate('lib.studyFields.palette.hint'),
+    },
+    {
+      key: 'linework',
+      label: translate('lib.studyFields.linework.label'),
+      hint: translate('lib.studyFields.linework.hint'),
+    },
+    {
+      key: 'expression',
+      label: translate('lib.studyFields.expression.label'),
+      hint: translate('lib.studyFields.expression.hint'),
+    },
+    {
+      key: 'memo',
+      label: translate('lib.studyFields.memo.label'),
+      hint: translate('lib.studyFields.memo.hint'),
+    },
+  ]
+}
 
 export const STICKER_SIZES = [240, 512] as const
 

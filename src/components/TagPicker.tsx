@@ -4,6 +4,7 @@ import { Icon } from './Icon'
 import { TAG_COLORS } from '../lib/constants'
 import type { Tag } from '../types'
 import { readableInk } from '../lib/colors'
+import { useI18n } from '../i18n'
 
 export function TagPill({
   tag,
@@ -16,6 +17,7 @@ export function TagPill({
   onClick?: () => void
   active?: boolean
 }) {
+  const { t } = useI18n()
   return (
     <span
       className="tag-pill"
@@ -33,7 +35,7 @@ export function TagPill({
             e.stopPropagation()
             onRemove()
           }}
-          aria-label={`移除 ${tag.name}`}
+          aria-label={t('shell.tagPicker.removeTag', { name: tag.name })}
         >
           <Icon name="close" size={9} strokeWidth={2.2} />
         </button>
@@ -54,6 +56,7 @@ export function TagPicker({
   counts?: Record<string, number>
 }) {
   const { tags, dimensions, addTag, notify, tagUsage } = useStore()
+  const { t } = useI18n()
   const [query, setQuery] = useState('')
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
@@ -85,14 +88,14 @@ export function TagPicker({
     if (!name) return
     const exists = tags.find((t) => t.name === name && t.dimensionId === newDim)
     if (exists) {
-      notify('同维度下已有同名标签', 'error')
+      notify(t('shell.tagPicker.duplicate'), 'error')
       return
     }
     const tag = addTag(name, newDim, newColor)
     onChange([...selected, tag.id])
     setNewName('')
     setCreating(false)
-    notify(`已创建标签「${name}」`, 'success')
+    notify(t('shell.tagPicker.created', { name }), 'success')
   }
 
   return (
@@ -102,7 +105,7 @@ export function TagPicker({
           <Icon name="search" size={14} />
           <input
             value={query}
-            placeholder="筛选标签…"
+            placeholder={t('shell.tagPicker.filterPlaceholder')}
             onChange={(e) => setQuery(e.target.value)}
             style={{ height: 32 }}
           />
@@ -110,7 +113,7 @@ export function TagPicker({
         {allowCreate && (
           <button className="btn btn-sm" onClick={() => setCreating((v) => !v)}>
             <Icon name="plus" size={13} />
-            新建
+            {t('shell.tagPicker.newTag')}
           </button>
         )}
       </div>
@@ -119,7 +122,7 @@ export function TagPicker({
         <div className="tag-create">
           <input
             className="input"
-            placeholder="标签名称"
+            placeholder={t('shell.tagPicker.tagName')}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submitCreate()}
@@ -139,12 +142,12 @@ export function TagPicker({
                 className={`color-dot${newColor === c ? ' active' : ''}`}
                 style={{ background: c }}
                 onClick={() => setNewColor(c)}
-                aria-label={`颜色 ${c}`}
+                aria-label={t('shell.tagPicker.colorLabel', { color: c })}
               />
             ))}
           </div>
           <button className="btn btn-primary btn-sm" onClick={submitCreate}>
-            创建并选中
+            {t('shell.tagPicker.createAndSelect')}
           </button>
         </div>
       )}
@@ -173,13 +176,13 @@ export function TagPicker({
                   </button>
                 )
               })}
-              {!dimTags.length && <span className="faint" style={{ fontSize: 11.5 }}>暂无标签</span>}
+              {!dimTags.length && <span className="faint" style={{ fontSize: 11.5 }}>{t('shell.tagPicker.noTags')}</span>}
             </div>
           </div>
         ))}
         {!byDimension.length && (
           <div className="faint" style={{ fontSize: 12 }}>
-            没有匹配的标签，可以直接新建。
+            {t('shell.tagPicker.noMatch')}
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from './Icon'
+import { useI18n } from '../i18n'
 
 export function Modal({
   title,
@@ -19,6 +20,7 @@ export function Modal({
   wide?: boolean
   bare?: boolean
 }) {
+  const { t } = useI18n()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -39,7 +41,7 @@ export function Modal({
               {title && <h3>{title}</h3>}
               {subtitle && <div className="page-sub">{subtitle}</div>}
             </div>
-            <button className="icon-btn" onClick={onClose} aria-label="关闭">
+            <button className="icon-btn" onClick={onClose} aria-label={t('shell.modal.close')}>
               <Icon name="close" />
             </button>
           </div>

@@ -3,7 +3,7 @@ import { useStore } from '../state/store'
 import { navigate, closeItem } from '../lib/router'
 import { formatFullDate, formatMonthDay, weekdayLabel } from '../lib/dates'
 import { similarItems } from '../lib/filtering'
-import { STUDY_FIELDS, EMPTY_STUDY } from '../lib/constants'
+import { studyFields, EMPTY_STUDY } from '../lib/constants'
 import { CharacterAvatar } from '../components/CharacterAvatar'
 import { Icon } from '../components/Icon'
 import { Modal } from '../components/Modal'
@@ -181,7 +181,7 @@ export function DetailView({ itemId }: { itemId: string }) {
       setStudy(item.id, studyDraft)
       return
     }
-    for (const field of STUDY_FIELDS) {
+    for (const field of studyFields()) {
       if ((annotation.study[field.key] ?? '') !== studyDraft[field.key]) {
         setStudy(item.id, { [field.key]: studyDraft[field.key] })
       }
@@ -246,7 +246,7 @@ export function DetailView({ itemId }: { itemId: string }) {
                 key={item.id}
                 className={`detail-img${gray ? ' gray' : ''}${mirror ? ' mirror' : ''}`}
                 src={`${BASE}${item.large}`}
-                alt={`绘日记 ${date.iso}`}
+                alt={`Namori 水母绘日记 ${date.iso} 手绘插画`}
                 onLoad={() => setLoaded(true)}
                 style={{ opacity: loaded ? 1 : 0 }}
               />
@@ -692,7 +692,7 @@ export function DetailView({ itemId }: { itemId: string }) {
                   <div className="study-intro">
                     把这张画拆成可模仿的步骤，记下构图、配色与线条的处理方式。
                   </div>
-                  {STUDY_FIELDS.map((field) => (
+                  {studyFields().map((field) => (
                     <label key={field.key} className="study-field">
                       <span className="study-label">{field.label}</span>
                       <textarea

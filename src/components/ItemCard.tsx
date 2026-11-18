@@ -4,6 +4,7 @@ import { useStore } from '../state/store'
 import { Icon } from './Icon'
 import { formatShortDate } from '../lib/dates'
 import { openItem } from '../lib/router'
+import { useI18n } from '../i18n'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -21,6 +22,7 @@ export function ItemCard({
   showDate?: boolean
 }) {
   const { annotations, getDate, tagMap } = useStore()
+  const { t } = useI18n()
   const [loaded, setLoaded] = useState(false)
   const annotation = annotations[item.id]
   const date = getDate(item)
@@ -46,7 +48,7 @@ export function ItemCard({
         {!loaded && <div className="skeleton item-skeleton" />}
         <img
           src={`${BASE}${item.thumb}`}
-          alt={`绘日记 ${date.iso}`}
+          alt={t('shell.card.imageAlt', { date: date.iso })}
           loading="lazy"
           decoding="async"
           onLoad={() => setLoaded(true)}
@@ -59,7 +61,7 @@ export function ItemCard({
               e.stopPropagation()
               onToggleSelect?.(item.id)
             }}
-            aria-label={selected ? '取消选择' : '选择'}
+            aria-label={selected ? t('common.deselect') : t('common.select')}
           >
             {selected && <Icon name="check" size={13} strokeWidth={2.4} />}
           </button>
@@ -86,7 +88,7 @@ export function ItemCard({
           <figcaption className="item-caption">
             <span className="hand">{date.month} / {date.day}</span>
             <span className="item-year">{date.year}</span>
-            {!date.confirmed && <span className="dot-warn" title="日期待校对" />}
+            {!date.confirmed && <span className="dot-warn" title={t('shell.card.datePending')} />}
           </figcaption>
         )}
       </div>

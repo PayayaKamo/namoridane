@@ -1,5 +1,6 @@
 import type { DiaryItem } from '../types'
 import { zipSync } from 'fflate'
+import { translate } from '../i18n/core'
 
 const imageCache = new Map<string, Promise<HTMLImageElement>>()
 
@@ -10,7 +11,7 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
     const img = new Image()
     img.decoding = 'async'
     img.onload = () => resolve(img)
-    img.onerror = () => reject(new Error(`图片加载失败：${src}`))
+    img.onerror = () => reject(new Error(translate('lib.imageLoadFailed', { src })))
     img.src = src
   })
   imageCache.set(src, promise)
@@ -47,7 +48,7 @@ export async function downloadOriginalsZip(
   const files: Record<string, Uint8Array> = {}
   for (const item of items) {
     const response = await fetch(originalUrl(item))
-    if (!response.ok) throw new Error(`原图读取失败：${item.file}`)
+    if (!response.ok) throw new Error(translate('lib.originalLoadFailed', { file: item.file }))
     files[item.file] = new Uint8Array(await response.arrayBuffer())
     onProgress?.(Object.keys(files).length, items.length)
   }

@@ -40,6 +40,7 @@ import {
   saveLocalUserData,
 } from '../lib/storage'
 import { uid } from '../lib/utils'
+import { translate } from '../i18n/core'
 import type { CropParams } from '../types'
 
 type Theme = 'light' | 'dark'
@@ -500,7 +501,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     (name: string, color: string) => {
       const tag: Tag = {
         id: uid('tag_'),
-        name: name.trim() || '新角色',
+        name: name.trim() || translate('lib.newCharacter'),
         dimensionId: 'character',
         color,
         createdAt: new Date().toISOString(),
@@ -705,7 +706,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const now = new Date().toISOString()
       const collection: Collection = {
         id: uid('col_'),
-        name: name.trim() || '未命名合集',
+        name: name.trim() || translate('lib.newCollection'),
         description,
         itemIds: [],
         createdAt: now,
@@ -782,11 +783,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   )
 
   const addStoryline = useCallback(
-    (title = '未命名故事线', itemIds: string[] = []) => {
+    (title = translate('lib.newStoryline'), itemIds: string[] = []) => {
       const now = new Date().toISOString()
       const storyline: Storyline = {
         id: uid('story_'),
-        title: title.trim() || '未命名故事线',
+        title: title.trim() || translate('lib.newStoryline'),
         description: '',
         blocks: itemIds.map((itemId) => ({ id: uid('block_'), type: 'image' as const, itemId })),
         tags: [],
@@ -928,16 +929,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const loadSeed = useCallback(async () => {
     const seed = await loadSeedUserData()
     if (!seed) {
-      notify('没有找到种子数据（public/data/userdata.seed.json）', 'error')
+      notify(translate('lib.seedNotFound'), 'error')
       return
     }
     setData((prev) => mergeUserData(prev, { ...seed, datasetId: index?.datasetId ?? prev.datasetId }))
-    notify('已合并仓库种子标注', 'success')
+    notify(translate('lib.seedMerged'), 'success')
   }, [index?.datasetId, notify])
 
   const resetData = useCallback(() => {
     setData(emptyUserData(false, index?.datasetId))
-    notify('本地标注已清空', 'success')
+    notify(translate('lib.annotationsCleared'), 'success')
   }, [index?.datasetId, notify])
 
   const value = useMemo<StoreValue>(

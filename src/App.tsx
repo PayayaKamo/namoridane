@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { useRoute } from './lib/router'
 import { navigate } from './lib/router'
 import { useStore } from './state/store'
+import { useI18n } from './i18n'
 import { Layout } from './components/Layout'
 import { Modal, Toasts } from './components/Modal'
 import { Icon } from './components/Icon'
@@ -39,10 +40,11 @@ const CharacterTaggingView =
       )
 
 function AdminFallback() {
+  const { t } = useI18n()
   return (
     <div className="loading-screen">
       <div className="spinner" />
-      正在载入管理功能…
+      {t('shell.app.adminLoading')}
     </div>
   )
 }
@@ -94,6 +96,7 @@ function CurrentView({ route }: { route: ReturnType<typeof useRoute> }) {
 
 export default function App() {
   const { loading, error, toasts, dismissToast, items } = useStore()
+  const { t } = useI18n()
   const route = useRoute()
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
 
@@ -121,7 +124,7 @@ export default function App() {
     return (
       <div className="loading-screen">
         <div className="spinner" />
-        正在载入水母绘日记…
+        {t('shell.app.loading')}
       </div>
     )
   }
@@ -129,9 +132,9 @@ export default function App() {
   if (error) {
     return (
       <div className="loading-screen" style={{ padding: 40, textAlign: 'center' }}>
-        <div className="empty-title">没有找到图片索引</div>
+        <div className="empty-title">{t('shell.app.noIndexTitle')}</div>
         <div className="muted">
-          请在项目目录运行 <code>npm run data</code> 生成索引与衍生图，然后刷新页面。（{error}）
+          {t('shell.app.noIndexHintBefore')} <code>npm run data</code>{t('shell.app.noIndexHintAfter', { error })}
         </div>
       </div>
     )
@@ -150,17 +153,18 @@ export default function App() {
 }
 
 function ShortcutPanel({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n()
   const rows: [string, string][] = [
-    ['← / →', '上一张 / 下一张'],
-    ['Esc', '关闭详情或弹层'],
-    ['/', '聚焦搜索框'],
-    ['R', '随机抽一张'],
-    ['F', '收藏当前作品'],
-    ['1 / 2', '详情中切换「信息 / 翻译」'],
-    ['?', '打开本快捷键面板'],
+    ['← / →', t('shell.shortcuts.prevNext')],
+    ['Esc', t('shell.shortcuts.close')],
+    ['/', t('shell.shortcuts.focusSearch')],
+    ['R', t('shell.shortcuts.random')],
+    ['F', t('shell.shortcuts.favorite')],
+    ['1 / 2', t('shell.shortcuts.tabs')],
+    ['?', t('shell.shortcuts.panel')],
   ]
   return (
-    <Modal title="快捷键" onClose={onClose}>
+    <Modal title={t('shell.shortcuts.title')} onClose={onClose}>
       <div className="shortcut-list">
         {rows.map(([key, desc]) => (
           <div key={key} className="shortcut-row">

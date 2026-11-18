@@ -1,34 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Icon } from './Icon'
+import { LocaleSwitch } from './LocaleSwitch'
 import { useStore } from '../state/store'
 import { navigate, type Route } from '../lib/router'
 import { effectiveDate, parseDateQuery, dayQueryOf } from '../lib/dates'
 import { IS_PUBLIC } from '../lib/appMode'
 import { restoreFilesFromTrash } from '../lib/trash'
+import { useI18n, type MessageKey } from '../i18n'
 
 const PUBLIC_PATHS = new Set(['/', '/calendar', '/gallery', '/storylines', '/reader', '/search', '/characters', '/stats'])
 const SIDEBAR_KEY = 'namori.sidebar.collapsed'
-
-const PAGE_TITLES: Record<string, { eyebrow: string; title: string }> = {
-  home: { eyebrow: 'Overview', title: '概览' },
-  calendar: { eyebrow: 'Calendar', title: '日历' },
-  gallery: { eyebrow: 'Gallery', title: '图库' },
-  reader: { eyebrow: 'Diary', title: '翻阅' },
-  search: { eyebrow: 'Search', title: '搜索与筛选' },
-  tags: { eyebrow: 'Tags', title: '标签' },
-  'character-tagging': { eyebrow: 'Tagging', title: '人物标注' },
-  characters: { eyebrow: 'Characters', title: '角色图鉴' },
-  collections: { eyebrow: 'Collections', title: '合集' },
-  collection: { eyebrow: 'Collections', title: '合集详情' },
-  storylines: { eyebrow: 'Storyline', title: '故事线' },
-  storyline: { eyebrow: 'Storyline', title: '故事线编辑' },
-  datefind: { eyebrow: 'Date Lookup', title: '按日期查绘日记' },
-  review: { eyebrow: 'Date Review', title: '日期校对' },
-  'diary-review': { eyebrow: 'Diary Review', title: '绘日记审核' },
-  stats: { eyebrow: 'Insights', title: '统计' },
-  data: { eyebrow: 'Data', title: '数据与设置' },
-  item: { eyebrow: 'Detail', title: '作品详情' },
-}
 
 interface NavEntry {
   path: string
@@ -52,6 +33,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
     undoDelete,
     notify,
   } = useStore()
+  const { t } = useI18n()
   const searchRef = useRef<HTMLInputElement>(null)
   const [term, setTerm] = useState(route.query.get('q') ?? '')
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -82,7 +64,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
     })
     await restoreFilesFromTrash(files)
     undoDelete()
-    notify(`已恢复 ${lastDeletion.length} 张`, 'success')
+    notify(t('shell.undo.restored', { count: lastDeletion.length }), 'success')
   }
 
   useEffect(() => setMobileOpen(false), [route])
@@ -124,33 +106,33 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
 
   const groups: { label: string; items: NavEntry[] }[] = [
     {
-      label: '浏览',
+      label: t('shell.nav.browse'),
       items: [
-        { path: '/', label: '概览', icon: 'home' },
-        { path: '/calendar', label: '日历', icon: 'calendar' },
-        { path: '/gallery', label: '图库', icon: 'gallery', count: items.length },
-        { path: '/storylines', label: '故事线', icon: 'book' },
-        { path: '/reader', label: '翻阅', icon: 'book' },
-        { path: '/search', label: '搜索', icon: 'search' },
-        ...(IS_PUBLIC ? [{ path: '/stats', label: '统计', icon: 'chart' }] : []),
+        { path: '/', label: t('shell.nav.home'), icon: 'home' },
+        { path: '/calendar', label: t('shell.nav.calendar'), icon: 'calendar' },
+        { path: '/gallery', label: t('shell.nav.gallery'), icon: 'gallery', count: items.length },
+        { path: '/storylines', label: t('shell.nav.storylines'), icon: 'book' },
+        { path: '/reader', label: t('shell.nav.reader'), icon: 'book' },
+        { path: '/search', label: t('shell.nav.search'), icon: 'search' },
+        ...(IS_PUBLIC ? [{ path: '/stats', label: t('shell.nav.stats'), icon: 'chart' }] : []),
       ],
     },
     {
-      label: '整理',
+      label: t('shell.nav.organize'),
       items: [
-        { path: '/tags', label: '标签', icon: 'tag', count: tags.length },
-        { path: '/characters', label: '角色图鉴', icon: 'users' },
-        { path: '/character-tagging', label: '人物标注', icon: 'eye' },
-        { path: '/collections', label: '合集', icon: 'folder', count: collections.length },
-        { path: '/diary-review', label: '绘日记审核', icon: 'checkSquare', count: pendingReviewItems.length },
-        { path: '/review', label: '日期校对', icon: 'check', count: pendingCount },
+        { path: '/tags', label: t('shell.nav.tags'), icon: 'tag', count: tags.length },
+        { path: '/characters', label: t('shell.nav.characters'), icon: 'users' },
+        { path: '/character-tagging', label: t('shell.nav.characterTagging'), icon: 'eye' },
+        { path: '/collections', label: t('shell.nav.collections'), icon: 'folder', count: collections.length },
+        { path: '/diary-review', label: t('shell.nav.diaryReview'), icon: 'checkSquare', count: pendingReviewItems.length },
+        { path: '/review', label: t('shell.nav.dateReview'), icon: 'check', count: pendingCount },
       ],
     },
     {
-      label: '工具',
+      label: t('shell.nav.tools'),
       items: [
-        ...(IS_PUBLIC ? [] : [{ path: '/stats', label: '统计', icon: 'chart' }]),
-        { path: '/data', label: '数据与设置', icon: 'database' },
+        ...(IS_PUBLIC ? [] : [{ path: '/stats', label: t('shell.nav.stats'), icon: 'chart' }]),
+        { path: '/data', label: t('shell.nav.data'), icon: 'database' },
       ],
     },
   ]
@@ -172,7 +154,10 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
             ? '/'
             : `/${route.name}`
 
-  const meta = PAGE_TITLES[route.name] ?? PAGE_TITLES.home
+  const meta = {
+    eyebrow: t(`shell.page.${route.name}.eyebrow` as MessageKey),
+    title: t(`shell.page.${route.name}.title` as MessageKey),
+  }
 
   const submitSearch = () => {
     const q = term.trim()
@@ -193,7 +178,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
   return (
     <div className={`app-shell${collapsed ? ' is-collapsed' : ''}`}>
       {mobileOpen && (
-        <button className="mobile-nav-backdrop" onClick={() => setMobileOpen(false)} aria-label="关闭导航菜单" />
+        <button className="mobile-nav-backdrop" onClick={() => setMobileOpen(false)} aria-label={t('shell.aria.closeNav')} />
       )}
       <aside id="site-navigation" className={`sidebar${mobileOpen ? ' open' : ''}`}>
         <div className="brand">
@@ -202,11 +187,11 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
               <img src={`${import.meta.env.BASE_URL}namori_icon.webp`} alt="" />
             </div>
             <div className="brand-text">
-              <div className="brand-title">水母绘日记</div>
-              <div className="brand-sub">Namori Diary</div>
+              <div className="brand-title">{t('shell.siteName')}</div>
+              <div className="brand-sub">{t('shell.brandSub')}</div>
             </div>
           </a>
-          <button className="icon-btn sidebar-close" onClick={() => setMobileOpen(false)} aria-label="关闭导航菜单">
+          <button className="icon-btn sidebar-close" onClick={() => setMobileOpen(false)} aria-label={t('shell.aria.closeNav')}>
             <Icon name="close" />
           </button>
         </div>
@@ -236,28 +221,29 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
           <button
             className="nav-item sidebar-toggle"
             onClick={() => setCollapsed((value) => !value)}
-            title={collapsed ? '展开侧栏' : '收起侧栏'}
-            aria-label={collapsed ? '展开侧栏' : '收起侧栏'}
+            title={collapsed ? t('shell.sidebar.expand') : t('shell.sidebar.collapse')}
+            aria-label={collapsed ? t('shell.sidebar.expand') : t('shell.sidebar.collapse')}
             aria-pressed={collapsed}
           >
             <Icon name={collapsed ? 'right' : 'left'} className="nav-icon" size={17} />
-            <span className="nav-text">{collapsed ? '展开侧栏' : '收起侧栏'}</span>
+            <span className="nav-text">{collapsed ? t('shell.sidebar.expand') : t('shell.sidebar.collapse')}</span>
           </button>
         </div>
         <div className="sidebar-foot">
           <div className="sidebar-meta">
-            <span>作品</span>
+            <span>{t('shell.nav.works')}</span>
             <strong>{items.length}</strong>
           </div>
           {!IS_PUBLIC && (
             <div className="sidebar-meta">
-              <span>待审核</span>
+              <span>{t('shell.nav.pendingReview')}</span>
               <strong>{pendingReviewItems.length}</strong>
             </div>
           )}
-          <button className="btn btn-soft btn-sm" onClick={toggleTheme} title="切换主题">
+          <LocaleSwitch />
+          <button className="btn btn-soft btn-sm" onClick={toggleTheme} title={t('shell.theme.toggle')}>
             <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={15} />
-            <span>{theme === 'dark' ? '亮色主题' : '暗色主题'}</span>
+            <span>{theme === 'dark' ? t('shell.theme.switchToLight') : t('shell.theme.switchToDark')}</span>
           </button>
         </div>
       </aside>
@@ -267,14 +253,14 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
           <button
             className="icon-btn mobile-menu"
             onClick={() => setMobileOpen(true)}
-            aria-label="打开全部功能菜单"
+            aria-label={t('shell.aria.openNav')}
             aria-expanded={mobileOpen}
             aria-controls="site-navigation"
           >
             <Icon name="menu" />
           </button>
           <div className="crumb">
-            <span>水母绘日记</span>
+            <span>{t('shell.siteName')}</span>
             <Icon name="right" size={12} />
             <b>{meta.title}</b>
           </div>
@@ -283,7 +269,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
             <input
               ref={searchRef}
               value={term}
-              placeholder="搜索标签、备注、日期…"
+              placeholder={t('shell.search.placeholder')}
               onChange={(e) => setTerm(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') submitSearch()
@@ -294,7 +280,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
           <button
             className="icon-btn mobile-search"
             onClick={() => setSearchOpen(true)}
-            aria-label="展开搜索"
+            aria-label={t('shell.aria.openSearch')}
             aria-expanded={searchOpen}
           >
             <Icon name="search" />
@@ -305,7 +291,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
               <input
                 autoFocus
                 value={term}
-                placeholder="搜索标签、备注、日期…"
+                placeholder={t('shell.search.placeholder')}
                 onChange={(e) => setTerm(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -314,28 +300,31 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
                   }
                 }}
               />
-              <button className="icon-btn" onClick={() => setSearchOpen(false)} aria-label="关闭搜索">
+              <button className="icon-btn" onClick={() => setSearchOpen(false)} aria-label={t('shell.aria.closeSearch')}>
                 <Icon name="close" size={16} />
               </button>
             </div>
           )}
-          <button className="icon-btn" onClick={openRandom} title="随机抽一张" aria-label="随机抽一张">
+          <button className="icon-btn" onClick={openRandom} title={t('shell.random')} aria-label={t('shell.random')}>
             <Icon name="dice" />
           </button>
+          <LocaleSwitch variant="compact" />
           <button
             className="icon-btn"
-            onClick={() => notify('快捷键：← → 切换作品，Esc 关闭，/ 聚焦搜索，F 收藏，R 随机', 'default')}
-            title="快捷键"
+            onClick={() => notify(t('shell.search.shortcutTip'), 'default')}
+            title={t('shell.shortcuts.title')}
+            aria-label={t('shell.aria.shortcuts')}
           >
             <Icon name="info" />
           </button>
         </header>
-        <div className="content">
+        <div className="content" role="main">
+          {route.name !== 'home' && <h1 className="sr-only">水母绘日记 · Namori Diary · {meta.title}</h1>}
           {children}
           <footer className="site-footer">
-            <span className="site-footer-copy">水母绘日记 · Namori Diary</span>
+            <span className="site-footer-copy">{t('shell.footerCopy')}</span>
             <a className="site-footer-link" href="https://github.com/payayakamo" target="_blank" rel="noopener noreferrer">
-              GitHub 主页
+              {t('shell.footer.githubProfile')}
               <Icon name="share" size={12} />
             </a>
             <a
@@ -344,15 +333,15 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
               target="_blank"
               rel="noopener noreferrer"
             >
-              站点仓库
+              {t('shell.footer.repository')}
               <Icon name="share" size={12} />
             </a>
             <a className="site-footer-link" href="https://xhslink.cn/o/AmThiRAG07o" target="_blank" rel="noopener noreferrer">
-              小红书 · PayaYa
+              {t('shell.footer.xiaohongshu')}
               <Icon name="share" size={12} />
             </a>
             <a className="site-footer-link" href="https://xhslink.cn/o/22fet2ONRIv" target="_blank" rel="noopener noreferrer">
-              小红书 · @PayayaKamo
+              {t('shell.footer.xiaohongshuAlt')}
               <Icon name="share" size={12} />
             </a>
           </footer>
@@ -360,23 +349,24 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
       </div>
       {!IS_PUBLIC && undoVisible && lastDeletion?.length ? (
         <div className="undo-bar" role="status">
-          <span>已删除 {lastDeletion.length} 张，原图在回收站</span>
+          <span>{t('shell.undo.deleted', { count: lastDeletion.length })}</span>
           <button className="btn btn-sm btn-primary" onClick={handleUndo}>
-            <Icon name="check" size={13} />撤销
+            <Icon name="check" size={13} />
+            {t('shell.undo.action')}
           </button>
-          <button className="icon-btn" onClick={() => setUndoVisible(false)} aria-label="关闭">
+          <button className="icon-btn" onClick={() => setUndoVisible(false)} aria-label={t('shell.aria.close')}>
             <Icon name="close" size={13} />
           </button>
         </div>
       ) : null}
 
-      <nav className="mobile-bottom-nav" aria-label="常用功能">
+      <nav className="mobile-bottom-nav" aria-label={t('shell.nav.mobileLabel')}>
         {[
-          { path: '/', label: '概览', icon: 'home' },
-          { path: '/calendar', label: '日历', icon: 'calendar' },
-          { path: '/gallery', label: '图库', icon: 'gallery' },
-          { path: '/search', label: '搜索', icon: 'search' },
-          { path: '/characters', label: '角色', icon: 'users' },
+          { path: '/', label: t('shell.nav.home'), icon: 'home' },
+          { path: '/calendar', label: t('shell.nav.calendar'), icon: 'calendar' },
+          { path: '/gallery', label: t('shell.nav.gallery'), icon: 'gallery' },
+          { path: '/search', label: t('shell.nav.search'), icon: 'search' },
+          { path: '/characters', label: t('shell.nav.characters'), icon: 'users' },
         ].map((entry) => (
           <a
             key={entry.path}
