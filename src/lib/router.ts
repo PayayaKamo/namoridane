@@ -87,7 +87,9 @@ export function siteHref(path: string): string {
 export function migrateLegacyHash(): boolean {
   const hash = window.location.hash
   if (!hash.startsWith('#/')) return false
-  const legacy = hash.slice(1) || '/'
+  let legacy = hash.slice(1) || '/'
+  // 作品页统一使用带斜杠的目录地址，和静态文件、canonical 保持一致
+  if (/^\/item\/[^/?#]+$/.test(legacy)) legacy = `${legacy}/`
   const target = pathToUrl(legacy)
   const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
   if (current !== target) {
